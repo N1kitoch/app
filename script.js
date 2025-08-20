@@ -215,14 +215,25 @@ function contactForService(serviceName) {
             timestamp: new Date().toISOString()
         };
         
-        console.log('Sending service interest:', serviceData);
+        console.log('🎯 Sending service interest:', serviceData);
+        console.log('📱 Telegram Web App status check:');
+        console.log('  - tg available:', !!tg);
+        console.log('  - userData available:', !!userData);
+        console.log('  - tg.sendData available:', !!(tg && tg.sendData));
+        
         sendDataToBot(serviceData).then(sent => {
             if (sent) {
-                console.log('Service interest sent to bot');
+                console.log('✅ Service interest sent to bot successfully');
             } else {
-                console.log('Failed to send service interest to bot');
+                console.log('❌ Failed to send service interest to bot');
             }
+        }).catch(error => {
+            console.error('💥 Error in sendDataToBot promise:', error);
         });
+    } else {
+        console.log('⚠️ Cannot send service interest:');
+        console.log('  - tg available:', !!tg);
+        console.log('  - userData available:', !!userData);
     }
 }
 
@@ -263,8 +274,8 @@ contactForm.addEventListener('submit', async (e) => {
             }
         } else {
             // Fallback: simulate API call
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            showNotification('Сообщение успешно отправлено! Я свяжусь с вами в течение 2 часов.', 'success');
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        showNotification('Сообщение успешно отправлено! Я свяжусь с вами в течение 2 часов.', 'success');
         }
         
         // Reset form
@@ -692,34 +703,51 @@ async function sendUserDataToBot(userData) {
 
 // Send data from webapp to bot
 async function sendDataToBot(data) {
-    console.log('sendDataToBot called with:', data);
+    console.log('='.repeat(50));
+    console.log('🚀 sendDataToBot called with:', data);
+    console.log('📱 Telegram Web App status:');
+    console.log('  - window.Telegram:', !!window.Telegram);
+    console.log('  - window.Telegram.WebApp:', !!(window.Telegram && window.Telegram.WebApp));
+    console.log('  - tg variable:', !!tg);
     
     if (!tg) {
-        console.log('Telegram Web App not available (tg is null)');
+        console.log('❌ Telegram Web App not available (tg is null)');
+        console.log('='.repeat(50));
         return false;
     }
     
+    console.log('🔍 Telegram Web App object details:');
+    console.log('  - tg object:', tg);
+    console.log('  - tg type:', typeof tg);
+    console.log('  - tg methods:', Object.getOwnPropertyNames(tg));
+    
     if (!tg.sendData) {
-        console.log('tg.sendData method not available');
+        console.log('❌ tg.sendData method not available');
+        console.log('  - Available methods:', Object.getOwnPropertyNames(tg).filter(name => typeof tg[name] === 'function'));
+        console.log('='.repeat(50));
         return false;
     }
     
     try {
-        console.log('Sending data to bot:', data);
+        console.log('✅ tg.sendData method found, sending data...');
+        console.log('📊 Data to send:', data);
         const dataString = JSON.stringify(data);
-        console.log('Data stringified:', dataString);
+        console.log('📝 Data stringified:', dataString);
         
         // Use Telegram Web App's sendData method
-        tg.sendData(dataString);
-        console.log('Data sent to bot successfully via tg.sendData()');
+        const result = tg.sendData(dataString);
+        console.log('✅ Data sent to bot successfully via tg.sendData()');
+        console.log('📤 Send result:', result);
+        console.log('='.repeat(50));
         return true;
     } catch (error) {
-        console.error('Error sending data to bot:', error);
-        console.error('Error details:', {
+        console.error('❌ Error sending data to bot:', error);
+        console.error('🔍 Error details:', {
             name: error.name,
             message: error.message,
             stack: error.stack
         });
+        console.log('='.repeat(50));
         return false;
     }
 }
