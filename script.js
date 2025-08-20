@@ -215,9 +215,12 @@ function contactForService(serviceName) {
             timestamp: new Date().toISOString()
         };
         
+        console.log('Sending service interest:', serviceData);
         sendDataToBot(serviceData).then(sent => {
             if (sent) {
                 console.log('Service interest sent to bot');
+            } else {
+                console.log('Failed to send service interest to bot');
             }
         });
     }
@@ -251,6 +254,7 @@ contactForm.addEventListener('submit', async (e) => {
                 timestamp: new Date().toISOString()
             };
             
+            console.log('Sending contact form data:', botData);
             const sentToBot = await sendDataToBot(botData);
             if (sentToBot) {
                 showNotification('Сообщение отправлено в Telegram!', 'success');
@@ -423,8 +427,26 @@ async function loadUserProfile() {
             // Update profile display
             updateProfileDisplay();
             
-            // Send user data to bot (optional)
+            // Send user data to bot
             await sendUserDataToBot(userData);
+            
+            // Also send profile update to bot
+            if (tg) {
+                const profileData = {
+                    type: 'user_data',
+                    userData: userData,
+                    timestamp: new Date().toISOString()
+                };
+                
+                console.log('Sending profile data to bot:', profileData);
+                sendDataToBot(profileData).then(sent => {
+                    if (sent) {
+                        console.log('Profile data sent to bot');
+                    } else {
+                        console.log('Failed to send profile data to bot');
+                    }
+                });
+            }
             
         } else {
             // Fallback: try to get data from URL parameters
@@ -604,8 +626,10 @@ async function sendDataToBot(data) {
     }
     
     try {
+        console.log('Sending data to bot:', data);
         // Use Telegram Web App's sendData method
         tg.sendData(JSON.stringify(data));
+        console.log('Data sent to bot successfully');
         return true;
     } catch (error) {
         console.error('Error sending data to bot:', error);
