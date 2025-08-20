@@ -37,16 +37,14 @@ function showPage(pageId) {
     // Initialize feature details on home page
     if (pageId === 'home') {
         setTimeout(initFeatureDetails, 100);
-        // Keep main button hidden on all pages
-        hideTelegramMainButton();
+        // Main button is always hidden
     } else {
         // Clear auto-switch interval when leaving home page
         if (autoSwitchInterval) {
             clearInterval(autoSwitchInterval);
         }
         
-        // Keep main button hidden on all pages
-        hideTelegramMainButton();
+        // Main button is always hidden
         
         // Auto-fill contact form with Telegram data
         if (pageId === 'contact' && userData) {
@@ -386,14 +384,11 @@ function initTelegramWebApp() {
             document.body.classList.add('tg-dark-theme');
         }
         
-        // Don't set main button - remove all Telegram button functionality
-        // tg.MainButton.setText('Связаться');
-        // tg.MainButton.onClick(() => {
-        //     showPage('contact');
-        // });
-        
-        // Hide main button by default and keep it hidden
-        tg.MainButton.hide();
+        // Main Button is completely disabled - no buttons will appear
+        if (tg.MainButton) {
+            tg.MainButton.hide();
+            tg.MainButton.disable();
+        }
         
         // Load user data
         loadUserProfile();
@@ -616,27 +611,6 @@ async function sendDataToBot(data) {
         console.error('Error sending data to bot:', error);
         return false;
     }
-}
-
-// Telegram Main Button Management
-function showTelegramMainButton(text = 'Связаться', callback = null) {
-    if (!tg) return;
-    
-    tg.MainButton.setText(text);
-    if (callback) {
-        tg.MainButton.onClick(callback);
-    }
-    tg.MainButton.show();
-}
-
-function hideTelegramMainButton() {
-    if (!tg) return;
-    tg.MainButton.hide();
-}
-
-function setTelegramMainButtonText(text) {
-    if (!tg) return;
-    tg.MainButton.setText(text);
 }
 
 // Handle data from bot
