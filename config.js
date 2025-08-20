@@ -7,8 +7,8 @@ const CONFIG = {
             try {
                 // Пробуем получить IP от бота через несколько известных адресов
                 const knownServers = [
-                    'http://localhost:5000',
-                    'http://92.243.182.46:5000',
+                    'http://localhost:5001',
+                    'http://92.243.182.46:5001',
                     'https://your-production-domain.com'
                 ];
                 
@@ -32,21 +32,21 @@ const CONFIG = {
                 
                 // Если не удалось подключиться ни к одному серверу
                 console.warn('⚠️ Could not connect to any known server, using fallback');
-                return 'http://92.243.182.46:5000';
+                return 'http://92.243.182.46:5001';
                 
             } catch (error) {
                 console.error('❌ Error getting server info:', error);
-                return 'http://92.243.182.46:5000';
+                return 'http://92.243.182.46:5001';
             }
         }
         
         // Fallback для тестирования
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-            return 'http://localhost:5000';
+            return 'http://localhost:5001';
         }
         
         // По умолчанию используем внешний сервер
-        return 'http://92.243.182.46:5000';
+        return 'http://92.243.182.46:5001';
     },
     
     // URL для API
@@ -58,12 +58,12 @@ const CONFIG = {
     // Настройки для разных окружений
     environments: {
         local: {
-            serverUrl: 'http://localhost:5000',
-            apiUrl: 'http://localhost:5000/webapp/data'
+            serverUrl: 'http://localhost:5001',
+            apiUrl: 'http://localhost:5001/webapp/data'
         },
         development: {
-            serverUrl: 'http://92.243.182.46:5000',
-            apiUrl: 'http://92.243.182.46:5000/webapp/data'
+            serverUrl: 'http://92.243.182.46:5001',
+            apiUrl: 'http://92.243.182.46:5001/webapp/data'
         },
         production: {
             serverUrl: 'https://your-production-domain.com',
