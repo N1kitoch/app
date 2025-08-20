@@ -701,7 +701,7 @@ async function sendUserDataToBot(userData) {
     }
 }
 
-// Send data from webapp to bot
+// Send data from webapp to bot via our server
 async function sendDataToBot(data) {
     console.log('='.repeat(50));
     console.log('🚀 sendDataToBot called with:', data);
@@ -716,32 +716,37 @@ async function sendDataToBot(data) {
         return false;
     }
     
-    console.log('🔍 Telegram Web App object details:');
-    console.log('  - tg object:', tg);
-    console.log('  - tg type:', typeof tg);
-    console.log('  - tg methods:', Object.getOwnPropertyNames(tg));
-    
-    if (!tg.sendData) {
-        console.log('❌ tg.sendData method not available');
-        console.log('  - Available methods:', Object.getOwnPropertyNames(tg).filter(name => typeof tg[name] === 'function'));
-        console.log('='.repeat(50));
-        return false;
-    }
-    
     try {
-        console.log('✅ tg.sendData method found, sending data...');
+        console.log('✅ Sending data to our server...');
         console.log('📊 Data to send:', data);
-        const dataString = JSON.stringify(data);
-        console.log('📝 Data stringified:', dataString);
         
-        // Use Telegram Web App's sendData method
-        const result = tg.sendData(dataString);
-        console.log('✅ Data sent to bot successfully via tg.sendData()');
-        console.log('📤 Send result:', result);
-        console.log('='.repeat(50));
-        return true;
+        // Получаем конфигурацию для текущего окружения
+        const config = await CONFIG.getCurrentConfig();
+        console.log('🌐 Using server config:', config);
+        
+        // Отправляем данные на наш сервер
+        const response = await fetch(config.apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            console.log('✅ Data sent to server successfully');
+            console.log('📤 Server response:', result);
+            console.log('='.repeat(50));
+            return true;
+        } else {
+            console.error('❌ Failed to send data to server:', response.status, response.statusText);
+            console.log('='.repeat(50));
+            return false;
+        }
+        
     } catch (error) {
-        console.error('❌ Error sending data to bot:', error);
+        console.error('❌ Error sending data to server:', error);
         console.error('🔍 Error details:', {
             name: error.name,
             message: error.message,
@@ -834,9 +839,41 @@ function addTestButtons() {
         <button onclick="testContactForm()" style="margin: 5px; padding: 5px 10px;">📝 Тест формы</button>
         <button onclick="testServiceInterest()" style="margin: 5px; padding: 5px 10px;">🎯 Тест услуги</button>
         <button onclick="testProfileUpdate()" style="margin: 5px; padding: 5px 10px;">👤 Тест профиля</button>
+        <div style="margin-top: 10px; border-top: 1px solid #555; padding-top: 10px;">
+            <strong>🌐 Окружение:</strong><br>
+            <button onclick="switchEnvironment('local')" style="margin: 2px; padding: 2px 6px; font-size: 10px;">Local</button>
+            <button onclick="switchEnvironment('development')" style="margin: 2px; padding: 2px 6px; font-size: 10px;">Dev</button>
+            <button onclick="switchEnvironment('production')" style="margin: 2px; padding: 2px 6px; font-size: 10px;">Prod</button>
+            <button onclick="switchEnvironment(null)" style="margin: 2px; padding: 2px 6px; font-size: 10px;">Auto</button>
+        </div>
+        <div style="margin-top: 5px; font-size: 10px; color: #aaa;">
+            Текущий: <span id="current-env">Auto</span>
+        </div>
     `;
     
     document.body.appendChild(testContainer);
+    updateEnvironmentDisplay();
+}
+
+// Функция для переключения окружения
+function switchEnvironment(env) {
+    CONFIG.forceEnvironment = env;
+    updateEnvironmentDisplay();
+    
+    const config = CONFIG.getCurrentConfig();
+    console.log(`🔄 Switched to environment: ${env || 'Auto'}`);
+    console.log('🌐 Server config:', config);
+    
+    showNotification(`Окружение изменено на: ${env || 'Auto'}`, 'info');
+}
+
+// Обновляем отображение текущего окружения
+function updateEnvironmentDisplay() {
+    const envDisplay = document.getElementById('current-env');
+    if (envDisplay) {
+        const env = CONFIG.forceEnvironment || 'Auto';
+        envDisplay.textContent = env;
+    }
 }
 
 // Test functions
