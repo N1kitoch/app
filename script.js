@@ -419,6 +419,9 @@ function initTelegramWebApp() {
         console.log('Loading user profile...');
         loadUserProfile();
         
+        // Перехватываем tg.sendData() для перенаправления на наш сервер
+        interceptTgSendData();
+        
         console.log('Telegram Web App initialized successfully');
     } else {
         console.log('Telegram Web App not available, running in standalone mode');
@@ -1110,5 +1113,49 @@ function initFeatureDetails() {
     if (document.getElementById('home').classList.contains('active')) {
         selectFeature('ai-solutions');
         resetAutoSwitch();
+    }
+} 
+
+// Перехватываем tg.sendData() и перенаправляем на наш сервер
+function interceptTgSendData() {
+    if (tg && tg.sendData) {
+        const originalSendData = tg.sendData;
+        tg.sendData = async function(data) {
+            console.log('🔄 Intercepted tg.sendData() call with:', data);
+            
+            try {
+                // Парсим данные, если они в виде строки
+                let parsedData;
+                if (typeof data === 'string') {
+                    parsedData = JSON.parse(data);
+                } else {
+                    parsedData = data;
+                }
+                
+                console.log('📊 Parsed data:', parsedData);
+                
+                // Отправляем данные на наш сервер
+                const success = await sendDataToBot(parsedData);
+                
+                if (success) {
+                    console.log('✅ Data sent to our server successfully');
+                    // Вызываем оригинальную функцию для совместимости
+                    return originalSendData.call(this, data);
+                } else {
+                    console.error('❌ Failed to send data to our server');
+                    // Все равно вызываем оригинальную функцию
+                    return originalSendData.call(this, data);
+                }
+                
+            } catch (error) {
+                console.error('❌ Error intercepting tg.sendData:', error);
+                // В случае ошибки вызываем оригинальную функцию
+                return originalSendData.call(this, data);
+            }
+        };
+        
+        console.log('✅ tg.sendData() intercepted successfully');
+    } else {
+        console.log('⚠️ tg.sendData() not available for interception');
     }
 } 
