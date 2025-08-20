@@ -377,27 +377,41 @@ let userData = null;
 
 // Check if running in Telegram Web App
 function initTelegramWebApp() {
+    console.log('initTelegramWebApp called');
+    console.log('window.Telegram available:', !!window.Telegram);
+    console.log('window.Telegram.WebApp available:', !!(window.Telegram && window.Telegram.WebApp));
+    
     if (window.Telegram && window.Telegram.WebApp) {
+        console.log('Telegram Web App detected, initializing...');
         tg = window.Telegram.WebApp;
         
         // Initialize Telegram Web App
         tg.ready();
+        console.log('tg.ready() called');
         
         // Set theme
         if (tg.colorScheme === 'dark') {
             document.body.classList.add('tg-dark-theme');
+            console.log('Dark theme applied');
+        } else {
+            console.log('Light theme detected');
         }
         
         // Main Button is completely disabled - no buttons will appear
         if (tg.MainButton) {
             tg.MainButton.hide();
             tg.MainButton.disable();
+            console.log('MainButton disabled and hidden');
         }
         
         // Load user data
+        console.log('Loading user profile...');
         loadUserProfile();
         
-        console.log('Telegram Web App initialized');
+        console.log('Telegram Web App initialized successfully');
+    } else {
+        console.log('Telegram Web App not available, running in standalone mode');
+        console.log('Available global objects:', Object.keys(window).filter(key => key.toLowerCase().includes('telegram')));
     }
 }
 
@@ -620,19 +634,34 @@ async function sendUserDataToBot(userData) {
 
 // Send data from webapp to bot
 async function sendDataToBot(data) {
+    console.log('sendDataToBot called with:', data);
+    
     if (!tg) {
-        console.log('Telegram Web App not available');
+        console.log('Telegram Web App not available (tg is null)');
+        return false;
+    }
+    
+    if (!tg.sendData) {
+        console.log('tg.sendData method not available');
         return false;
     }
     
     try {
         console.log('Sending data to bot:', data);
+        const dataString = JSON.stringify(data);
+        console.log('Data stringified:', dataString);
+        
         // Use Telegram Web App's sendData method
-        tg.sendData(JSON.stringify(data));
-        console.log('Data sent to bot successfully');
+        tg.sendData(dataString);
+        console.log('Data sent to bot successfully via tg.sendData()');
         return true;
     } catch (error) {
         console.error('Error sending data to bot:', error);
+        console.error('Error details:', {
+            name: error.name,
+            message: error.message,
+            stack: error.stack
+        });
         return false;
     }
 }
@@ -689,7 +718,81 @@ if (!window.Telegram) {
             photoUrl: null
         };
         updateProfileDisplay();
+        
+        // Show test mode notification
+        showNotification('Режим тестирования: Telegram Web App недоступен', 'info');
+        
+        // Add test buttons for development
+        addTestButtons();
     }, 1000);
+}
+
+// Add test buttons for development
+function addTestButtons() {
+    const testContainer = document.createElement('div');
+    testContainer.style.cssText = `
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        background: rgba(0,0,0,0.8);
+        color: white;
+        padding: 15px;
+        border-radius: 10px;
+        z-index: 10000;
+        font-family: monospace;
+        font-size: 12px;
+    `;
+    
+    testContainer.innerHTML = `
+        <div style="margin-bottom: 10px;"><strong>🧪 Тестовый режим</strong></div>
+        <button onclick="testContactForm()" style="margin: 5px; padding: 5px 10px;">📝 Тест формы</button>
+        <button onclick="testServiceInterest()" style="margin: 5px; padding: 5px 10px;">🎯 Тест услуги</button>
+        <button onclick="testProfileUpdate()" style="margin: 5px; padding: 5px 10px;">👤 Тест профиля</button>
+    `;
+    
+    document.body.appendChild(testContainer);
+}
+
+// Test functions
+function testContactForm() {
+    console.log('Testing contact form submission...');
+    const testData = {
+        type: 'contact_form',
+        formData: {
+            name: 'Тестовый пользователь',
+            message: 'Это тестовое сообщение'
+        },
+        userData: userData,
+        timestamp: new Date().toISOString()
+    };
+    
+    console.log('Test data:', testData);
+    showNotification('Тестовые данные отправлены в консоль', 'success');
+}
+
+function testServiceInterest() {
+    console.log('Testing service interest...');
+    const testData = {
+        type: 'service_interest',
+        service: 'ai-managers',
+        userData: userData,
+        timestamp: new Date().toISOString()
+    };
+    
+    console.log('Test data:', testData);
+    showNotification('Тестовые данные отправлены в консоль', 'success');
+}
+
+function testProfileUpdate() {
+    console.log('Testing profile update...');
+    const testData = {
+        type: 'user_data',
+        userData: userData,
+        timestamp: new Date().toISOString()
+    };
+    
+    console.log('Test data:', testData);
+    showNotification('Тестовые данные отправлены в консоль', 'success');
 }
 
 // Add Telegram Web App specific styles
