@@ -417,17 +417,24 @@ function initTelegramWebApp() {
 
 // Load user profile from Telegram
 async function loadUserProfile() {
+    console.log('loadUserProfile started');
+    
     if (!tg) {
         console.log('Telegram Web App not available');
         return;
     }
     
     try {
+        console.log('Getting user data from Telegram...');
         // Get user data from Telegram
         const initData = tg.initData;
         const user = tg.initDataUnsafe?.user;
         
+        console.log('initData:', initData);
+        console.log('user object:', user);
+        
         if (user) {
+            console.log('User data found, processing...');
             userData = {
                 id: user.id,
                 firstName: user.first_name,
@@ -438,10 +445,14 @@ async function loadUserProfile() {
                 photoUrl: user.photo_url || null
             };
             
+            console.log('User data processed:', userData);
+            
             // Update profile display
+            console.log('Updating profile display...');
             updateProfileDisplay();
             
             // Send user data to bot
+            console.log('Sending user data to bot...');
             await sendUserDataToBot(userData);
             
             // Also send profile update to bot
@@ -462,11 +473,15 @@ async function loadUserProfile() {
                 });
             }
             
+            console.log('loadUserProfile completed successfully');
         } else {
+            console.log('No user data found, trying fallback...');
             // Fallback: try to get data from URL parameters
             const urlParams = new URLSearchParams(window.location.search);
             const userId = urlParams.get('user_id');
             const userName = urlParams.get('user_name');
+            
+            console.log('URL params - userId:', userId, 'userName:', userName);
             
             if (userId && userName) {
                 userData = {
@@ -478,39 +493,64 @@ async function loadUserProfile() {
                     isPremium: false,
                     photoUrl: null
                 };
+                console.log('Fallback user data created:', userData);
                 updateProfileDisplay();
+            } else {
+                console.log('No fallback data available');
             }
         }
         
     } catch (error) {
-        console.error('Error loading user profile:', error);
+        console.error('Error in loadUserProfile:', error);
+        console.error('Error details:', {
+            name: error.name,
+            message: error.message,
+            stack: error.stack
+        });
         showProfileError();
     }
 }
 
 // Update profile display with user data
 function updateProfileDisplay() {
-    if (!userData) return;
+    console.log('updateProfileDisplay called with userData:', userData);
+    
+    if (!userData) {
+        console.log('No userData available, skipping update');
+        return;
+    }
     
     // Update profile card
     const userNameElement = document.getElementById('userName');
     const userStatusElement = document.getElementById('userStatus');
     const userAvatarElement = document.getElementById('userAvatar');
     
+    console.log('Profile elements found:', {
+        userNameElement: !!userNameElement,
+        userStatusElement: !!userStatusElement,
+        userAvatarElement: !!userAvatarElement
+    });
+    
     if (userNameElement) {
         userNameElement.textContent = `${userData.firstName} ${userData.lastName}`.trim();
+        console.log('User name updated');
     }
     
     if (userStatusElement) {
         userStatusElement.textContent = userData.isPremium ? 'Premium пользователь' : 'Пользователь';
+        console.log('User status updated');
     }
     
     if (userAvatarElement && userData.photoUrl) {
         userAvatarElement.innerHTML = `<img src="${userData.photoUrl}" alt="Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+        console.log('User avatar updated');
     }
     
     // Update profile data section
+    console.log('Updating profile data section...');
     updateProfileDataSection();
+    
+    console.log('updateProfileDisplay completed');
 }
 
 // Update profile data section
