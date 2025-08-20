@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Сухоруков Никита - AI решения и управление продуктами</title>
+    <meta name="description" content="Создание AI-менеджеров, системы ведения каналов, управление продуктами. Профессиональные решения для вашего бизнеса.">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Hero Section -->
+    <section class="page active" id="home">
+        <div class="hero">
+            <div class="container">
+                <div class="hero-content">
+                    <h1 class="hero-title">AI решения и управление продуктами</h1>
+                    <p class="hero-subtitle">Создаю интеллектуальные системы для автоматизации бизнеса и веду проекты от идеи до реализации</p>
+                </div>
+                <div class="hero-image">
+                    <div class="floating-card" onclick="selectFeature('ai-solutions')">
+                        <i class="fas fa-brain"></i>
+                        <span>AI Решения</span>
+                    </div>
+                    <div class="floating-card floating-card-2" onclick="selectFeature('quick-start')">
+                        <i class="fas fa-rocket"></i>
+                        <span>Быстрый старт</span>
+                    </div>
+                    <div class="floating-card floating-card-3" onclick="selectFeature('growth')">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Рост +150%</span>
+                    </div>
+                </div>
+                <div class="feature-details">
+                    <div class="feature-detail active" id="ai-solutions-detail">
+                        <h3>AI Решения</h3>
+                        <p>Создаю интеллектуальных помощников для автоматизации бизнес-процессов. От чат-ботов до сложных систем анализа данных.</p>
+                        <div class="feature-highlights">
+                            <span>Автоответы</span>
+                            <span>Анализ данных</span>
+                            <span>24/7 работа</span>
+                        </div>
+                    </div>
+                    <div class="feature-detail" id="quick-start-detail">
+                        <h3>Быстрый старт</h3>
+                        <p>Запускаю проекты в кратчайшие сроки. От идеи до работающего решения за 2-4 недели с полной поддержкой.</p>
+                        <div class="feature-highlights">
+                            <span>Быстрая разработка</span>
+                            <span>Готовые решения</span>
+                            <span>Поддержка</span>
+                        </div>
+                    </div>
+                    <div class="feature-detail" id="growth-detail">
+                        <h3>Рост +150%</h3>
+                        <p>Помогаю бизнесу расти через автоматизацию и оптимизацию процессов. Реальные результаты для моих клиентов.</p>
+                        <div class="feature-highlights">
+                            <span>Эффективность</span>
+                            <span>Автоматизация</span>
+                            <span>Результаты</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Services Page -->
+    <section class="page" id="services">
+        <div class="services">
+            <div class="container">
+                <div class="section-header">
+                    <h2>Мои услуги</h2>
+                    <p>Специализируюсь на создании интеллектуальных решений для бизнеса</p>
+                </div>
+                <div class="services-grid">
+                    <div class="service-card">
+                        <div class="service-icon">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <h3>AI-менеджеры и ассистенты</h3>
+                        <p>Создаю интеллектуальных помощников, которые автоматически отвечают на сообщения, консультируют клиентов и обрабатывают запросы</p>
+                        <div class="service-features">
+                            <span>Автоответы</span>
+                            <span>Консультации</span>
+                            <span>Обработка запросов</span>
+                        </div>
+                        <button class="btn btn-outline" onclick="openServiceModal('ai-managers')">
+                            Подробнее
+                        </button>
+                    </div>
+
+                    <div class="service-card">
+                        <div class="service-icon">
+                            <i class="fas fa-broadcast-tower"></i>
+                        </div>
+                        <h3>Системы ведения каналов</h3>
+                        <p>Разрабатываю и подключаю автоматизированные системы для управления социальными каналами с полным функционалом</p>
+                        <div class="service-features">
+                            <span>Ответы в Директе</span>
+                            <span>Авто-модерация</span>
+                            <span>Автопостинг</span>
+                        </div>
+                        <button class="btn btn-outline" onclick="openServiceModal('channel-systems')">
+                            Подробнее
+                        </button>
+                    </div>
+
+                    <div class="service-card">
+                        <div class="service-icon">
+                            <i class="fas fa-tasks"></i>
+                        </div>
+                        <h3>Менеджер продукта</h3>
+                        <p>Ведю ваш продукт от идеи до реализации, общаюсь с командой и пишу технические задания для специалистов</p>
+                        <div class="service-features">
+                            <span>Управление проектом</span>
+                            <span>Коммуникация с командой</span>
+                            <span>Написание ТЗ</span>
+                        </div>
+                        <button class="btn btn-outline" onclick="openServiceModal('product-manager')">
+                            Подробнее
+                        </button>
+                    </div>
+
+                    <div class="service-card">
+                        <div class="service-icon">
+                            <i class="fas fa-cogs"></i>
+                        </div>
+                        <h3>Другие услуги</h3>
+                        <p>Индивидуальные решения под ваши задачи. Обсудим проект и найдем оптимальное решение</p>
+                        <div class="service-features">
+                            <span>Индивидуальный подход</span>
+                            <span>Гибкие решения</span>
+                            <span>Консультации</span>
+                        </div>
+                        <button class="btn btn-outline" onclick="openServiceModal('other-services')">
+                            Подробнее
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Page -->
+    <section class="page" id="about">
+        <div class="about">
+            <div class="container">
+                <div class="about-content">
+                    <div class="about-text">
+                        <h2>Обо мне</h2>
+                        <p>Я специализируюсь на создании интеллектуальных решений для бизнеса, которые автоматизируют процессы и повышают эффективность.</p>
+                        <p>Мой опыт включает разработку AI-систем, автоматизацию социальных каналов и управление продуктами от концепции до запуска.</p>
+                        <div class="stats">
+                            <div class="stat">
+                                <span class="stat-number">AI</span>
+                                <span class="stat-label">Интеллектуальные решения</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-number">Автоматизация</span>
+                                <span class="stat-label">Процессов</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-number">Управление</span>
+                                <span class="stat-label">Продуктами</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="about-image">
+                        <div class="profile-card">
+                            <div class="profile-avatar">
+                                <i class="fas fa-user-tie"></i>
+                            </div>
+                            <div class="profile-info">
+                                <h3>Сухоруков Никита</h3>
+                                <p>AI-специалист & Product Manager</p>
+                                <div class="social-links">
+                                    <a href="#" class="social-link"><i class="fab fa-telegram"></i></a>
+                                    <a href="#" class="social-link"><i class="fab fa-github"></i></a>
+                                    <a href="#" class="social-link"><i class="fab fa-linkedin"></i></a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Page -->
+    <section class="page" id="contact">
+        <div class="contact">
+            <div class="container">
+                <div class="section-header">
+                    <h2>Связаться со мной</h2>
+                    <p>Готов обсудить ваш проект и предложить решение</p>
+                </div>
+                <div class="contact-content">
+                    <div class="contact-info">
+                        <div class="contact-item">
+                            <div class="contact-icon">
+                                <i class="fab fa-telegram"></i>
+                            </div>
+                            <div>
+                                <h4>Telegram</h4>
+                                <p>@your_username</p>
+                            </div>
+                        </div>
+                        <div class="contact-item">
+                            <div class="contact-icon">
+                                <i class="fas fa-envelope"></i>
+                            </div>
+                            <div>
+                                <h4>Email</h4>
+                                <p>your.email@example.com</p>
+                            </div>
+                        </div>
+                        <div class="contact-item">
+                            <div class="contact-icon">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div>
+                                <h4>Время ответа</h4>
+                                <p>В течение 2 часов</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="contact-form">
+                        <form id="contactForm">
+                            <div class="form-group">
+                                <input type="text" id="name" name="name" placeholder="Ваше имя" required>
+                            </div>
+                            <div class="form-group">
+                                <input type="email" id="email" name="email" placeholder="Email" required>
+                            </div>
+                            <div class="form-group">
+                                <textarea id="message" name="message" placeholder="Опишите ваш проект или задачу" rows="5" required></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane"></i>
+                                Отправить сообщение
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Bottom Navigation -->
+    <nav class="mobile-nav" id="mobileNav">
+        <div class="mobile-nav-item active" onclick="showPage('home')">
+            <i class="fas fa-home"></i>
+            <span>Главная</span>
+        </div>
+        <div class="mobile-nav-item" onclick="showPage('services')">
+            <i class="fas fa-rocket"></i>
+            <span>Услуги</span>
+        </div>
+        <div class="mobile-nav-item" onclick="showPage('about')">
+            <i class="fas fa-user"></i>
+            <span>Обо мне</span>
+        </div>
+        <div class="mobile-nav-item" onclick="showPage('contact')">
+            <i class="fas fa-paper-plane"></i>
+            <span>Контакты</span>
+        </div>
+    </nav>
+
+    <!-- Service Modal -->
+    <div id="serviceModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="modalContent"></div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="script.js"></script>
+</body>
+</html> 
