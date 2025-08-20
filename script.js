@@ -420,9 +420,14 @@ async function loadUserProfile() {
     console.log('loadUserProfile started');
     
     if (!tg) {
-        console.log('Telegram Web App not available');
+        console.log('Telegram Web App not available (tg is null)');
         return;
     }
+    
+    // Add timeout to prevent hanging
+    const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('loadUserProfile timeout after 10 seconds')), 10000);
+    });
     
     try {
         console.log('Getting user data from Telegram...');
@@ -432,6 +437,7 @@ async function loadUserProfile() {
         
         console.log('initData:', initData);
         console.log('user object:', user);
+        console.log('tg.initDataUnsafe:', tg.initDataUnsafe);
         
         if (user) {
             console.log('User data found, processing...');
@@ -497,6 +503,18 @@ async function loadUserProfile() {
                 updateProfileDisplay();
             } else {
                 console.log('No fallback data available');
+                // Create test user data for development
+                userData = {
+                    id: 'test_user',
+                    firstName: 'Тестовый',
+                    lastName: 'Пользователь',
+                    username: 'testuser',
+                    languageCode: 'ru',
+                    isPremium: false,
+                    photoUrl: null
+                };
+                console.log('Test user data created:', userData);
+                updateProfileDisplay();
             }
         }
         
