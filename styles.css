@@ -122,10 +122,11 @@ p {
     align-items: center;
 }
 
-/* Home specific: fit viewport without scroll */
+/* Home specific: allow scroll */
 #home .hero {
-    padding: 20px 0 0;
-    height: calc(100vh - var(--bottom-nav-height));
+    padding: 20px 0 40px;
+    min-height: calc(100vh - var(--bottom-nav-height));
+    height: auto;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
@@ -163,7 +164,7 @@ body.page-home ::-webkit-scrollbar {
 }
 
 #home .hero-image {
-    margin-top: 8px;
+    margin-top: 58px;
 }
 
 .hero-content {
@@ -651,18 +652,20 @@ body.page-home ::-webkit-scrollbar {
     
     /* Mobile feature details */
     .feature-details {
-        margin-top: 1rem;
+        margin-top: 51px;
         padding: 0 1rem;
+        min-height: 220px;
     }
     
     #home .feature-details {
-        margin-top: 0.75rem;
+        margin-top: 51px;
         margin-bottom: 0;
     }
     
     .feature-detail {
         padding: 1.25rem;
-        margin: 0 0.5rem;
+        margin: 0;
+        height: 220px;
     }
     
     .feature-detail h3 {
@@ -846,11 +849,6 @@ a:focus {
     padding-bottom: var(--bottom-nav-height);
 }
 
-#home.page {
-    min-height: auto;
-    padding-bottom: 0;
-}
-
 .page.active {
     display: block;
     opacity: 1;
@@ -925,15 +923,20 @@ a:focus {
     max-width: 600px;
     margin-left: auto;
     margin-right: auto;
+    position: relative;
+    min-height: 200px;
 }
 
 #home .feature-details {
-    margin-top: 1rem;
+    margin-top: 51px;
     margin-bottom: 0;
 }
 
 .feature-detail {
-    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
     opacity: 0;
     transform: translateY(20px);
     transition: opacity 0.4s ease, transform 0.4s ease;
@@ -942,12 +945,69 @@ a:focus {
     padding: 1.5rem;
     box-shadow: var(--shadow-md);
     border: 1px solid var(--border-color);
+    height: 240px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    pointer-events: none;
 }
 
 .feature-detail.active {
-    display: block;
     opacity: 1;
     transform: translateY(0);
+    pointer-events: auto;
+}
+
+/* Color themes for different features */
+.feature-detail.ai-solutions {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+}
+
+.feature-detail.ai-solutions h3,
+.feature-detail.ai-solutions p {
+    color: white;
+}
+
+.feature-detail.ai-solutions .feature-highlights span {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.feature-detail.quick-start {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+    border: none;
+}
+
+.feature-detail.quick-start h3,
+.feature-detail.quick-start p {
+    color: white;
+}
+
+.feature-detail.quick-start .feature-highlights span {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.feature-detail.growth {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    color: white;
+    border: none;
+}
+
+.feature-detail.growth h3,
+.feature-detail.growth p {
+    color: white;
+}
+
+.feature-detail.growth .feature-highlights span {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 .feature-detail h3 {
@@ -955,6 +1015,7 @@ a:focus {
     font-size: 1.5rem;
     margin-bottom: 0.75rem;
     font-weight: 600;
+    flex-shrink: 0;
 }
 
 .feature-detail p {
@@ -962,6 +1023,8 @@ a:focus {
     font-size: 1rem;
     line-height: 1.6;
     margin-bottom: 1rem;
+    flex: 1;
+    overflow: hidden;
 }
 
 .feature-highlights {
@@ -969,6 +1032,7 @@ a:focus {
     gap: 0.75rem;
     justify-content: center;
     flex-wrap: wrap;
+    flex-shrink: 0;
 }
 
 .feature-highlights span {
@@ -1002,4 +1066,143 @@ a:focus {
 .floating-card:hover {
     transform: translateY(-5px);
     box-shadow: var(--shadow-lg);
+} 
+
+/* Profile Styles */
+.profile-data {
+    margin: 2rem 0;
+}
+
+.profile-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 2rem;
+    color: var(--text-secondary);
+}
+
+.profile-loading i {
+    font-size: 2rem;
+    color: var(--primary-color);
+}
+
+.profile-info-grid {
+    display: grid;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.profile-info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: var(--bg-secondary);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+}
+
+.info-label {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.info-label i {
+    color: var(--primary-color);
+    width: 20px;
+    text-align: center;
+}
+
+.info-value {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.profile-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.profile-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.profile-error i {
+    font-size: 2rem;
+    color: var(--secondary-color);
+}
+
+.profile-error button {
+    margin-top: 1rem;
+}
+
+/* Profile Card Enhancements */
+.profile-card {
+    background: linear-gradient(135deg, var(--bg-primary), var(--bg-secondary));
+    border: 2px solid var(--border-color);
+    box-shadow: var(--shadow-lg);
+    transition: var(--transition);
+}
+
+.profile-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-xl);
+}
+
+.profile-avatar img {
+    border: 3px solid var(--primary-color);
+    box-shadow: var(--shadow-md);
+}
+
+/* Responsive Profile */
+@media (max-width: 768px) {
+    .profile-info-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .profile-actions {
+        flex-direction: column;
+    }
+    
+    .profile-actions .btn {
+        width: 100%;
+    }
+}
+
+/* Telegram Web App Specific Styles */
+.tg-dark-theme .profile-info-item {
+    background: var(--bg-accent);
+    border-color: var(--border-color);
+}
+
+.tg-dark-theme .info-label {
+    color: var(--text-light);
+}
+
+.tg-dark-theme .info-value {
+    color: var(--text-primary);
+}
+
+/* Loading Animation */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.fa-spin {
+    animation: spin 1s linear infinite;
 } 

@@ -10,6 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
     <!-- Hero Section -->
@@ -35,7 +36,7 @@
                     </div>
                 </div>
                 <div class="feature-details">
-                    <div class="feature-detail active" id="ai-solutions-detail">
+                    <div class="feature-detail active ai-solutions" id="ai-solutions-detail">
                         <h3>AI Решения</h3>
                         <p>Создаю интеллектуальных помощников для автоматизации бизнес-процессов. От чат-ботов до сложных систем анализа данных.</p>
                         <div class="feature-highlights">
@@ -44,7 +45,7 @@
                             <span>24/7 работа</span>
                         </div>
                     </div>
-                    <div class="feature-detail" id="quick-start-detail">
+                    <div class="feature-detail quick-start" id="quick-start-detail">
                         <h3>Быстрый старт</h3>
                         <p>Запускаю проекты в кратчайшие сроки. От идеи до работающего решения за 2-4 недели с полной поддержкой.</p>
                         <div class="feature-highlights">
@@ -53,7 +54,7 @@
                             <span>Поддержка</span>
                         </div>
                     </div>
-                    <div class="feature-detail" id="growth-detail">
+                    <div class="feature-detail growth" id="growth-detail">
                         <h3>Рост +150%</h3>
                         <p>Помогаю бизнесу расти через автоматизацию и оптимизацию процессов. Реальные результаты для моих клиентов.</p>
                         <div class="feature-highlights">
@@ -150,9 +151,14 @@
             <div class="container">
                 <div class="about-content">
                     <div class="about-text">
-                        <h2>Обо мне</h2>
-                        <p>Я специализируюсь на создании интеллектуальных решений для бизнеса, которые автоматизируют процессы и повышают эффективность.</p>
-                        <p>Мой опыт включает разработку AI-систем, автоматизацию социальных каналов и управление продуктами от концепции до запуска.</p>
+                        <h2>Профиль</h2>
+                        <p>Информация о пользователе и настройки профиля</p>
+                        <div class="profile-data" id="profileData">
+                            <div class="profile-loading">
+                                <i class="fas fa-spinner fa-spin"></i>
+                                <span>Загрузка профиля...</span>
+                            </div>
+                        </div>
                         <div class="stats">
                             <div class="stat">
                                 <span class="stat-number">AI</span>
@@ -170,12 +176,12 @@
                     </div>
                     <div class="about-image">
                         <div class="profile-card">
-                            <div class="profile-avatar">
+                            <div class="profile-avatar" id="userAvatar">
                                 <i class="fas fa-user-tie"></i>
                             </div>
                             <div class="profile-info">
-                                <h3>Сухоруков Никита</h3>
-                                <p>AI-специалист & Product Manager</p>
+                                <h3 id="userName">Загрузка...</h3>
+                                <p id="userStatus">Загрузка...</p>
                                 <div class="social-links">
                                     <a href="#" class="social-link"><i class="fab fa-telegram"></i></a>
                                     <a href="#" class="social-link"><i class="fab fa-github"></i></a>
@@ -261,7 +267,7 @@
         </div>
         <div class="mobile-nav-item" onclick="showPage('about')">
             <i class="fas fa-user"></i>
-            <span>Обо мне</span>
+            <span>Профиль</span>
         </div>
         <div class="mobile-nav-item" onclick="showPage('contact')">
             <i class="fas fa-paper-plane"></i>

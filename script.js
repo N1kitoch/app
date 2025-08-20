@@ -30,15 +30,14 @@ function showPage(pageId) {
         targetNavItem.classList.add('active');
     }
     
-    // Toggle body scroll and page-home class: disable on home, enable otherwise
+    // Enable scroll for all pages
+    document.body.style.overflow = 'auto';
+    document.body.classList.remove('page-home');
+    
+    // Initialize feature details on home page
     if (pageId === 'home') {
-        document.body.style.overflow = 'hidden';
-        document.body.classList.add('page-home');
-        // Initialize feature details on home page
         setTimeout(initFeatureDetails, 100);
     } else {
-        document.body.style.overflow = 'auto';
-        document.body.classList.remove('page-home');
         // Clear auto-switch interval when leaving home page
         if (autoSwitchInterval) {
             clearInterval(autoSwitchInterval);
@@ -195,6 +194,22 @@ function contactForService(serviceName) {
     if (messageField) {
         messageField.value = `Здравствуйте! Меня интересует услуга "${serviceName}". Пожалуйста, свяжитесь со мной для обсуждения деталей проекта.`;
     }
+    
+    // Send service interest to bot if available
+    if (tg && userData) {
+        const serviceData = {
+            type: 'service_interest',
+            service: serviceName,
+            userData: userData,
+            timestamp: new Date().toISOString()
+        };
+        
+        sendDataToBot(serviceData).then(sent => {
+            if (sent) {
+                console.log('Service interest sent to bot');
+            }
+        });
+    }
 }
 
 // Contact Form Submission
@@ -217,17 +232,33 @@ contactForm.addEventListener('submit', async (e) => {
     };
     
     try {
-        // Simulate API call (replace with actual endpoint)
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // Show success message
-        showNotification('Сообщение успешно отправлено! Я свяжусь с вами в течение 2 часов.', 'success');
+        // Send data to bot if available
+        if (tg) {
+            const botData = {
+                type: 'contact_form',
+                formData: data,
+                userData: userData,
+                timestamp: new Date().toISOString()
+            };
+            
+            const sentToBot = await sendDataToBot(botData);
+            if (sentToBot) {
+                showNotification('Сообщение отправлено в Telegram!', 'success');
+            } else {
+                showNotification('Сообщение отправлено через форму!', 'success');
+            }
+        } else {
+            // Fallback: simulate API call
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            showNotification('Сообщение успешно отправлено! Я свяжусь с вами в течение 2 часов.', 'success');
+        }
         
         // Reset form
         contactForm.reset();
         
     } catch (error) {
         showNotification('Произошла ошибка при отправке. Попробуйте еще раз.', 'error');
+        console.error('Form submission error:', error);
     } finally {
         // Reset button state
         submitBtn.disabled = false;
@@ -328,6 +359,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Telegram Web App Integration
 let tg = null;
+let userData = null;
 
 // Check if running in Telegram Web App
 function initTelegramWebApp() {
@@ -363,7 +395,259 @@ function initTelegramWebApp() {
             homeObserver.observe(homePage);
         }
         
+        // Load user data
+        loadUserProfile();
+        
         console.log('Telegram Web App initialized');
+    }
+}
+
+// Load user profile from Telegram
+async function loadUserProfile() {
+    if (!tg) {
+        console.log('Telegram Web App not available');
+        return;
+    }
+    
+    try {
+        // Get user data from Telegram
+        const initData = tg.initData;
+        const user = tg.initDataUnsafe?.user;
+        
+        if (user) {
+            userData = {
+                id: user.id,
+                firstName: user.first_name,
+                lastName: user.last_name,
+                username: user.username,
+                languageCode: user.language_code,
+                isPremium: user.is_premium || false,
+                photoUrl: user.photo_url || null
+            };
+            
+            // Update profile display
+            updateProfileDisplay();
+            
+            // Send user data to bot (optional)
+            await sendUserDataToBot(userData);
+            
+        } else {
+            // Fallback: try to get data from URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const userId = urlParams.get('user_id');
+            const userName = urlParams.get('user_name');
+            
+            if (userId && userName) {
+                userData = {
+                    id: userId,
+                    firstName: userName,
+                    lastName: '',
+                    username: urlParams.get('username') || '',
+                    languageCode: urlParams.get('lang') || 'ru',
+                    isPremium: false,
+                    photoUrl: null
+                };
+                updateProfileDisplay();
+            }
+        }
+        
+    } catch (error) {
+        console.error('Error loading user profile:', error);
+        showProfileError();
+    }
+}
+
+// Update profile display with user data
+function updateProfileDisplay() {
+    if (!userData) return;
+    
+    // Update profile card
+    const userNameElement = document.getElementById('userName');
+    const userStatusElement = document.getElementById('userStatus');
+    const userAvatarElement = document.getElementById('userAvatar');
+    
+    if (userNameElement) {
+        userNameElement.textContent = `${userData.firstName} ${userData.lastName}`.trim();
+    }
+    
+    if (userStatusElement) {
+        userStatusElement.textContent = userData.isPremium ? 'Premium пользователь' : 'Пользователь';
+    }
+    
+    if (userAvatarElement && userData.photoUrl) {
+        userAvatarElement.innerHTML = `<img src="${userData.photoUrl}" alt="Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+    }
+    
+    // Update profile data section
+    updateProfileDataSection();
+}
+
+// Update profile data section
+function updateProfileDataSection() {
+    const profileDataElement = document.getElementById('profileData');
+    if (!profileDataElement || !userData) return;
+    
+    profileDataElement.innerHTML = `
+        <div class="profile-info-grid">
+            <div class="profile-info-item">
+                <div class="info-label">
+                    <i class="fas fa-id-card"></i>
+                    <span>ID пользователя</span>
+                </div>
+                <div class="info-value">${userData.id}</div>
+            </div>
+            
+            <div class="profile-info-item">
+                <div class="info-label">
+                    <i class="fas fa-user"></i>
+                    <span>Имя</span>
+                </div>
+                <div class="info-value">${userData.firstName} ${userData.lastName}</div>
+            </div>
+            
+            <div class="profile-info-item">
+                <div class="info-label">
+                    <i class="fas fa-at"></i>
+                    <span>Username</span>
+                </div>
+                <div class="info-value">${userData.username ? '@' + userData.username : 'Не указан'}</div>
+            </div>
+            
+            <div class="profile-info-item">
+                <div class="info-label">
+                    <i class="fas fa-globe"></i>
+                    <span>Язык</span>
+                </div>
+                <div class="info-value">${userData.languageCode.toUpperCase()}</div>
+            </div>
+            
+            <div class="profile-info-item">
+                <div class="info-label">
+                    <i class="fas fa-crown"></i>
+                    <span>Статус</span>
+                </div>
+                <div class="info-value">${userData.isPremium ? 'Premium' : 'Обычный'}</div>
+            </div>
+        </div>
+        
+        <div class="profile-actions">
+            <button class="btn btn-primary" onclick="refreshProfile()">
+                <i class="fas fa-sync-alt"></i>
+                Обновить профиль
+            </button>
+            <button class="btn btn-outline" onclick="editProfile()">
+                <i class="fas fa-edit"></i>
+                Редактировать
+            </button>
+        </div>
+    `;
+}
+
+// Show profile error
+function showProfileError() {
+    const profileDataElement = document.getElementById('profileData');
+    if (profileDataElement) {
+        profileDataElement.innerHTML = `
+            <div class="profile-error">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>Не удалось загрузить профиль</span>
+                <button class="btn btn-outline" onclick="loadUserProfile()">
+                    <i class="fas fa-redo"></i>
+                    Попробовать снова
+                </button>
+            </div>
+        `;
+    }
+}
+
+// Refresh profile
+function refreshProfile() {
+    loadUserProfile();
+}
+
+// Edit profile (placeholder for future functionality)
+function editProfile() {
+    showNotification('Функция редактирования профиля будет доступна в следующем обновлении', 'info');
+}
+
+// Send user data to bot
+async function sendUserDataToBot(userData) {
+    try {
+        // Here you would typically send data to your bot's backend
+        // For now, we'll just log it
+        console.log('Sending user data to bot:', userData);
+        
+        // Example API call (uncomment when you have a backend):
+        /*
+        const response = await fetch('/api/user-data', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userData: userData,
+                timestamp: new Date().toISOString(),
+                source: 'webapp'
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to send user data to bot');
+        }
+        */
+        
+    } catch (error) {
+        console.error('Error sending user data to bot:', error);
+    }
+}
+
+// Send data from webapp to bot
+async function sendDataToBot(data) {
+    if (!tg) {
+        console.log('Telegram Web App not available');
+        return false;
+    }
+    
+    try {
+        // Use Telegram Web App's sendData method
+        tg.sendData(JSON.stringify(data));
+        return true;
+    } catch (error) {
+        console.error('Error sending data to bot:', error);
+        return false;
+    }
+}
+
+// Handle data from bot
+function handleDataFromBot(data) {
+    try {
+        const parsedData = JSON.parse(data);
+        console.log('Received data from bot:', parsedData);
+        
+        // Handle different types of data
+        switch (parsedData.type) {
+            case 'profile_update':
+                if (parsedData.userData) {
+                    userData = { ...userData, ...parsedData.userData };
+                    updateProfileDisplay();
+                }
+                break;
+            case 'notification':
+                if (parsedData.message) {
+                    showNotification(parsedData.message, parsedData.level || 'info');
+                }
+                break;
+            case 'page_navigation':
+                if (parsedData.page) {
+                    showPage(parsedData.page);
+                }
+                break;
+            default:
+                console.log('Unknown data type from bot:', parsedData.type);
+        }
+        
+    } catch (error) {
+        console.error('Error parsing data from bot:', error);
     }
 }
 
@@ -373,6 +657,20 @@ document.addEventListener('DOMContentLoaded', initTelegramWebApp);
 // Fallback for when Telegram Web App is not available
 if (!window.Telegram) {
     console.log('Telegram Web App not available, running in standalone mode');
+    
+    // Simulate user data for testing
+    setTimeout(() => {
+        userData = {
+            id: '12345',
+            firstName: 'Тестовый',
+            lastName: 'Пользователь',
+            username: 'testuser',
+            languageCode: 'ru',
+            isPremium: false,
+            photoUrl: null
+        };
+        updateProfileDisplay();
+    }, 1000);
 }
 
 // Add Telegram Web App specific styles
