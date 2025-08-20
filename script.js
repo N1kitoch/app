@@ -37,7 +37,7 @@ function showPage(pageId) {
     // Initialize feature details on home page
     if (pageId === 'home') {
         setTimeout(initFeatureDetails, 100);
-        // Hide main button on home page
+        // Keep main button hidden on all pages
         hideTelegramMainButton();
     } else {
         // Clear auto-switch interval when leaving home page
@@ -45,21 +45,15 @@ function showPage(pageId) {
             clearInterval(autoSwitchInterval);
         }
         
-        // Show main button on other pages if needed
-        if (pageId === 'contact') {
-            showTelegramMainButton('Отправить', () => {
-                // Trigger form submission
-                const submitBtn = document.querySelector('#contactForm button[type="submit"]');
-                if (submitBtn) {
-                    submitBtn.click();
-                }
-            });
-        } else if (pageId === 'services') {
-            showTelegramMainButton('Заказать услугу', () => {
-                showPage('contact');
-            });
-        } else {
-            hideTelegramMainButton();
+        // Keep main button hidden on all pages
+        hideTelegramMainButton();
+        
+        // Auto-fill contact form with Telegram data
+        if (pageId === 'contact' && userData) {
+            const nameField = document.getElementById('name');
+            if (nameField && !nameField.value) {
+                nameField.value = `${userData.firstName} ${userData.lastName}`.trim();
+            }
         }
     }
     
@@ -246,13 +240,12 @@ contactForm.addEventListener('submit', async (e) => {
     const formData = new FormData(contactForm);
     const data = {
         name: formData.get('name'),
-        email: formData.get('email'),
         message: formData.get('message')
     };
     
     try {
         // Send data to bot if available
-        if (tg) {
+        if (tg && userData) {
             const botData = {
                 type: 'contact_form',
                 formData: data,
@@ -393,13 +386,13 @@ function initTelegramWebApp() {
             document.body.classList.add('tg-dark-theme');
         }
         
-        // Set main button if needed
-        tg.MainButton.setText('Связаться');
-        tg.MainButton.onClick(() => {
-            showPage('contact');
-        });
+        // Don't set main button - remove all Telegram button functionality
+        // tg.MainButton.setText('Связаться');
+        // tg.MainButton.onClick(() => {
+        //     showPage('contact');
+        // });
         
-        // Hide main button by default
+        // Hide main button by default and keep it hidden
         tg.MainButton.hide();
         
         // Load user data
