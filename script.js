@@ -37,10 +37,29 @@ function showPage(pageId) {
     // Initialize feature details on home page
     if (pageId === 'home') {
         setTimeout(initFeatureDetails, 100);
+        // Hide main button on home page
+        hideTelegramMainButton();
     } else {
         // Clear auto-switch interval when leaving home page
         if (autoSwitchInterval) {
             clearInterval(autoSwitchInterval);
+        }
+        
+        // Show main button on other pages if needed
+        if (pageId === 'contact') {
+            showTelegramMainButton('Отправить', () => {
+                // Trigger form submission
+                const submitBtn = document.querySelector('#contactForm button[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.click();
+                }
+            });
+        } else if (pageId === 'services') {
+            showTelegramMainButton('Заказать услугу', () => {
+                showPage('contact');
+            });
+        } else {
+            hideTelegramMainButton();
         }
     }
     
@@ -380,20 +399,8 @@ function initTelegramWebApp() {
             showPage('contact');
         });
         
-        // Show main button on home page
-        const homePage = document.getElementById('home');
-        if (homePage) {
-            const homeObserver = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting && entry.target.classList.contains('active')) {
-                        tg.MainButton.show();
-                    } else {
-                        tg.MainButton.hide();
-                    }
-                });
-            });
-            homeObserver.observe(homePage);
-        }
+        // Hide main button by default
+        tg.MainButton.hide();
         
         // Load user data
         loadUserProfile();
@@ -616,6 +623,27 @@ async function sendDataToBot(data) {
         console.error('Error sending data to bot:', error);
         return false;
     }
+}
+
+// Telegram Main Button Management
+function showTelegramMainButton(text = 'Связаться', callback = null) {
+    if (!tg) return;
+    
+    tg.MainButton.setText(text);
+    if (callback) {
+        tg.MainButton.onClick(callback);
+    }
+    tg.MainButton.show();
+}
+
+function hideTelegramMainButton() {
+    if (!tg) return;
+    tg.MainButton.hide();
+}
+
+function setTelegramMainButtonText(text) {
+    if (!tg) return;
+    tg.MainButton.setText(text);
 }
 
 // Handle data from bot
