@@ -474,6 +474,29 @@ function exportLogs() {
     URL.revokeObjectURL(url);
 }
 
+async function copyLogs() {
+    const text = logsBuffer.join('\n');
+    try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(text);
+        } else {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.focus();
+            ta.select();
+            document.execCommand('copy');
+            ta.remove();
+        }
+        showNotification('Логи скопированы в буфер обмена', 'success');
+        console.log('Logs copied to clipboard');
+    } catch (e) {
+        console.error('Failed to copy logs:', e);
+        showNotification('Не удалось скопировать логи', 'error');
+    }
+}
 // Check if running in Telegram Web App
 function initTelegramWebApp() {
     console.log('initTelegramWebApp called');
