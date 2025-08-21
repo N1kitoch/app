@@ -1027,110 +1027,88 @@ function editProfile() {
 async function sendUserDataToBot(userData) {
     console.log('[sendUserDataToBot] called with:', userData);
     if (!tg) return false;
-    const mode = getLaunchMode();
     const payload = { type: 'user_data', userData, timestamp: new Date().toISOString() };
-    if (mode === 'keyboard') {
+    // Prefer direct sendData whenever available to avoid network/CORS issues
+    if (typeof tg.sendData === 'function') {
         try {
             tg.sendData(JSON.stringify(payload));
             return true;
         } catch (e) {
             console.error('sendUserDataToBot sendData error', e);
-            return false;
         }
     }
-    if (mode === 'query') {
-        const api = getBackendUrl();
-        if (!api) {
-            console.error('sendUserDataToBot: no backend URL in query mode');
-            return false;
-        }
-        try {
-            const health = await fetch(`${api}/health`, { method: 'GET', mode: 'cors' }).then(r => r.json()).catch(() => null);
-            if (!health || health.ok !== true) {
-                console.error('sendUserDataToBot: health failed', api, health);
-                return false;
-            }
-            const resp = await fetch(`${api}/webapp-data`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ initData: tg.initData, payload, queryId: tg.initDataUnsafe?.query_id || null })
-            });
-            return resp.ok;
-        } catch (e) {
-            console.error('sendUserDataToBot backend error', e);
-            return false;
-        }
+    // Fallback to query backend
+    const api = getBackendUrl();
+    if (!api) return false;
+    try {
+        const ready = await waitForBackendReady(api, 15000);
+        if (!ready) return false;
+        const resp = await fetch(`${api}/webapp-data`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ initData: tg.initData, payload, queryId: tg.initDataUnsafe?.query_id || null })
+        });
+        return resp.ok;
+    } catch (e) {
+        console.error('sendUserDataToBot backend error', e);
+        return false;
     }
-    return false;
 }
 
 // Send data from webapp to bot
 async function sendDataToBot(data) {
     console.log('sendDataToBot called with:', data);
-    
     if (!tg) {
         console.log('Telegram Web App not available (tg is null)');
         return false;
     }
-    
-    const mode = getLaunchMode();
-    console.log('Launch mode detected:', mode);
-    
-    if (mode === 'keyboard') {
-    if (!tg.sendData) {
-            console.log('tg.sendData not available in keyboard mode');
+    if (typeof tg.sendData === 'function') {
+        try {
+            console.log('Sending data to bot via tg.sendData:', data);
+            tg.sendData(JSON.stringify(data));
+            console.log('Data sent to bot successfully via tg.sendData()');
+            return true;
+        } catch (error) {
+            console.error('Error sending data to bot (sendData):', error);
+        }
+    }
+    const api = getBackendUrl();
+    if (!api) {
+        console.log('Backend URL not configured. Cannot use answerWebAppQuery flow.');
+        // try recover by reopen if possible
+        if (tryRecoverByReopen()) return false;
+        showNotification('Невозможно отправить сейчас. Откройте мини‑апп из кнопки клавиатуры или добавьте параметр ?api=...', 'error');
         return false;
     }
     try {
-            console.log('Sending data to bot via tg.sendData:', data);
-        const dataString = JSON.stringify(data);
-        tg.sendData(dataString);
-        console.log('Data sent to bot successfully via tg.sendData()');
+        const ready = await waitForBackendReady(api, 15000);
+        if (!ready) {
+            console.error('Health check failed for backend', api);
+            if (tryRecoverByReopen()) return false;
+            showNotification('Сервер недоступен. Повторите позже или перезапустите через /start.', 'error');
+            return false;
+        }
+        console.log('Sending data to backend for answerWebAppQuery:', { api, data });
+        const resp = await fetch(`${api}/webapp-data`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ initData: tg.initData, payload: data, queryId: tg.initDataUnsafe?.query_id || null })
+        });
+        const json = await resp.json().catch(() => ({}));
+        if (!resp.ok || json.ok === false) {
+            console.error('Backend returned error', json);
+            if (tryRecoverByReopen()) return false;
+            showNotification('Сервер отклонил запрос. Попробуйте позже или откройте через клавиатуру.', 'error');
+            return false;
+        }
+        console.log('Backend accepted data successfully');
         return true;
-    } catch (error) {
-            console.error('Error sending data to bot (sendData):', error);
-            return false;
-        }
+    } catch (e) {
+        console.error('Failed to call backend:', e);
+        if (tryRecoverByReopen()) return false;
+        showNotification('Не удалось связаться с сервером. Откройте через клавиатуру или повторите позже.', 'error');
+        return false;
     }
-    
-    if (mode === 'query') {
-        const api = getBackendUrl();
-        if (!api) {
-            console.log('Backend URL not configured. Cannot use answerWebAppQuery flow.');
-            showNotification('Невозможно отправить сейчас. Откройте мини‑апп из кнопки клавиатуры или добавьте параметр ?api=...', 'error');
-            return false;
-        }
-        try {
-            const ready = await waitForBackendReady(api, 15000);
-            if (!ready) {
-                console.error('Health check failed for backend', api);
-                showNotification('Сервер недоступен. Повторите позже или перезапустите через /start.', 'error');
-                return false;
-            }
-            console.log('Sending data to backend for answerWebAppQuery:', { api, data });
-            const resp = await fetch(`${api}/webapp-data`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ initData: tg.initData, payload: data, queryId: tg.initDataUnsafe?.query_id || null })
-            });
-            const json = await resp.json().catch(() => ({}));
-            if (!resp.ok || json.ok === false) {
-                console.error('Backend returned error', json);
-                showNotification('Сервер отклонил запрос. Попробуйте позже или откройте через клавиатуру.', 'error');
-                return false;
-            }
-            console.log('Backend accepted data successfully');
-            return true;
-        } catch (e) {
-            console.error('Failed to call backend:', e);
-            showNotification('Не удалось связаться с сервером. Откройте через клавиатуру или повторите позже.', 'error');
-            return false;
-        }
-    }
-    
-    console.log('Unknown launch mode. Falling back to notification.');
-    showNotification('Режим запуска не поддерживает отправку. Откройте через кнопку клавиатуры бота.', 'error');
-    return false;
 }
 
 // Handle data from bot
@@ -1454,5 +1432,32 @@ function initFeatureDetails() {
     if (document.getElementById('home').classList.contains('active')) {
         selectFeature('ai-solutions');
         resetAutoSwitch();
+    }
+} 
+
+function getBotUsernameFromUrl() {
+    try {
+        const p = new URLSearchParams(window.location.search);
+        const b = p.get('bot');
+        return b && /^\w{5,}$/.test(b) ? b : '';
+    } catch { return ''; }
+}
+
+function tryRecoverByReopen() {
+    const bot = getBotUsernameFromUrl();
+    if (!bot) return false;
+    const link = `https://t.me/${bot}/app?startapp=open`;
+    console.log('Reopening via universal link to refresh api:', link);
+    try {
+        if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openTelegramLink === 'function') {
+            window.Telegram.WebApp.openTelegramLink(link);
+            return true;
+        }
+        // Fallback hard redirect
+        window.location.href = link;
+        return true;
+    } catch (e) {
+        console.error('Failed to reopen via universal link', e);
+        return false;
     }
 } 
