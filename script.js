@@ -733,7 +733,7 @@ async function waitForBackendReady(api, totalMs = 15000) {
     while (Date.now() - start < totalMs) {
         attempt++;
         try {
-            const res = await fetch(`${api}/health`, { method: 'GET', mode: 'cors', cache: 'no-store' });
+            const res = await fetch(`${api}/health`, { method: 'GET', mode: 'cors', cache: 'no-store', headers: { 'bypass-tunnel-reminder': '1' } });
             if (res.ok) {
                 const j = await res.json().catch(() => null);
                 if (j && j.ok === true) {
@@ -768,6 +768,27 @@ function connectWebSocketIfPossible() {
 		ws.onclose = () => { console.log('WS closed'); ws = null; };
 		ws.onerror = (e) => console.error('WS error', e);
 	} catch (e) { console.error('connectWebSocketIfPossible error', e); }
+}
+
+function startPollingFallback() {
+    let timer = null;
+    async function tick() {
+        try {
+            const api = getBackendUrl();
+            if (!api || !userData || !userData.id) return;
+            const resp = await fetch(`${api}/poll?user_id=${encodeURIComponent(String(userData.id))}`, { headers: { 'bypass-tunnel-reminder': '1' } });
+            if (resp.ok) {
+                const json = await resp.json().catch(() => null);
+                if (json && json.ok && Array.isArray(json.items)) {
+                    for (const item of json.items) {
+                        try { handleDataFromBot(JSON.stringify(item)); } catch {}
+                    }
+                }
+            }
+        } catch (e) {}
+    }
+    if (timer) clearInterval(timer);
+    timer = setInterval(tick, 2000);
 }
 
 // Load user profile from Telegram
@@ -1112,7 +1133,7 @@ async function sendDataToBot(data) {
         console.log('Sending data to backend for answerWebAppQuery:', { api, data });
         const resp = await fetch(`${api}/webapp-data`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'bypass-tunnel-reminder': '1' },
             body: JSON.stringify({ initData: tg.initData, payload: data, queryId: tg.initDataUnsafe?.query_id || null })
         });
         const json = await resp.json().catch(() => ({}));
@@ -1167,6 +1188,11 @@ function handleDataFromBot(data) {
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', initTelegramWebApp);
+// After init, set up WS or polling
+setTimeout(() => {
+    connectWebSocketIfPossible();
+    startPollingFallback();
+}, 1500);
 
 // Fallback for when Telegram Web App is not available
 if (!window.Telegram) {
