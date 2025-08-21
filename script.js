@@ -377,6 +377,24 @@ let userData = null;
 let DEBUG_MODE = false;
 const ADMIN_ID = 585028258; // TODO: optionally sync from bot; for now hardcoded
 const logsBuffer = [];
+const BACKEND_URL = '';
+
+function getBackendUrl() {
+    const p = new URLSearchParams(window.location.search);
+    const fromParam = p.get('api');
+    if (fromParam && /^https?:\/\//i.test(fromParam)) return fromParam.replace(/\/$/, '');
+    if (BACKEND_URL && /^https?:\/\//i.test(BACKEND_URL)) return BACKEND_URL.replace(/\/$/, '');
+    return '';
+}
+
+function getLaunchMode() {
+    if (!tg) return 'unknown';
+    const hasSendData = typeof tg.sendData === 'function';
+    const hasQueryId = !!(tg.initDataUnsafe && tg.initDataUnsafe.query_id);
+    if (hasQueryId) return 'query';
+    if (hasSendData) return 'keyboard';
+    return 'unknown';
+}
 
 function appendLog(tag, args) {
     const line = `[${new Date().toISOString()}] ${tag}: ` + args.map(a => {
@@ -567,6 +585,19 @@ function initTelegramWebApp() {
         // Load user data
         console.log('Loading user profile...');
         loadUserProfile();
+        // Toggle banner if in query mode without backend
+        setTimeout(() => {
+            const mode = getLaunchMode();
+            const api = getBackendUrl();
+            const banner = document.getElementById('queryModeBanner');
+            if (banner) {
+                if (mode === 'query' && !api) {
+                    banner.style.display = '';
+                } else {
+                    banner.style.display = 'none';
+                }
+            }
+        }, 0);
         
         console.log('Telegram Web App initialized successfully');
     } else {
@@ -823,30 +854,59 @@ async function sendDataToBot(data) {
         return false;
     }
     
-    if (!tg.sendData) {
-        console.log('tg.sendData method not available');
-        return false;
+    const mode = getLaunchMode();
+    console.log('Launch mode detected:', mode);
+    
+    if (mode === 'keyboard') {
+        if (!tg.sendData) {
+            console.log('tg.sendData not available in keyboard mode');
+            return false;
+        }
+        try {
+            console.log('Sending data to bot via tg.sendData:', data);
+            const dataString = JSON.stringify(data);
+            tg.sendData(dataString);
+            console.log('Data sent to bot successfully via tg.sendData()');
+            return true;
+        } catch (error) {
+            console.error('Error sending data to bot (sendData):', error);
+            return false;
+        }
     }
     
-    try {
-        console.log('Sending data to bot:', data);
-        const dataString = JSON.stringify(data);
-        console.log('Data stringified:', dataString);
-        
-        // Use Telegram Web App's sendData method
-        tg.sendData(dataString);
-        console.log('Data sent to bot successfully via tg.sendData()');
-        return true;
-    } catch (error) {
-        console.error('Error sending data to bot:', error);
-        console.error('Error details:', {
-            name: error.name,
-            message: error.message,
-            stack: error.stack
-        });
-        
-        return false;
+    if (mode === 'query') {
+        const api = getBackendUrl();
+        if (!api) {
+            console.log('Backend URL not configured. Cannot use answerWebAppQuery flow.');
+            showNotification('Невозможно отправить сейчас. Откройте мини‑апп из кнопки клавиатуры или добавьте параметр ?api=...', 'error');
+            return false;
+        }
+        try {
+            console.log('Sending data to backend for answerWebAppQuery:', { api, data });
+            const resp = await fetch(`${api}/webapp-data`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ initData: tg.initData, payload: data })
+            });
+            const json = await resp.json().catch(() => ({}));
+            if (!resp.ok || json.ok === false) {
+                console.error('Backend returned error', json);
+                showNotification('Сервер отклонил запрос. Попробуйте позже или откройте через клавиатуру.', 'error');
+                return false;
+            }
+            console.log('Backend accepted data successfully');
+            // In this flow, Telegram закроет мини‑апп после answerWebAppQuery на стороне сервера
+            return true;
+        } catch (e) {
+            console.error('Failed to call backend:', e);
+            showNotification('Не удалось связаться с сервером. Откройте через клавиатуру или повторите позже.', 'error');
+            return false;
+        }
     }
+    
+    console.log('Unknown launch mode. Falling back to notification.');
+    showNotification('Режим запуска не поддерживает отправку. Откройте через кнопку клавиатуры бота.', 'error');
+    return false;
 }
 
 // Handle data from bot
