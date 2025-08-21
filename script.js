@@ -515,7 +515,7 @@ function initDebugConsole() {
     if (!DEBUG_MODE) return;
     const wrap = document.createElement('div');
     wrap.id = 'tg-debug-console';
-    wrap.style.cssText = 'position:fixed;bottom:0;left:0;right:0;max-height:35%;overflow:auto;background:rgba(0,0,0,.8);color:#0f0;font:12px/1.4 monospace;z-index:9999;padding:8px;';
+    wrap.style.cssText = 'position:fixed;bottom:0;left:0;right:0;height:240px;overflow:auto;background:rgba(0,0,0,.8);color:#0f0;font:12px/1.4 monospace;z-index:9999;padding:8px;';
     document.body.appendChild(wrap);
     const log = console.log.bind(console);
     const err = console.error.bind(console);
@@ -797,6 +797,7 @@ async function loadUserProfile() {
     
     if (!tg) {
         console.log('Telegram Web App not available (tg is null)');
+        showProfileError();
         return;
     }
     
@@ -881,47 +882,11 @@ async function loadUserProfile() {
             }
             
             // Do not auto-send profile via tg.sendData here to avoid closing the app unexpectedly.
-            // Use explicit user actions (form submit, service interest, etc.) to send data.
-            
             console.log('loadUserProfile completed successfully');
         } else {
-            console.log('No user data found, trying fallback...');
-            // Fallback: try to get data from URL parameters
-            const urlParams = new URLSearchParams(window.location.search);
-            const userId = urlParams.get('user_id');
-            const userName = urlParams.get('user_name');
-            
-            console.log('URL params - userId:', userId, 'userName:', userName);
-            
-            if (userId && userName) {
-                userData = {
-                    id: userId,
-                    firstName: userName,
-                    lastName: '',
-                    username: urlParams.get('username') || '',
-                    languageCode: urlParams.get('lang') || 'ru',
-                    isPremium: false,
-                    photoUrl: null
-                };
-                console.log('Fallback user data created:', userData);
-                updateProfileDisplay();
-                ensureLogsButtonInProfile();
-            } else {
-                console.log('No fallback data available');
-                // Create test user data for development
-                userData = {
-                    id: 'test_user',
-                    firstName: 'Тестовый',
-                    lastName: 'Пользователь',
-                    username: 'testuser',
-                    languageCode: 'ru',
-                    isPremium: false,
-                    photoUrl: null
-                };
-                console.log('Test user data created:', userData);
-                updateProfileDisplay();
-                ensureLogsButtonInProfile();
-            }
+            console.log('No Telegram user data available');
+            showProfileError();
+            return;
         }
         
     } catch (error) {
@@ -1193,99 +1158,6 @@ setTimeout(() => {
     connectWebSocketIfPossible();
     startPollingFallback();
 }, 1500);
-
-// Fallback for when Telegram Web App is not available
-if (!window.Telegram) {
-    console.log('Telegram Web App not available, running in standalone mode');
-    
-    // Simulate user data for testing
-    setTimeout(() => {
-        userData = {
-            id: '12345',
-            firstName: 'Тестовый',
-            lastName: 'Пользователь',
-            username: 'testuser',
-            languageCode: 'ru',
-            isPremium: false,
-            photoUrl: null
-        };
-        updateProfileDisplay();
-        
-        // Show test mode notification
-        showNotification('Режим тестирования: Telegram Web App недоступен', 'info');
-        
-        // Add test buttons for development
-        addTestButtons();
-    }, 1000);
-}
-
-// Add test buttons for development
-function addTestButtons() {
-    const testContainer = document.createElement('div');
-    testContainer.style.cssText = `
-        position: fixed;
-        top: 20px;
-        left: 20px;
-        background: rgba(0,0,0,0.8);
-        color: white;
-        padding: 15px;
-        border-radius: 10px;
-        z-index: 10000;
-        font-family: monospace;
-        font-size: 12px;
-    `;
-    
-    testContainer.innerHTML = `
-        <div style="margin-bottom: 10px;"><strong>🧪 Тестовый режим</strong></div>
-        <button onclick="testContactForm()" style="margin: 5px; padding: 5px 10px;">📝 Тест формы</button>
-        <button onclick="testServiceInterest()" style="margin: 5px; padding: 5px 10px;">🎯 Тест услуги</button>
-        <button onclick="testProfileUpdate()" style="margin: 5px; padding: 5px 10px;">👤 Тест профиля</button>
-    `;
-    
-    document.body.appendChild(testContainer);
-}
-
-// Test functions
-function testContactForm() {
-    console.log('Testing contact form submission...');
-    const testData = {
-        type: 'contact_form',
-        formData: {
-            name: 'Тестовый пользователь',
-            message: 'Это тестовое сообщение'
-        },
-        userData: userData,
-        timestamp: new Date().toISOString()
-    };
-    
-    console.log('Test data:', testData);
-    showNotification('Тестовые данные отправлены в консоль', 'success');
-}
-
-function testServiceInterest() {
-    console.log('Testing service interest...');
-    const testData = {
-        type: 'service_interest',
-        service: 'ai-managers',
-        userData: userData,
-        timestamp: new Date().toISOString()
-    };
-    
-    console.log('Test data:', testData);
-    showNotification('Тестовые данные отправлены в консоль', 'success');
-}
-
-function testProfileUpdate() {
-    console.log('Testing profile update...');
-    const testData = {
-        type: 'user_data',
-        userData: userData,
-        timestamp: new Date().toISOString()
-    };
-    
-    console.log('Test data:', testData);
-    showNotification('Тестовые данные отправлены в консоль', 'success');
-}
 
 // Add Telegram Web App specific styles
 const tgStyles = document.createElement('style');
