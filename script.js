@@ -475,23 +475,61 @@ function exportLogs() {
 }
 
 async function copyLogs() {
-    const text = logsBuffer.join('\n');
+    const out = document.getElementById('logsOutput');
+    const text = (logsBuffer && logsBuffer.length ? logsBuffer.join('\n') : (out?.textContent || ''));
+    if (!text) {
+        showNotification('Нет логов для копирования', 'info');
+        return;
+    }
     try {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
+        // Try permissions (may be ignored by some webviews)
+        try {
+            if (navigator.permissions && navigator.permissions.query) {
+                await navigator.permissions.query({ name: 'clipboard-write' });
+            }
+        } catch {}
+
+        // Preferred path: secure context + Clipboard API
+        if (window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText) {
             await navigator.clipboard.writeText(text);
-        } else {
-            const ta = document.createElement('textarea');
-            ta.value = text;
-            ta.style.position = 'fixed';
-            ta.style.opacity = '0';
-            document.body.appendChild(ta);
-            ta.focus();
-            ta.select();
-            document.execCommand('copy');
-            ta.remove();
+            showNotification('Логи скопированы в буфер обмена', 'success');
+            console.log('Logs copied via navigator.clipboard');
+            return;
         }
+
+        // Fallback 1: select logsOutput and copy
+        if (out) {
+            const selection = window.getSelection();
+            const range = document.createRange();
+            range.selectNodeContents(out);
+            selection.removeAllRanges();
+            selection.addRange(range);
+            const ok = document.execCommand('copy');
+            selection.removeAllRanges();
+            if (ok) {
+                showNotification('Логи скопированы в буфер обмена', 'success');
+                console.log('Logs copied via selection and execCommand');
+                return;
+            }
+        }
+
+        // Fallback 2: hidden textarea (iOS-friendly)
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.top = '-1000px';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        // iOS selection range
+        try { ta.setSelectionRange(0, ta.value.length); } catch {}
+        const ok2 = document.execCommand('copy');
+        ta.remove();
+        if (!ok2) throw new Error('execCommand returned false');
         showNotification('Логи скопированы в буфер обмена', 'success');
-        console.log('Logs copied to clipboard');
+        console.log('Logs copied via hidden textarea');
     } catch (e) {
         console.error('Failed to copy logs:', e);
         showNotification('Не удалось скопировать логи', 'error');
