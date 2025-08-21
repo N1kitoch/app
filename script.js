@@ -861,7 +861,7 @@ async function sendUserDataToBot(userData) {
             const resp = await fetch(`${api}/webapp-data`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ initData: tg.initData, payload })
+                body: JSON.stringify({ initData: tg.initData, payload, queryId: tg.initDataUnsafe?.query_id || null })
             });
             return resp.ok;
         } catch (e) {
@@ -913,16 +913,15 @@ async function sendDataToBot(data) {
             const resp = await fetch(`${api}/webapp-data`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ initData: tg.initData, payload: data })
+                body: JSON.stringify({ initData: tg.initData, payload: data, queryId: tg.initDataUnsafe?.query_id || null })
             });
             const json = await resp.json().catch(() => ({}));
             if (!resp.ok || json.ok === false) {
                 console.error('Backend returned error', json);
                 showNotification('Сервер отклонил запрос. Попробуйте позже или откройте через клавиатуру.', 'error');
-        return false;
-    }
+                return false;
+            }
             console.log('Backend accepted data successfully');
-            // In this flow, Telegram закроет мини‑апп после answerWebAppQuery на стороне сервера
             return true;
         } catch (e) {
             console.error('Failed to call backend:', e);
