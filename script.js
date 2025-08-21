@@ -475,6 +475,7 @@ let DEBUG_MODE = false;
 const ADMIN_ID = 585028258; // TODO: optionally sync from bot; for now hardcoded
 const logsBuffer = [];
 const BACKEND_URL = '';
+let ws = null;
 
 function getBackendUrl() {
     const p = new URLSearchParams(window.location.search);
@@ -751,6 +752,24 @@ async function waitForBackendReady(api, totalMs = 15000) {
     return false;
 }
 
+function connectWebSocketIfPossible() {
+	try {
+		const api = getBackendUrl();
+		if (!api || !userData || !userData.id) return;
+		const wsUrl = api.replace(/^http/i, 'ws') + `/`;
+		const url = new URL(wsUrl);
+		url.searchParams.set('user_id', String(userData.id));
+		if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+		ws = new WebSocket(url.toString());
+		ws.onopen = () => console.log('WS connected');
+		ws.onmessage = (ev) => {
+			try { handleDataFromBot(ev.data); } catch (e) { console.error('WS message error', e); }
+		};
+		ws.onclose = () => { console.log('WS closed'); ws = null; };
+		ws.onerror = (e) => console.error('WS error', e);
+	} catch (e) { console.error('connectWebSocketIfPossible error', e); }
+}
+
 // Load user profile from Telegram
 async function loadUserProfile() {
     console.log('loadUserProfile started');
@@ -781,6 +800,7 @@ async function loadUserProfile() {
                 userData = parsed;
                 updateProfileDisplay();
                 ensureLogsButtonInProfile();
+                connectWebSocketIfPossible();
                 // If query mode, defer initial send to allow tunnel become reachable
                 const mode = getLaunchMode();
                 if (mode === 'query') {
@@ -819,6 +839,7 @@ async function loadUserProfile() {
             console.log('Updating profile display...');
             updateProfileDisplay();
             ensureLogsButtonInProfile();
+            connectWebSocketIfPossible();
             
             // Send user data to bot
             console.log('Sending user data to bot...');
