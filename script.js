@@ -63,13 +63,106 @@ function showPage(pageId) {
 }
 
 // Initialize first page
-document.addEventListener('DOMContentLoaded', () => {
-    showPage('home');
+document.addEventListener('DOMContentLoaded', initApp);
+
+function createAppOverlay() {
+    let overlay = document.getElementById('appOverlay');
+    if (overlay) return overlay;
+    overlay = document.createElement('div');
+    overlay.id = 'appOverlay';
+    overlay.innerHTML = `
+        <div class="app-overlay-content">
+            <div class="spinner"></div>
+            <div id="appOverlayText">Подключение к серверу...</div>
+            <div id="appOverlayActions" style="margin-top:12px; display:none;"></div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    return overlay;
+}
+
+function showAppOverlay(message) {
+    const overlay = createAppOverlay();
+    const text = overlay.querySelector('#appOverlayText');
+    const actions = overlay.querySelector('#appOverlayActions');
+    if (text) text.textContent = message || 'Подключение к серверу...';
+    if (actions) actions.style.display = 'none';
+    overlay.style.display = 'flex';
+}
+
+function showAppError(message, onRetry) {
+    const overlay = createAppOverlay();
+    const text = overlay.querySelector('#appOverlayText');
+    const actions = overlay.querySelector('#appOverlayActions');
+    if (text) text.textContent = message || 'Сервер недоступен';
+    if (actions) {
+        actions.innerHTML = '';
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-primary';
+        btn.textContent = 'Повторить попытку';
+        btn.onclick = () => onRetry && onRetry();
+        actions.appendChild(btn);
+        actions.style.display = '';
+    }
+    overlay.style.display = 'flex';
+}
+
+function hideAppOverlay() {
+    const overlay = document.getElementById('appOverlay');
+    if (overlay) overlay.style.display = 'none';
+}
+
+async function initApp() {
     try {
-        const api = (typeof getBackendUrl === 'function') ? getBackendUrl() : '';
+        const startTs = Date.now();
+        const minDurationMs = 1500; // keep overlay for at least ~1.5s
+        showAppOverlay('Загрузка...');
+        const mode = getLaunchMode?.() || 'unknown';
+        const api = getBackendUrl?.() || '';
         console.log('Computed backend URL from ?api=', api || '(none)');
-    } catch {}
-});
+        let ready = true;
+        // Gate only in query mode with backend URL present
+        if (mode === 'query' && api) {
+            ready = await waitForBackendReady(api, 20000);
+            if (!ready) {
+                showAppError('Сервер недоступен. Проверьте соединение и попробуйте снова.', async () => {
+                    showAppOverlay('Повторное подключение...');
+                    const ok = await waitForBackendReady(api, 20000);
+                    if (ok) {
+                        hideAppOverlay();
+                        showPage('home');
+                    } else {
+                        showAppError('Сервер по‑прежнему недоступен. Попробуйте позже.');
+                    }
+                });
+                return;
+            }
+        }
+        const elapsed = Date.now() - startTs;
+        if (elapsed < minDurationMs) {
+            await new Promise(r => setTimeout(r, minDurationMs - elapsed));
+        }
+        hideAppOverlay();
+        // Proceed to initial page
+        showPage('home');
+    } catch (e) {
+        console.error('initApp failed', e);
+        hideAppOverlay();
+        showPage('home');
+    }
+}
+
+// Inject styles for overlay
+(function injectOverlayStyles(){
+    const s = document.createElement('style');
+    s.textContent = `
+    #appOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 99999; }
+    #appOverlay .app-overlay-content { background: white; color: #111827; padding: 20px 24px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); min-width: 260px; text-align: center; }
+    #appOverlay .spinner { width: 28px; height: 28px; border: 3px solid #e5e7eb; border-top-color: var(--primary-color, #2563eb); border-radius: 50%; margin: 0 auto 12px auto; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    `;
+    document.head.appendChild(s);
+})();
 
 // Service Modal Functionality
 function openServiceModal(serviceType) {
@@ -633,6 +726,31 @@ function parseUserFromInitData(initData) {
     }
 }
 
+async function waitForBackendReady(api, totalMs = 15000) {
+    const start = Date.now();
+    let attempt = 0;
+    while (Date.now() - start < totalMs) {
+        attempt++;
+        try {
+            const res = await fetch(`${api}/health`, { method: 'GET', mode: 'cors', cache: 'no-store' });
+            if (res.ok) {
+                const j = await res.json().catch(() => null);
+                if (j && j.ok === true) {
+                    console.log('Backend health OK', j);
+                    return true;
+                }
+            }
+            console.log('Health attempt', attempt, 'failed with status', res.status);
+        } catch (e) {
+            console.log('Health attempt', attempt, 'error', e);
+        }
+        // backoff: 200ms, 400ms, 800ms, ... max 1600ms
+        const delay = Math.min(1600, 200 * Math.pow(2, Math.min(4, attempt)));
+        await new Promise(r => setTimeout(r, delay));
+    }
+    return false;
+}
+
 // Load user profile from Telegram
 async function loadUserProfile() {
     console.log('loadUserProfile started');
@@ -663,7 +781,22 @@ async function loadUserProfile() {
                 userData = parsed;
                 updateProfileDisplay();
                 ensureLogsButtonInProfile();
-                await sendUserDataToBot(userData);
+                // If query mode, defer initial send to allow tunnel become reachable
+                const mode = getLaunchMode();
+                if (mode === 'query') {
+                    const api = getBackendUrl();
+                    if (api) {
+                        setTimeout(async () => {
+                            if (await waitForBackendReady(api, 15000)) {
+                                await sendUserDataToBot(userData);
+                            } else {
+                                console.error('Backend not ready after delay');
+                            }
+                        }, 1000);
+                    }
+                } else {
+                    await sendUserDataToBot(userData);
+                }
                 console.log('loadUserProfile completed via parsed initData');
                 return;
             }
@@ -689,7 +822,21 @@ async function loadUserProfile() {
             
             // Send user data to bot
             console.log('Sending user data to bot...');
-            await sendUserDataToBot(userData);
+            const mode = getLaunchMode();
+            if (mode === 'query') {
+                const api = getBackendUrl();
+                if (api) {
+                    setTimeout(async () => {
+                        if (await waitForBackendReady(api, 15000)) {
+                            await sendUserDataToBot(userData);
+                        } else {
+                            console.error('Backend not ready after delay');
+                        }
+                    }, 1000);
+                }
+            } else {
+                await sendUserDataToBot(userData);
+            }
             
             // Do not auto-send profile via tg.sendData here to avoid closing the app unexpectedly.
             // Use explicit user actions (form submit, service interest, etc.) to send data.
@@ -954,10 +1101,9 @@ async function sendDataToBot(data) {
             return false;
         }
         try {
-            // Preflight health to avoid confusing network errors
-            const health = await fetch(`${api}/health`, { method: 'GET', mode: 'cors' }).then(r => r.json()).catch(() => null);
-            if (!health || health.ok !== true) {
-                console.error('Health check failed for backend', api, health);
+            const ready = await waitForBackendReady(api, 15000);
+            if (!ready) {
+                console.error('Health check failed for backend', api);
                 showNotification('Сервер недоступен. Повторите позже или перезапустите через /start.', 'error');
                 return false;
             }
