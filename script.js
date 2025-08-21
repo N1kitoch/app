@@ -606,6 +606,28 @@ function initTelegramWebApp() {
     }
 }
 
+function parseUserFromInitData(initData) {
+    try {
+        if (!initData || typeof initData !== 'string') return null;
+        const params = new URLSearchParams(initData);
+        const userStr = params.get('user');
+        if (!userStr) return null;
+        const userObj = JSON.parse(decodeURIComponent(userStr));
+        return {
+            id: userObj.id,
+            firstName: userObj.first_name || '',
+            lastName: userObj.last_name || '',
+            username: userObj.username || '',
+            languageCode: userObj.language_code || 'ru',
+            isPremium: !!userObj.is_premium,
+            photoUrl: userObj.photo_url || null
+        };
+    } catch (e) {
+        console.error('Failed to parse user from initData:', e);
+        return null;
+    }
+}
+
 // Load user profile from Telegram
 async function loadUserProfile() {
     console.log('loadUserProfile started');
@@ -615,14 +637,12 @@ async function loadUserProfile() {
         return;
     }
     
-    // Add timeout to prevent hanging
     const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('loadUserProfile timeout after 10 seconds')), 10000);
     });
     
     try {
         console.log('Getting user data from Telegram...');
-        // Get user data from Telegram
         const initData = tg.initData;
         const user = tg.initDataUnsafe?.user;
         
@@ -630,16 +650,29 @@ async function loadUserProfile() {
         console.log('user object:', user);
         console.log('tg.initDataUnsafe:', tg.initDataUnsafe);
         
-        if (user) {
+        let effectiveUser = user;
+        if (!effectiveUser && initData) {
+            const parsed = parseUserFromInitData(initData);
+            if (parsed) {
+                console.log('Parsed user from initData');
+                userData = parsed;
+                updateProfileDisplay();
+                ensureLogsButtonInProfile();
+                await sendUserDataToBot(userData);
+                console.log('loadUserProfile completed via parsed initData');
+                return;
+            }
+        }
+        if (effectiveUser) {
             console.log('User data found, processing...');
             userData = {
-                id: user.id,
-                firstName: user.first_name,
-                lastName: user.last_name,
-                username: user.username,
-                languageCode: user.language_code,
-                isPremium: user.is_premium || false,
-                photoUrl: user.photo_url || null
+                id: effectiveUser.id,
+                firstName: effectiveUser.first_name,
+                lastName: effectiveUser.last_name,
+                username: effectiveUser.username,
+                languageCode: effectiveUser.language_code,
+                isPremium: effectiveUser.is_premium || false,
+                photoUrl: effectiveUser.photo_url || null
             };
             
             console.log('User data processed:', userData);
@@ -909,6 +942,13 @@ async function sendDataToBot(data) {
             return false;
         }
         try {
+            // Preflight health to avoid confusing network errors
+            const health = await fetch(`${api}/health`, { method: 'GET', mode: 'cors' }).then(r => r.json()).catch(() => null);
+            if (!health || health.ok !== true) {
+                console.error('Health check failed for backend', api, health);
+                showNotification('Сервер недоступен. Повторите позже или перезапустите через /start.', 'error');
+                return false;
+            }
             console.log('Sending data to backend for answerWebAppQuery:', { api, data });
             const resp = await fetch(`${api}/webapp-data`, {
                 method: 'POST',
