@@ -65,6 +65,10 @@ function showPage(pageId) {
 // Initialize first page
 document.addEventListener('DOMContentLoaded', () => {
     showPage('home');
+    try {
+        const api = (typeof getBackendUrl === 'function') ? getBackendUrl() : '';
+        console.log('Computed backend URL from ?api=', api || '(none)');
+    } catch {}
 });
 
 // Service Modal Functionality
@@ -391,8 +395,9 @@ function getLaunchMode() {
     if (!tg) return 'unknown';
     const hasSendData = typeof tg.sendData === 'function';
     const hasQueryId = !!(tg.initDataUnsafe && tg.initDataUnsafe.query_id);
-    if (hasQueryId) return 'query';
+    // Prefer keyboard if both are somehow present
     if (hasSendData) return 'keyboard';
+    if (hasQueryId) return 'query';
     return 'unknown';
 }
 
@@ -876,7 +881,6 @@ async function sendUserDataToBot(userData) {
     console.log('[sendUserDataToBot] called with:', userData);
     if (!tg) return false;
     const mode = getLaunchMode();
-    // Send a lightweight user_data event; in keyboard mode this will trigger web_app_data on bot
     const payload = { type: 'user_data', userData, timestamp: new Date().toISOString() };
     if (mode === 'keyboard') {
         try {
@@ -889,8 +893,16 @@ async function sendUserDataToBot(userData) {
     }
     if (mode === 'query') {
         const api = getBackendUrl();
-        if (!api) return false;
+        if (!api) {
+            console.error('sendUserDataToBot: no backend URL in query mode');
+            return false;
+        }
         try {
+            const health = await fetch(`${api}/health`, { method: 'GET', mode: 'cors' }).then(r => r.json()).catch(() => null);
+            if (!health || health.ok !== true) {
+                console.error('sendUserDataToBot: health failed', api, health);
+                return false;
+            }
             const resp = await fetch(`${api}/webapp-data`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
