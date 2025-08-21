@@ -515,7 +515,7 @@ function initDebugConsole() {
     if (!DEBUG_MODE) return;
     const wrap = document.createElement('div');
     wrap.id = 'tg-debug-console';
-    wrap.style.cssText = 'position:fixed;bottom:0;left:0;right:0;height:240px;overflow:auto;background:rgba(0,0,0,.8);color:#0f0;font:12px/1.4 monospace;z-index:9999;padding:8px;';
+    wrap.style.cssText = 'position:fixed;bottom:16px;right:16px;width:420px;height:240px;overflow:auto;background:rgba(0,0,0,.8);color:#0f0;font:12px/1.4 monospace;z-index:9999;padding:8px;';
     document.body.appendChild(wrap);
     const log = console.log.bind(console);
     const err = console.error.bind(console);
@@ -524,6 +524,8 @@ function initDebugConsole() {
     function appendDbg(tag, args) {
         const pre = document.createElement('pre');
         pre.style.margin = '0 0 6px';
+        pre.style.whiteSpace = 'pre-wrap';
+        pre.style.wordBreak = 'break-word';
         pre.textContent = `[${new Date().toISOString()}] ${tag}: ` + args.map(a => safeStringify(a)).join(' ');
         wrap.appendChild(pre);
     }
