@@ -395,9 +395,9 @@ function getLaunchMode() {
     if (!tg) return 'unknown';
     const hasSendData = typeof tg.sendData === 'function';
     const hasQueryId = !!(tg.initDataUnsafe && tg.initDataUnsafe.query_id);
-    // Prefer keyboard if both are somehow present
-    if (hasSendData) return 'keyboard';
+    // Prefer query mode when query_id is present; keyboard otherwise
     if (hasQueryId) return 'query';
+    if (hasSendData) return 'keyboard';
     return 'unknown';
 }
 
