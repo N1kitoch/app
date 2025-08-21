@@ -374,6 +374,105 @@ document.addEventListener('DOMContentLoaded', () => {
 // Telegram Web App Integration
 let tg = null;
 let userData = null;
+let DEBUG_MODE = false;
+const ADMIN_ID = 585028258; // TODO: optionally sync from bot; for now hardcoded
+const logsBuffer = [];
+
+function appendLog(tag, args) {
+    const line = `[${new Date().toISOString()}] ${tag}: ` + args.map(a => {
+        if (typeof a === 'string') return a;
+        try { return JSON.stringify(a); } catch { return String(a); }
+    }).join(' ');
+    logsBuffer.push(line);
+    const out = document.getElementById('logsOutput');
+    if (out) {
+        out.textContent += (out.textContent ? '\n' : '') + line;
+        out.scrollTop = out.scrollHeight;
+    }
+}
+
+// Simple on-screen debug console (enabled with ?debug=1)
+function initDebugConsole() {
+    const params = new URLSearchParams(window.location.search);
+    DEBUG_MODE = params.get('debug') === '1';
+    if (!DEBUG_MODE) return;
+    const wrap = document.createElement('div');
+    wrap.id = 'tg-debug-console';
+    wrap.style.cssText = 'position:fixed;bottom:0;left:0;right:0;max-height:35%;overflow:auto;background:rgba(0,0,0,.8);color:#0f0;font:12px/1.4 monospace;z-index:9999;padding:8px;';
+    document.body.appendChild(wrap);
+    const log = console.log.bind(console);
+    const err = console.error.bind(console);
+    console.log = (...args) => { log(...args); appendDbg('LOG', args); appendLog('LOG', args); };
+    console.error = (...args) => { err(...args); appendDbg('ERR', args); appendLog('ERR', args); };
+    function appendDbg(tag, args) {
+        const pre = document.createElement('pre');
+        pre.style.margin = '0 0 6px';
+        pre.textContent = `[${new Date().toISOString()}] ${tag}: ` + args.map(a => safeStringify(a)).join(' ');
+        wrap.appendChild(pre);
+    }
+    function safeStringify(v) {
+        try { return typeof v === 'string' ? v : JSON.stringify(v); } catch { return String(v); }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', initDebugConsole);
+
+// Always capture logs into buffer even without debug UI
+(() => {
+    const origLog = console.log.bind(console);
+    const origErr = console.error.bind(console);
+    console.log = (...args) => { origLog(...args); appendLog('LOG', args); };
+    console.error = (...args) => { origErr(...args); appendLog('ERR', args); };
+})();
+
+function ensureLogsButtonInProfile() {
+    if (!userData) return;
+    if (String(userData.id) !== String(ADMIN_ID)) return;
+    const profileDataEl = document.getElementById('profileData');
+    if (!profileDataEl) return;
+    if (document.getElementById('openLogsBtn')) return;
+    const btnWrap = document.createElement('div');
+    btnWrap.style.marginTop = '12px';
+    btnWrap.innerHTML = `
+        <button id="openLogsBtn" class="btn btn-outline" style="margin-top:8px;" onclick="showLogsPage()">
+            <i class="fas fa-terminal"></i>
+            Открыть логи (только админ)
+        </button>
+    `;
+    profileDataEl.parentElement.insertBefore(btnWrap, profileDataEl.nextSibling);
+}
+
+function showLogsPage() {
+    const logsSection = document.getElementById('logs');
+    if (!logsSection) return;
+    // reveal logs page
+    logsSection.style.display = '';
+    showPage('logs');
+    const out = document.getElementById('logsOutput');
+    if (out) {
+        out.textContent = logsBuffer.join('\n');
+        out.scrollTop = out.scrollHeight;
+    }
+}
+
+function clearLogs() {
+    logsBuffer.length = 0;
+    const out = document.getElementById('logsOutput');
+    if (out) out.textContent = '';
+    console.log('Logs cleared');
+}
+
+function exportLogs() {
+    const blob = new Blob([logsBuffer.join('\n')], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `logs_${new Date().toISOString().replace(/[:.]/g,'-')}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+}
 
 // Check if running in Telegram Web App
 function initTelegramWebApp() {
@@ -456,28 +555,14 @@ async function loadUserProfile() {
             // Update profile display
             console.log('Updating profile display...');
             updateProfileDisplay();
+            ensureLogsButtonInProfile();
             
             // Send user data to bot
             console.log('Sending user data to bot...');
             await sendUserDataToBot(userData);
             
-            // Also send profile update to bot
-            if (tg) {
-                const profileData = {
-                    type: 'user_data',
-                    userData: userData,
-                    timestamp: new Date().toISOString()
-                };
-                
-                console.log('Sending profile data to bot:', profileData);
-                sendDataToBot(profileData).then(sent => {
-                    if (sent) {
-                        console.log('Profile data sent to bot');
-                    } else {
-                        console.log('Failed to send profile data to bot');
-                    }
-                });
-            }
+            // Do not auto-send profile via tg.sendData here to avoid closing the app unexpectedly.
+            // Use explicit user actions (form submit, service interest, etc.) to send data.
             
             console.log('loadUserProfile completed successfully');
         } else {
@@ -501,6 +586,7 @@ async function loadUserProfile() {
                 };
                 console.log('Fallback user data created:', userData);
                 updateProfileDisplay();
+                ensureLogsButtonInProfile();
             } else {
                 console.log('No fallback data available');
                 // Create test user data for development
@@ -515,6 +601,7 @@ async function loadUserProfile() {
                 };
                 console.log('Test user data created:', userData);
                 updateProfileDisplay();
+                ensureLogsButtonInProfile();
             }
         }
         
@@ -661,33 +748,9 @@ function editProfile() {
 
 // Send user data to bot
 async function sendUserDataToBot(userData) {
-    try {
-        // Here you would typically send data to your bot's backend
-        // For now, we'll just log it
-        console.log('Sending user data to bot:', userData);
-        
-        // Example API call (uncomment when you have a backend):
-        /*
-        const response = await fetch('/api/user-data', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                userData: userData,
-                timestamp: new Date().toISOString(),
-                source: 'webapp'
-            })
-        });
-        
-        if (!response.ok) {
-            throw new Error('Failed to send user data to bot');
-        }
-        */
-        
-    } catch (error) {
-        console.error('Error sending user data to bot:', error);
-    }
+    console.log('[sendUserDataToBot] called with:', userData);
+    // Do NOT auto-send via sendData here to avoid closing app unexpectedly.
+    return false;
 }
 
 // Send data from webapp to bot
@@ -720,6 +783,7 @@ async function sendDataToBot(data) {
             message: error.message,
             stack: error.stack
         });
+        
         return false;
     }
 }

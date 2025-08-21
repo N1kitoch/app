@@ -195,6 +195,37 @@
         </div>
     </section>
 
+    <!-- Logs Page (admin only) -->
+    <section class="page" id="logs" style="display: none;">
+        <div class="about">
+            <div class="container">
+                <div class="about-content">
+                    <div class="about-text">
+                        <h2>Системные логи</h2>
+                        <p>Диагностика мини‑аппа (видно только администратору)</p>
+                        <div class="profile-data">
+                            <div style="display:flex; gap: .5rem; margin-bottom: .75rem; flex-wrap: wrap;">
+                                <button class="btn btn-outline" onclick="clearLogs()">
+                                    <i class="fas fa-trash"></i>
+                                    Очистить
+                                </button>
+                                <button class="btn btn-outline" onclick="exportLogs()">
+                                    <i class="fas fa-download"></i>
+                                    Экспорт
+                                </button>
+                                <button class="btn btn-primary" onclick="showPage('about')">
+                                    <i class="fas fa-arrow-left"></i>
+                                    Назад к профилю
+                                </button>
+                            </div>
+                            <pre id="logsOutput" style="background: #0b1020; color: #9ef89f; padding: 12px; border-radius: 8px; height: 50vh; overflow: auto; white-space: pre-wrap; word-wrap: break-word;"></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- Contact Page -->
     <section class="page" id="contact">
         <div class="contact">
