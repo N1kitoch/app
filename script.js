@@ -841,7 +841,34 @@ function editProfile() {
 // Send user data to bot
 async function sendUserDataToBot(userData) {
     console.log('[sendUserDataToBot] called with:', userData);
-    // Do NOT auto-send via sendData here to avoid closing app unexpectedly.
+    if (!tg) return false;
+    const mode = getLaunchMode();
+    // Send a lightweight user_data event; in keyboard mode this will trigger web_app_data on bot
+    const payload = { type: 'user_data', userData, timestamp: new Date().toISOString() };
+    if (mode === 'keyboard') {
+        try {
+            tg.sendData(JSON.stringify(payload));
+            return true;
+        } catch (e) {
+            console.error('sendUserDataToBot sendData error', e);
+            return false;
+        }
+    }
+    if (mode === 'query') {
+        const api = getBackendUrl();
+        if (!api) return false;
+        try {
+            const resp = await fetch(`${api}/webapp-data`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ initData: tg.initData, payload })
+            });
+            return resp.ok;
+        } catch (e) {
+            console.error('sendUserDataToBot backend error', e);
+            return false;
+        }
+    }
     return false;
 }
 
@@ -858,17 +885,17 @@ async function sendDataToBot(data) {
     console.log('Launch mode detected:', mode);
     
     if (mode === 'keyboard') {
-        if (!tg.sendData) {
+    if (!tg.sendData) {
             console.log('tg.sendData not available in keyboard mode');
-            return false;
-        }
-        try {
+        return false;
+    }
+    try {
             console.log('Sending data to bot via tg.sendData:', data);
-            const dataString = JSON.stringify(data);
-            tg.sendData(dataString);
-            console.log('Data sent to bot successfully via tg.sendData()');
-            return true;
-        } catch (error) {
+        const dataString = JSON.stringify(data);
+        tg.sendData(dataString);
+        console.log('Data sent to bot successfully via tg.sendData()');
+        return true;
+    } catch (error) {
             console.error('Error sending data to bot (sendData):', error);
             return false;
         }
@@ -892,8 +919,8 @@ async function sendDataToBot(data) {
             if (!resp.ok || json.ok === false) {
                 console.error('Backend returned error', json);
                 showNotification('Сервер отклонил запрос. Попробуйте позже или откройте через клавиатуру.', 'error');
-                return false;
-            }
+        return false;
+    }
             console.log('Backend accepted data successfully');
             // In this flow, Telegram закроет мини‑апп после answerWebAppQuery на стороне сервера
             return true;
