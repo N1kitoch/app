@@ -52,6 +52,13 @@ function showPage(pageId) {
             if (nameField && !nameField.value) {
                 nameField.value = `${userData.firstName} ${userData.lastName}`.trim();
             }
+            // Initialize contact page animations
+            setTimeout(initContactPage, 100);
+        }
+        
+        // Initialize profile page animations
+        if (pageId === 'about') {
+            setTimeout(initProfilePage, 100);
         }
     }
     
@@ -122,16 +129,17 @@ function hideAppOverlay() {
 
 async function initApp() {
     try {
-        const startTs = Date.now();
-        const minDurationMs = 1500; // keep overlay for at least ~1.5s
-        showAppOverlay('Загрузка...');
         const mode = getLaunchMode?.() || 'unknown';
         const api = getBackendUrl?.() || '';
         console.log('Computed backend URL from ?api=', api || '(none)');
-        let ready = true;
-        // Gate only in query mode with backend URL present
+        
+        // Показываем загрузку только если есть бэкенд и мы в query режиме
         if (mode === 'query' && api) {
-            ready = await waitForBackendReady(api, 20000);
+            showAppOverlay('Подключение к серверу...');
+            const startTs = Date.now();
+            const minDurationMs = 1500; // keep overlay for at least ~1.5s
+            
+            const ready = await waitForBackendReady(api, 20000);
             if (!ready) {
                 showAppError('Сервер недоступен. Проверьте соединение и попробуйте снова.', async () => {
                     showAppOverlay('Повторное подключение...');
@@ -145,12 +153,14 @@ async function initApp() {
                 });
                 return;
             }
+            
+            const elapsed = Date.now() - startTs;
+            if (elapsed < minDurationMs) {
+                await new Promise(r => setTimeout(r, minDurationMs - elapsed));
+            }
+            hideAppOverlay();
         }
-        const elapsed = Date.now() - startTs;
-        if (elapsed < minDurationMs) {
-            await new Promise(r => setTimeout(r, minDurationMs - elapsed));
-        }
-        hideAppOverlay();
+        
         // Proceed to initial page
         showPage('home');
     } catch (e) {
@@ -303,13 +313,25 @@ function closeServiceModal() {
 // Contact form for specific service
 function contactForService(serviceName) {
     closeServiceModal();
-    showPage('contact');
     
-    // Pre-fill the message field
-    const messageField = document.getElementById('message');
-    if (messageField) {
-        messageField.value = `Здравствуйте! Меня интересует услуга "${serviceName}". Пожалуйста, свяжитесь со мной для обсуждения деталей проекта.`;
-    }
+    // Увеличиваем счетчик просмотренных услуг
+    const currentViewed = parseInt(localStorage.getItem('viewedServices') || '0');
+    localStorage.setItem('viewedServices', currentViewed + 1);
+    
+    // Сразу отправляем данные в бэкенд без перехода на страницу контактов
+    const currentUserData = window.userData || userData;
+    const userName = currentUserData ? `${currentUserData.firstName} ${currentUserData.lastName}`.trim() : 'Пользователь';
+    const message = `Здравствуйте! Меня интересует услуга "${serviceName}". Пожалуйста, свяжитесь со мной для обсуждения деталей проекта.`;
+    
+    // Отправляем данные через бэкенд
+    trackImportantEvent('service_interest', {
+        service: serviceName,
+        userName: userName,
+        message: message
+    });
+    
+    // Показываем уведомление об успешной отправке
+    showNotification('Ваш запрос отправлен! Мы свяжемся с вами в ближайшее время.', 'success');
     
     // Отслеживаем интерес к услуге
     trackImportantEvent('service_interest', {
@@ -321,12 +343,12 @@ function contactForService(serviceName) {
 contactForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     
-    const submitBtn = contactForm.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
+    const submitBtn = contactForm.querySelector('.contact-submit-btn');
+    const originalText = submitBtn.querySelector('.btn-text').textContent;
     
     // Show loading state
     submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Отправка...';
+    submitBtn.classList.add('loading');
     
     // Get form data
     const formData = new FormData(contactForm);
@@ -341,18 +363,151 @@ contactForm.addEventListener('submit', async (e) => {
             formData: data
         });
         
-        // Reset form
-        contactForm.reset();
+        // Увеличиваем счетчик отправленных сообщений
+        const currentSent = parseInt(localStorage.getItem('sentMessages') || '0');
+        localStorage.setItem('sentMessages', currentSent + 1);
+        
+        // Show success state
+        document.getElementById('contactForm').style.display = 'none';
+        document.getElementById('contactSuccess').style.display = 'block';
+        
+        // Animate stats
+        animateContactStats();
         
     } catch (error) {
         console.error('Form submission error:', error);
         trackError(error, 'contact');
+        showNotification('Ошибка отправки. Попробуйте снова.', 'error');
     } finally {
         // Reset button state
         submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
+        submitBtn.classList.remove('loading');
     }
 });
+
+// Reset contact form
+function resetContactForm() {
+    document.getElementById('contactForm').reset();
+    document.getElementById('contactForm').style.display = 'block';
+    document.getElementById('contactSuccess').style.display = 'none';
+}
+
+// Animate contact stats
+function animateContactStats() {
+    const statNumbers = document.querySelectorAll('.contact-stats .stat-number');
+    
+    statNumbers.forEach(stat => {
+        const target = parseInt(stat.getAttribute('data-target'));
+        const duration = 2000; // 2 seconds
+        const increment = target / (duration / 16); // 60fps
+        let current = 0;
+        
+        const timer = setInterval(() => {
+            current += increment;
+            if (current >= target) {
+                current = target;
+                clearInterval(timer);
+            }
+            stat.textContent = Math.floor(current);
+        }, 16);
+    });
+}
+
+// Animate floating elements on contact page
+function animateFloatingElements() {
+    // Функция больше не используется
+    console.log('Floating elements removed from design');
+}
+
+// Initialize contact page animations
+function initContactPage() {
+    if (document.getElementById('contact').classList.contains('active')) {
+        animateContactStats();
+    }
+}
+
+// Show competency details
+function showCompetencyDetails(competencyId) {
+    // Remove active class from all competency items
+    document.querySelectorAll('.competency-modern-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    // Remove active class from all competency details
+    document.querySelectorAll('.competency-detail-modern').forEach(detail => {
+        detail.classList.remove('active');
+    });
+    
+    // Add active class to selected competency item
+    const selectedItem = document.querySelector(`[onclick*="${competencyId}"]`);
+    if (selectedItem) {
+        selectedItem.classList.add('active');
+    }
+    
+    // Add active class to selected competency detail
+    const selectedDetail = document.getElementById(`${competencyId}-detail`);
+    if (selectedDetail) {
+        selectedDetail.classList.add('active');
+    }
+}
+
+// Show project details
+function showProjectDetails(projectId) {
+    // Remove active class from all project items
+    document.querySelectorAll('.project-modern-card').forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    // Remove active class from all project details
+    document.querySelectorAll('.project-detail-modern').forEach(detail => {
+        detail.classList.remove('active');
+    });
+    
+    // Add active class to selected project item
+    const selectedItem = document.querySelector(`[onclick*="${projectId}"]`);
+    if (selectedItem) {
+        selectedItem.classList.add('active');
+    }
+    
+    // Add active class to selected project detail
+    const selectedDetail = document.getElementById(`${projectId}-detail`);
+    if (selectedDetail) {
+        selectedDetail.classList.add('active');
+    }
+}
+
+// Initialize profile page animations
+function initProfilePage() {
+    if (document.getElementById('about').classList.contains('active')) {
+        animateProfileStats();
+    }
+}
+
+// Animate profile stats
+function animateProfileStats() {
+    const statNumbers = document.querySelectorAll('.profile-stats-grid .stat-number');
+    
+    statNumbers.forEach(stat => {
+        const text = stat.textContent;
+        if (text.includes('+') || text.includes('%')) {
+            // For stats with + or %, animate from 0
+            const target = parseInt(text.replace(/[^\d]/g, ''));
+            const suffix = text.replace(/\d/g, '');
+            const duration = 2000;
+            const increment = target / (duration / 16);
+            let current = 0;
+            
+            const timer = setInterval(() => {
+                current += increment;
+                if (current >= target) {
+                    current = target;
+                    clearInterval(timer);
+                }
+                stat.textContent = Math.floor(current) + suffix;
+            }, 16);
+        }
+    });
+}
 
 // Notification system
 function showNotification(message, type = 'info') {
@@ -538,18 +693,21 @@ document.addEventListener('DOMContentLoaded', initDebugConsole);
 function ensureLogsButtonInProfile() {
     if (!userData) return;
     if (String(userData.id) !== String(ADMIN_ID)) return;
-    const profileDataEl = document.getElementById('profileData');
-    if (!profileDataEl) return;
+    
+    // Since we simplified the profile page, we'll add the logs button to the profile card
+    const profileCard = document.querySelector('.profile-card');
+    if (!profileCard) return;
     if (document.getElementById('openLogsBtn')) return;
+    
     const btnWrap = document.createElement('div');
-    btnWrap.style.marginTop = '12px';
+    btnWrap.style.marginTop = '1rem';
     btnWrap.innerHTML = `
-        <button id="openLogsBtn" class="btn btn-outline" style="margin-top:8px;" onclick="showLogsPage()">
+        <button id="openLogsBtn" class="btn btn-outline" onclick="showLogsPage()">
             <i class="fas fa-terminal"></i>
             Открыть логи (только админ)
         </button>
     `;
-    profileDataEl.parentElement.insertBefore(btnWrap, profileDataEl.nextSibling);
+    profileCard.appendChild(btnWrap);
 }
 
 function showLogsPage() {
@@ -1133,43 +1291,89 @@ function updateProfileDisplay() {
     
     console.log('Updating profile with userData:', currentUserData);
     
-    // Update profile card
+    // Update profile elements
     const userNameElement = document.getElementById('userName');
-    const userStatusElement = document.getElementById('userStatus');
     const userAvatarElement = document.getElementById('userAvatar');
+    const userStatusBadge = document.getElementById('userStatusBadge');
+    const userLanguageBadge = document.getElementById('userLanguageBadge');
+    const userPremiumBadge = document.getElementById('userPremiumBadge');
+    const userIdElement = document.getElementById('userId');
+    const userUsernameElement = document.getElementById('userUsername');
     
     console.log('Profile elements found:', {
         userNameElement: !!userNameElement,
-        userStatusElement: !!userStatusElement,
-        userAvatarElement: !!userAvatarElement
+        userAvatarElement: !!userAvatarElement,
+        userStatusBadge: !!userStatusBadge,
+        userLanguageBadge: !!userLanguageBadge,
+        userPremiumBadge: !!userPremiumBadge,
+        userIdElement: !!userIdElement,
+        userUsernameElement: !!userUsernameElement
     });
     
+    // Update user name
     if (userNameElement) {
         const fullName = `${currentUserData.firstName} ${currentUserData.lastName}`.trim();
         userNameElement.textContent = fullName || 'Пользователь';
         console.log('User name updated:', fullName);
     }
     
-    if (userStatusElement) {
-        const status = currentUserData.isPremium ? 'Premium пользователь' : 'Пользователь';
-        userStatusElement.textContent = status;
-        console.log('User status updated:', status);
+    // Update user ID
+    if (userIdElement) {
+        userIdElement.textContent = currentUserData.id || '—';
+        console.log('User ID updated:', currentUserData.id);
     }
     
+    // Update username
+    if (userUsernameElement) {
+        const username = currentUserData.username ? `@${currentUserData.username}` : 'Не указан';
+        userUsernameElement.textContent = username;
+        console.log('User username updated:', username);
+    }
+    
+    // Update avatar
     if (userAvatarElement) {
         if (currentUserData.photoUrl) {
-            userAvatarElement.innerHTML = `<img src="${currentUserData.photoUrl}" alt="Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+            userAvatarElement.innerHTML = `
+                <img src="${currentUserData.photoUrl}" alt="Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
+                <div class="profile-status">
+                    <i class="fas fa-circle"></i>
+                </div>
+            `;
             console.log('User avatar updated with photo');
         } else {
             // Reset to default icon
-            userAvatarElement.innerHTML = '<i class="fas fa-user-tie"></i>';
+            userAvatarElement.innerHTML = `
+                <i class="fas fa-user-tie"></i>
+                <div class="profile-status">
+                    <i class="fas fa-circle"></i>
+                </div>
+            `;
             console.log('User avatar reset to default icon');
         }
     }
     
-    // Update profile data section
-    console.log('Updating profile data section...');
-    updateProfileDataSection(currentUserData);
+    // Update status badge (User/Admin)
+    if (userStatusBadge) {
+        const status = currentUserData.id === '585028258' ? 'Админ' : 'Пользователь';
+        const icon = currentUserData.id === '585028258' ? 'fas fa-shield-alt' : 'fas fa-user';
+        userStatusBadge.innerHTML = `<i class="${icon}"></i> ${status}`;
+        console.log('User status badge updated:', status);
+    }
+    
+    // Update language badge
+    if (userLanguageBadge) {
+        const language = currentUserData.languageCode ? currentUserData.languageCode.toUpperCase() : 'RU';
+        userLanguageBadge.innerHTML = `<i class="fas fa-globe"></i> ${language}`;
+        console.log('User language badge updated:', language);
+    }
+    
+    // Update premium badge
+    if (userPremiumBadge) {
+        const premium = currentUserData.isPremium ? 'Премиум' : 'Обычный';
+        const icon = currentUserData.isPremium ? 'fas fa-crown' : 'fas fa-user';
+        userPremiumBadge.innerHTML = `<i class="${icon}"></i> ${premium}`;
+        console.log('User premium badge updated:', premium);
+    }
     
     console.log('updateProfileDisplay completed');
 }
@@ -1229,20 +1433,42 @@ function updateProfileDataSection(currentUserData) {
                 <div class="info-value">${currentUserData.isPremium ? 'Premium' : 'Обычный'}</div>
             </div>
         </div>
-        
-        <div class="profile-actions">
-            <button class="btn btn-primary" onclick="refreshProfile()">
-                <i class="fas fa-sync-alt"></i>
-                Обновить профиль
-            </button>
-            <button class="btn btn-outline" onclick="editProfile()">
-                <i class="fas fa-edit"></i>
-                Редактировать
-            </button>
-        </div>
     `;
     
     console.log('Profile data section updated');
+}
+
+// Update activity timeline
+function updateActivityTimeline() {
+    const lastLoginTime = document.getElementById('lastLoginTime');
+    const viewedServices = document.getElementById('viewedServices');
+    const sentMessages = document.getElementById('sentMessages');
+    
+    if (lastLoginTime) {
+        const now = new Date();
+        const timeString = now.toLocaleDateString('ru-RU', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        lastLoginTime.textContent = timeString;
+    }
+    
+    if (viewedServices) {
+        // Получаем количество просмотренных услуг из localStorage или устанавливаем 0
+        const viewed = localStorage.getItem('viewedServices') || 0;
+        viewedServices.textContent = viewed;
+    }
+    
+    if (sentMessages) {
+        // Получаем количество отправленных сообщений из localStorage или устанавливаем 0
+        const sent = localStorage.getItem('sentMessages') || 0;
+        sentMessages.textContent = sent;
+    }
+    
+    console.log('Activity timeline updated');
 }
 
 // Show profile error
@@ -1266,27 +1492,22 @@ function showProfileError() {
 function refreshProfile() {
     console.log('refreshProfile called');
     
-    // Show loading state
-    const profileDataElement = document.getElementById('profileData');
-    if (profileDataElement) {
-        profileDataElement.innerHTML = `
-            <div class="profile-loading">
-                <i class="fas fa-spinner fa-spin"></i>
-                <span>Обновление профиля...</span>
-            </div>
-        `;
-    }
-    
     // Clear any existing user data
     window.userData = null;
     
     // Reload user profile
     loadUserProfileWithRetry(2, 500);
+    
+    // Show notification
+    showNotification('Профиль обновляется...', 'info');
 }
 
 // Edit profile (placeholder for future functionality)
 function editProfile() {
     showNotification('Функция редактирования профиля будет доступна в следующем обновлении', 'info');
+    
+    // В будущем здесь можно добавить модальное окно для редактирования
+    // Например, изменение имени, аватара и других данных
 }
 
 // Send user data to bot (updated to use new system)
