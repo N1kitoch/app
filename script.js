@@ -311,8 +311,8 @@ function contactForService(serviceName) {
         messageField.value = `Здравствуйте! Меня интересует услуга "${serviceName}". Пожалуйста, свяжитесь со мной для обсуждения деталей проекта.`;
     }
     
-    // Send service interest to backend
-    sendEventToBackend('service_interest', {
+    // Отслеживаем интерес к услуге
+    trackImportantEvent('service_interest', {
         service: serviceName
     });
 }
@@ -336,15 +336,13 @@ contactForm.addEventListener('submit', async (e) => {
     };
     
     try {
-        // Send data through new centralized system
-        const success = await sendEventToBackend('contact_form', {
+        // Отправляем через упрощенную систему
+        trackImportantEvent('contact_form', {
             formData: data
         });
         
-        if (success) {
-            // Reset form
-            contactForm.reset();
-        }
+        // Reset form
+        contactForm.reset();
         
     } catch (error) {
         console.error('Form submission error:', error);
@@ -1104,11 +1102,8 @@ async function loadUserProfile() {
         ensureLogsButtonInProfile();
         connectWebSocketIfPossible();
         
-        // Send user data through new centralized system
-        console.log('Sending user data through centralized system...');
-        await sendEventToBackend('profile_load', {
-            userData: userData
-        }, { showNotification: false });
+        // Просто логируем загрузку профиля, не отправляем в бэкенд
+        console.log('Profile loaded successfully');
         
         console.log('loadUserProfile completed successfully');
         
@@ -1296,89 +1291,16 @@ function editProfile() {
 
 // Send user data to bot (updated to use new system)
 async function sendUserDataToBot(userData) {
-    return await sendEventToBackend('profile_load', {
-        userData: userData
-    }, { showNotification: false });
+    // Просто логируем, не отправляем в бэкенд
+    console.log('User data loaded:', userData);
+    return true;
 }
 
 // Универсальная функция отправки всех событий через бэкенд
 async function sendEventToBackend(eventType, eventData = {}, options = {}) {
-    console.log(`📤 Отправка события ${eventType}:`, eventData);
-    
-    if (!tg) {
-        console.log('Telegram Web App не доступен');
-        return false;
-    }
-
-    const currentUserData = window.userData || userData;
-    const api = getBackendUrl();
-    
-    if (!api) {
-        console.log('Бэкенд URL не найден, используем fallback');
-        return await sendEventFallback(eventType, eventData, currentUserData);
-    }
-
-    try {
-        const payload = {
-            type: eventType,
-            userData: currentUserData,
-            timestamp: new Date().toISOString(),
-            ...eventData
-        };
-
-        // Добавляем дополнительные данные
-        if (options.page) payload.page = options.page;
-        if (options.previousPage) payload.previousPage = options.previousPage;
-        if (options.button) payload.button = options.button;
-        if (options.formType) payload.formType = options.formType;
-
-        console.log('Отправка в бэкенд:', payload);
-
-        const response = await fetch(`${api}/api/event`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                type: eventType,
-                data: eventData,
-                userData: currentUserData,
-                queryId: tg.initDataUnsafe?.query_id || null
-            })
-        });
-
-        const result = await response.json();
-        
-        if (result.success) {
-            console.log(`✅ Событие ${eventType} отправлено успешно`);
-            
-            // Показываем уведомление пользователю только если это разрешено
-            if (options.showNotification !== false) {
-                const notificationMessage = getNotificationMessage(eventType, result);
-                if (notificationMessage) {
-                    showNotification(notificationMessage, 'success');
-                }
-            }
-            
-            return true;
-        } else {
-            console.error(`❌ Ошибка отправки события ${eventType}:`, result);
-            
-            // Показываем ошибку только для важных событий
-            if (options.showNotification !== false) {
-                const importantEvents = ['contact_form', 'service_interest', 'order_submit', 'payment_request', 'support_request'];
-                if (importantEvents.includes(eventType)) {
-                    showNotification('Ошибка отправки данных', 'error');
-                }
-            }
-            
-            return false;
-        }
-
-    } catch (error) {
-        console.error(`❌ Ошибка отправки события ${eventType}:`, error);
-        
-        // Fallback к старому методу
-        return await sendEventFallback(eventType, eventData, currentUserData);
-    }
+    // Используем упрощенную систему
+    trackImportantEvent(eventType, eventData);
+    return true;
 }
 
 // Fallback функция для отправки событий
@@ -1396,78 +1318,96 @@ async function sendEventFallback(eventType, eventData, userData) {
     return await sendDataToBot(payload);
 }
 
-// Функция для получения сообщения уведомления
-function getNotificationMessage(eventType, result) {
-    // Показываем уведомления только для важных событий
+// Упрощенная функция для отслеживания важных событий
+function trackImportantEvent(eventType, eventData = {}) {
+    // Отслеживаем только важные события, чтобы не нагружать систему
     const importantEvents = [
         'contact_form',
-        'service_interest', 
+        'service_interest',
         'order_submit',
         'payment_request',
         'support_request'
     ];
     
     if (!importantEvents.includes(eventType)) {
-        return null; // Не показываем уведомление
+        console.log(`📊 Событие ${eventType} пропущено (не важное)`);
+        return;
     }
     
-    switch (eventType) {
-        case 'contact_form':
-            return 'Сообщение отправлено!';
-        case 'service_interest':
-            return 'Интерес к услуге зафиксирован!';
-        case 'order_submit':
-            return 'Заказ оформлен!';
-        case 'payment_request':
-            return 'Запрос на оплату отправлен!';
-        case 'support_request':
-            return 'Запрос поддержки отправлен!';
-        default:
-            return null;
+    console.log(`📤 Отправка важного события ${eventType}:`, eventData);
+    
+    if (!tg) {
+        console.log('Telegram Web App не доступен');
+        return;
+    }
+
+    const currentUserData = window.userData || userData;
+    const api = getBackendUrl();
+    
+    if (!api) {
+        console.log('Бэкенд URL не найден');
+        return;
+    }
+
+    // Отправляем только важные события
+    fetch(`${api}/api/event`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            type: eventType,
+            data: eventData,
+            userData: currentUserData,
+            queryId: tg.initDataUnsafe?.query_id || null
+        })
+    }).then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            console.log(`✅ Важное событие ${eventType} отправлено`);
+            // Показываем уведомление только для важных событий
+            const message = getNotificationMessage(eventType);
+            if (message) {
+                showNotification(message, 'success');
+            }
+        } else {
+            console.error(`❌ Ошибка отправки события ${eventType}:`, result);
+        }
+    }).catch(error => {
+        console.error(`❌ Ошибка отправки события ${eventType}:`, error);
+    });
+}
+
+// Упрощенная функция для отслеживания навигации (только логирование)
+function trackPageNavigation(pageId, previousPage = null) {
+    console.log(`🧭 Навигация: ${previousPage} → ${pageId}`);
+    // Не отправляем в бэкенд, только логируем
+}
+
+// Упрощенная функция для отслеживания кликов (только логирование)
+function trackButtonClick(buttonName, page = null) {
+    console.log(`🔘 Клик: ${buttonName} на странице ${page}`);
+    // Не отправляем в бэкенд, только логируем
+}
+
+// Упрощенная функция для отслеживания форм
+function trackFormSubmit(formType, formData) {
+    const isImportant = ['contact_form', 'order_submit', 'support_request'].includes(formType);
+    if (isImportant) {
+        trackImportantEvent(formType, { formData: formData });
+    } else {
+        console.log(`📝 Форма ${formType} отправлена (не важная)`);
     }
 }
 
-// Функция для отслеживания навигации (без уведомлений)
-function trackPageNavigation(pageId, previousPage = null) {
-    sendEventToBackend('page_navigation', {
-        page: pageId,
-        previousPage: previousPage
-    }, { showNotification: false });
-}
-
-// Функция для отслеживания кликов по кнопкам (без уведомлений)
-function trackButtonClick(buttonName, page = null) {
-    sendEventToBackend('button_click', {
-        button: buttonName,
-        page: page || getCurrentPage()
-    }, { showNotification: false });
-}
-
-// Функция для отслеживания отправки форм (с уведомлениями для важных)
-function trackFormSubmit(formType, formData) {
-    const isImportant = ['contact_form', 'order_submit', 'support_request'].includes(formType);
-    sendEventToBackend('form_submit', {
-        formType: formType,
-        formData: formData
-    }, { showNotification: isImportant });
-}
-
-// Функция для отслеживания ошибок (без уведомлений)
+// Упрощенная функция для отслеживания ошибок (только логирование)
 function trackError(error, page = null) {
-    sendEventToBackend('error_report', {
-        error: error.message || error,
-        stack: error.stack || '',
-        page: page || getCurrentPage()
-    }, { showNotification: false });
+    console.error(`⚠️ Ошибка на странице ${page}:`, error);
+    // Не отправляем в бэкенд, только логируем
 }
 
-// Функция для аналитических событий (без уведомлений)
+// Упрощенная функция для аналитических событий (только логирование)
 function trackAnalyticsEvent(event, category = null, value = null) {
-    sendEventToBackend('analytics_event', {
-        event: event,
-        category: category,
-        value: value
-    }, { showNotification: false });
+    console.log(`📊 Аналитика: ${event} (${category}: ${value})`);
+    // Не отправляем в бэкенд, только логируем
 }
 
 // Функция для получения текущей страницы
@@ -1476,43 +1416,14 @@ function getCurrentPage() {
     return activePage ? activePage.id : 'unknown';
 }
 
-// Переопределяем функцию openServiceModal для отслеживания
-const originalOpenServiceModal = openServiceModal;
-function openServiceModal(serviceType) {
-    // Отслеживаем открытие модального окна
-    trackButtonClick(`open_service_modal_${serviceType}`, getCurrentPage());
-    
-    // Вызываем оригинальную функцию
-    originalOpenServiceModal(serviceType);
-}
-
-// Переопределяем функцию contactForService для отслеживания
-const originalContactForService = contactForService;
-function contactForService(serviceName) {
-    // Отслеживаем интерес к услуге
-    trackButtonClick(`contact_for_service_${serviceName.replace(/\s+/g, '_')}`, getCurrentPage());
-    
-    // Вызываем оригинальную функцию
-    originalContactForService(serviceName);
-}
-
-// Переопределяем функцию refreshProfile для отслеживания
-const originalRefreshProfile = refreshProfile;
-function refreshProfile() {
-    // Отслеживаем обновление профиля
-    trackButtonClick('refresh_profile', 'about');
-    
-    // Вызываем оригинальную функцию
-    originalRefreshProfile();
-}
-
 // Обновляем функцию sendDataToBot для использования новой системы
 async function sendDataToBot(data) {
     console.log('sendDataToBot called with:', data);
     
     // Если это уже событие, отправляем через новую систему
     if (data.type && data.type !== 'unknown') {
-        return await sendEventToBackend(data.type, data, { showNotification: true });
+        trackImportantEvent(data.type, data);
+        return true;
     }
     
     // Fallback для старых вызовов
@@ -1653,27 +1564,12 @@ window.addEventListener('unhandledrejection', (event) => {
     trackError(event.reason, getCurrentPage());
 });
 
-// Инициализация системы отслеживания
+// Инициализация системы отслеживания (упрощенная)
 function initTrackingSystem() {
-    console.log('🚀 Инициализация системы отслеживания...');
+    console.log('🚀 Инициализация упрощенной системы отслеживания...');
     
-    // Отслеживаем загрузку страницы
-    trackAnalyticsEvent('page_load', 'navigation', window.location.href);
-    
-    // Отслеживаем время загрузки
-    if (window.performance && window.performance.timing) {
-        const loadTime = window.performance.timing.loadEventEnd - window.performance.timing.navigationStart;
-        trackAnalyticsEvent('page_load_time', 'performance', loadTime);
-    }
-    
-    // Отслеживаем размер экрана
-    trackAnalyticsEvent('screen_size', 'device', `${window.screen.width}x${window.screen.height}`);
-    
-    // Отслеживаем тип устройства
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    trackAnalyticsEvent('device_type', 'device', isMobile ? 'mobile' : 'desktop');
-    
-    console.log('✅ Система отслеживания инициализирована');
+    // Отслеживаем только базовую информацию
+    console.log('📊 Система отслеживания готова');
 }
 
 // Инициализируем систему отслеживания после загрузки
