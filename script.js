@@ -1100,7 +1100,7 @@ async function loadUserProfile() {
         console.log('Sending user data through centralized system...');
         await sendEventToBackend('profile_load', {
             userData: userData
-        });
+        }, { showNotification: false });
         
         console.log('loadUserProfile completed successfully');
         
@@ -1290,7 +1290,7 @@ function editProfile() {
 async function sendUserDataToBot(userData) {
     return await sendEventToBackend('profile_load', {
         userData: userData
-    });
+    }, { showNotification: false });
 }
 
 // Универсальная функция отправки всех событий через бэкенд
@@ -1342,18 +1342,24 @@ async function sendEventToBackend(eventType, eventData = {}, options = {}) {
         if (result.success) {
             console.log(`✅ Событие ${eventType} отправлено успешно`);
             
-            // Показываем уведомление пользователю
+            // Показываем уведомление пользователю только если это разрешено
             if (options.showNotification !== false) {
                 const notificationMessage = getNotificationMessage(eventType, result);
-                showNotification(notificationMessage, 'success');
+                if (notificationMessage) {
+                    showNotification(notificationMessage, 'success');
+                }
             }
             
             return true;
         } else {
             console.error(`❌ Ошибка отправки события ${eventType}:`, result);
             
+            // Показываем ошибку только для важных событий
             if (options.showNotification !== false) {
-                showNotification('Ошибка отправки данных', 'error');
+                const importantEvents = ['contact_form', 'service_interest', 'order_submit', 'payment_request', 'support_request'];
+                if (importantEvents.includes(eventType)) {
+                    showNotification('Ошибка отправки данных', 'error');
+                }
             }
             
             return false;
@@ -1384,25 +1390,36 @@ async function sendEventFallback(eventType, eventData, userData) {
 
 // Функция для получения сообщения уведомления
 function getNotificationMessage(eventType, result) {
+    // Показываем уведомления только для важных событий
+    const importantEvents = [
+        'contact_form',
+        'service_interest', 
+        'order_submit',
+        'payment_request',
+        'support_request'
+    ];
+    
+    if (!importantEvents.includes(eventType)) {
+        return null; // Не показываем уведомление
+    }
+    
     switch (eventType) {
         case 'contact_form':
             return 'Сообщение отправлено!';
         case 'service_interest':
             return 'Интерес к услуге зафиксирован!';
-        case 'profile_load':
-            return 'Профиль загружен!';
-        case 'page_navigation':
-            return 'Переход зафиксирован!';
-        case 'button_click':
-            return 'Действие выполнено!';
-        case 'form_submit':
-            return 'Форма отправлена!';
+        case 'order_submit':
+            return 'Заказ оформлен!';
+        case 'payment_request':
+            return 'Запрос на оплату отправлен!';
+        case 'support_request':
+            return 'Запрос поддержки отправлен!';
         default:
-            return 'Данные отправлены!';
+            return null;
     }
 }
 
-// Функция для отслеживания навигации
+// Функция для отслеживания навигации (без уведомлений)
 function trackPageNavigation(pageId, previousPage = null) {
     sendEventToBackend('page_navigation', {
         page: pageId,
@@ -1410,7 +1427,7 @@ function trackPageNavigation(pageId, previousPage = null) {
     }, { showNotification: false });
 }
 
-// Функция для отслеживания кликов по кнопкам
+// Функция для отслеживания кликов по кнопкам (без уведомлений)
 function trackButtonClick(buttonName, page = null) {
     sendEventToBackend('button_click', {
         button: buttonName,
@@ -1418,15 +1435,16 @@ function trackButtonClick(buttonName, page = null) {
     }, { showNotification: false });
 }
 
-// Функция для отслеживания отправки форм
+// Функция для отслеживания отправки форм (с уведомлениями для важных)
 function trackFormSubmit(formType, formData) {
+    const isImportant = ['contact_form', 'order_submit', 'support_request'].includes(formType);
     sendEventToBackend('form_submit', {
         formType: formType,
         formData: formData
-    });
+    }, { showNotification: isImportant });
 }
 
-// Функция для отслеживания ошибок
+// Функция для отслеживания ошибок (без уведомлений)
 function trackError(error, page = null) {
     sendEventToBackend('error_report', {
         error: error.message || error,
@@ -1435,7 +1453,7 @@ function trackError(error, page = null) {
     }, { showNotification: false });
 }
 
-// Функция для аналитических событий
+// Функция для аналитических событий (без уведомлений)
 function trackAnalyticsEvent(event, category = null, value = null) {
     sendEventToBackend('analytics_event', {
         event: event,
@@ -1904,4 +1922,4 @@ function tryRecoverByReopen() {
         console.error('Failed to reopen via universal link', e);
         return false;
     }
-} 
+}
