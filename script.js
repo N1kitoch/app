@@ -487,12 +487,26 @@ function getBackendUrl() {
 
 function getLaunchMode() {
     if (!tg) return 'unknown';
-    const hasSendData = typeof tg.sendData === 'function';
-    const hasQueryId = !!(tg.initDataUnsafe && tg.initDataUnsafe.query_id);
-    // Prefer query mode when query_id is present; keyboard otherwise
-    if (hasQueryId) return 'query';
-    if (hasSendData) return 'keyboard';
-    return 'unknown';
+    
+    // Use the new launch method detection
+    const launchMethod = getAppLaunchMethod();
+    
+    // Map launch method to mode
+    switch (launchMethod) {
+        case 'inline':
+            return 'keyboard'; // Inline queries work like keyboard mode
+        case 'query':
+            return 'query';
+        case 'keyboard':
+            return 'keyboard';
+        default:
+            // Fallback to old logic
+            const hasSendData = typeof tg.sendData === 'function';
+            const hasQueryId = !!(tg.initDataUnsafe && tg.initDataUnsafe.query_id);
+            if (hasQueryId) return 'query';
+            if (hasSendData) return 'keyboard';
+            return 'unknown';
+    }
 }
 
 function appendLog(tag, args) {
@@ -654,49 +668,94 @@ async function copyLogs() {
         showNotification('Не удалось скопировать логи', 'error');
     }
 }
+// Check if Telegram Web App API is available and ready
+function isTelegramWebAppReady() {
+    if (!window.Telegram || !window.Telegram.WebApp) {
+        console.log('Telegram Web App API not available');
+        return false;
+    }
+    
+    const webApp = window.Telegram.WebApp;
+    
+    // Check if basic properties are available
+    if (typeof webApp.ready !== 'function') {
+        console.log('Telegram Web App ready() method not available');
+        return false;
+    }
+    
+    // Check if we have any user data
+    const hasUserData = webApp.initDataUnsafe?.user || webApp.initData;
+    
+    console.log('Telegram Web App ready check:', {
+        hasReady: typeof webApp.ready === 'function',
+        hasUserData: !!hasUserData,
+        initDataUnsafe: !!webApp.initDataUnsafe,
+        initData: !!webApp.initData
+    });
+    
+    return true;
+}
+
 // Check if running in Telegram Web App
 function initTelegramWebApp() {
     console.log('initTelegramWebApp called');
     console.log('window.Telegram available:', !!window.Telegram);
     console.log('window.Telegram.WebApp available:', !!(window.Telegram && window.Telegram.WebApp));
     
-    if (window.Telegram && window.Telegram.WebApp) {
+    if (isTelegramWebAppReady()) {
         console.log('Telegram Web App detected, initializing...');
         tg = window.Telegram.WebApp;
         
         // Initialize Telegram Web App
-        tg.ready();
-        console.log('tg.ready() called');
+        try {
+            tg.ready();
+            console.log('tg.ready() called');
+        } catch (e) {
+            console.error('Error calling tg.ready():', e);
+        }
         
         // Set theme
-        if (tg.colorScheme === 'dark') {
-            document.body.classList.add('tg-dark-theme');
-            console.log('Dark theme applied');
-        } else {
-            console.log('Light theme detected');
+        try {
+            if (tg.colorScheme === 'dark') {
+                document.body.classList.add('tg-dark-theme');
+                console.log('Dark theme applied');
+            } else {
+                console.log('Light theme detected');
+            }
+        } catch (e) {
+            console.error('Error setting theme:', e);
         }
         
         // Main Button is completely disabled - no buttons will appear
-        if (tg.MainButton) {
-            tg.MainButton.hide();
-            tg.MainButton.disable();
-            console.log('MainButton disabled and hidden');
+        try {
+            if (tg.MainButton) {
+                tg.MainButton.hide();
+                tg.MainButton.disable();
+                console.log('MainButton disabled and hidden');
+            }
+        } catch (e) {
+            console.error('Error handling MainButton:', e);
         }
         
-        // Load user data
+        // Load user data with retry mechanism
         console.log('Loading user profile...');
-        loadUserProfile();
+        loadUserProfileWithRetry();
+        
         // Toggle banner if in query mode without backend
         setTimeout(() => {
-            const mode = getLaunchMode();
-            const api = getBackendUrl();
-            const banner = document.getElementById('queryModeBanner');
-            if (banner) {
-                if (mode === 'query' && !api) {
-                    banner.style.display = '';
-                } else {
-                    banner.style.display = 'none';
+            try {
+                const mode = getLaunchMode();
+                const api = getBackendUrl();
+                const banner = document.getElementById('queryModeBanner');
+                if (banner) {
+                    if (mode === 'query' && !api) {
+                        banner.style.display = '';
+                    } else {
+                        banner.style.display = 'none';
+                    }
                 }
+            } catch (e) {
+                console.error('Error handling banner:', e);
             }
         }, 0);
         
@@ -704,7 +763,144 @@ function initTelegramWebApp() {
     } else {
         console.log('Telegram Web App not available, running in standalone mode');
         console.log('Available global objects:', Object.keys(window).filter(key => key.toLowerCase().includes('telegram')));
+        
+        // Create fallback user data for standalone mode
+        window.userData = {
+            id: 'standalone',
+            firstName: 'Гость',
+            lastName: '',
+            username: '',
+            languageCode: 'ru',
+            isPremium: false,
+            photoUrl: null
+        };
+        
+        // Update profile display for standalone mode
+        setTimeout(() => {
+            updateProfileDisplay();
+        }, 100);
     }
+}
+
+// Determine how the app was opened
+function getAppLaunchMethod() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const startParam = urlParams.get('start');
+    const startappParam = urlParams.get('startapp');
+    
+    console.log('Launch parameters:', {
+        start: startParam,
+        startapp: startappParam,
+        hasQueryId: !!(tg?.initDataUnsafe?.query_id),
+        hasSendData: typeof tg?.sendData === 'function'
+    });
+    
+    if (startParam || startappParam) {
+        return 'inline';
+    } else if (tg?.initDataUnsafe?.query_id) {
+        return 'query';
+    } else if (typeof tg?.sendData === 'function') {
+        return 'keyboard';
+    } else {
+        return 'unknown';
+    }
+}
+
+// Retry getting user data with exponential backoff
+async function retryGetUserData(maxAttempts = 5, baseDelay = 500) {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        console.log(`Attempt ${attempt}/${maxAttempts} to get user data`);
+        
+        try {
+            // Try to get user data
+            if (tg?.initDataUnsafe?.user) {
+                console.log('User data found in initDataUnsafe');
+                return tg.initDataUnsafe.user;
+            }
+            
+            if (tg?.initData) {
+                const parsed = parseUserFromInitData(tg.initData);
+                if (parsed) {
+                    console.log('User data parsed from initData');
+                    return parsed;
+                }
+            }
+            
+            // Try getUserData if available
+            if (typeof tg?.getUserData === 'function') {
+                try {
+                    const userData = await tg.getUserData();
+                    if (userData && userData.id) {
+                        console.log('User data obtained via getUserData');
+                        return userData;
+                    }
+                } catch (e) {
+                    console.log('getUserData failed:', e);
+                }
+            }
+            
+            // If this is not the last attempt, wait before retrying
+            if (attempt < maxAttempts) {
+                const delay = baseDelay * Math.pow(2, attempt - 1); // Exponential backoff
+                console.log(`Waiting ${delay}ms before retry...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+            
+        } catch (error) {
+            console.error(`Error in attempt ${attempt}:`, error);
+            if (attempt === maxAttempts) {
+                throw error;
+            }
+        }
+    }
+    
+    console.log('All attempts to get user data failed');
+    return null;
+}
+
+// Wait for user data to be available
+async function waitForUserData(maxWaitTime = 5000) {
+    const startTime = Date.now();
+    
+    while (Date.now() - startTime < maxWaitTime) {
+        // Check if we have user data from any source
+        if (tg?.initDataUnsafe?.user || tg?.initData) {
+            console.log('User data found during wait');
+            return true;
+        }
+        
+        // Wait a bit before checking again
+        await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    
+    console.log('Timeout waiting for user data');
+    return false;
+}
+
+// Load user profile with retry mechanism
+function loadUserProfileWithRetry(maxRetries = 3, delay = 1000) {
+    let retryCount = 0;
+    
+    function attemptLoad() {
+        console.log(`Attempting to load user profile (attempt ${retryCount + 1}/${maxRetries})`);
+        
+        loadUserProfile().then(() => {
+            console.log('User profile loaded successfully');
+        }).catch((error) => {
+            console.error(`Failed to load user profile (attempt ${retryCount + 1}):`, error);
+            retryCount++;
+            
+            if (retryCount < maxRetries) {
+                console.log(`Retrying in ${delay}ms...`);
+                setTimeout(attemptLoad, delay);
+            } else {
+                console.error('Max retries reached, showing error');
+                showProfileError();
+            }
+        });
+    }
+    
+    attemptLoad();
 }
 
 function parseUserFromInitData(initData) {
@@ -803,93 +999,158 @@ async function loadUserProfile() {
         return;
     }
     
-    const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('loadUserProfile timeout after 10 seconds')), 10000);
-    });
-    
     try {
         console.log('Getting user data from Telegram...');
-        const initData = tg.initData;
-        const user = tg.initDataUnsafe?.user;
-        
-        console.log('initData:', initData);
-        console.log('user object:', user);
         console.log('tg.initDataUnsafe:', tg.initDataUnsafe);
+        console.log('tg.initData:', tg.initData);
         
-        let effectiveUser = user;
-        if (!effectiveUser && initData) {
-            const parsed = parseUserFromInitData(initData);
+        // Try to get user data with retry mechanism
+        let rawUserData = await retryGetUserData(5, 500);
+        
+        // Try multiple sources for user data
+        let userData = null;
+        
+        // Method 1: Direct user object from initDataUnsafe
+        if (tg.initDataUnsafe?.user) {
+            console.log('Found user in initDataUnsafe.user');
+            const user = tg.initDataUnsafe.user;
+            userData = {
+                id: user.id,
+                firstName: user.first_name || '',
+                lastName: user.last_name || '',
+                username: user.username || '',
+                languageCode: user.language_code || 'ru',
+                isPremium: !!user.is_premium,
+                photoUrl: user.photo_url || null
+            };
+        }
+        
+        // Method 2: Parse from initData string
+        if (!userData && tg.initData) {
+            console.log('Trying to parse user from initData string');
+            const parsed = parseUserFromInitData(tg.initData);
             if (parsed) {
-                console.log('Parsed user from initData');
+                console.log('Successfully parsed user from initData');
                 userData = parsed;
-                updateProfileDisplay();
-                ensureLogsButtonInProfile();
-                connectWebSocketIfPossible();
-                // If query mode, defer initial send to allow tunnel become reachable
-                const mode = getLaunchMode();
-                if (mode === 'query') {
-                    const api = getBackendUrl();
-                    if (api) {
-                        setTimeout(async () => {
-                            if (await waitForBackendReady(api, 15000)) {
-                                await sendUserDataToBot(userData);
-                            } else {
-                                console.error('Backend not ready after delay');
-                            }
-                        }, 1000);
-                    }
-                } else {
-                    await sendUserDataToBot(userData);
-                }
-                console.log('loadUserProfile completed via parsed initData');
-                return;
             }
         }
-        if (effectiveUser) {
-            console.log('User data found, processing...');
+        
+        // Method 3: Use raw user data from retry function
+        if (!userData && rawUserData) {
+            console.log('Using raw user data from retry function');
+            if (typeof rawUserData === 'object' && rawUserData.id) {
+                userData = {
+                    id: rawUserData.id,
+                    firstName: rawUserData.first_name || rawUserData.firstName || '',
+                    lastName: rawUserData.last_name || rawUserData.lastName || '',
+                    username: rawUserData.username || '',
+                    languageCode: rawUserData.language_code || rawUserData.languageCode || 'ru',
+                    isPremium: !!rawUserData.is_premium || !!rawUserData.isPremium,
+                    photoUrl: rawUserData.photo_url || rawUserData.photoUrl || null
+                };
+            }
+        }
+        
+        // Method 4: Try to get user data via Telegram Web App API
+        if (!userData && typeof tg.getUserData === 'function') {
+            try {
+                console.log('Trying to get user data via getUserData()');
+                const userDataResult = await tg.getUserData();
+                if (userDataResult && userDataResult.id) {
+                    console.log('Got user data via getUserData()');
+                    userData = {
+                        id: userDataResult.id,
+                        firstName: userDataResult.first_name || '',
+                        lastName: userDataResult.last_name || '',
+                        username: userDataResult.username || '',
+                        languageCode: userDataResult.language_code || 'ru',
+                        isPremium: !!userDataResult.is_premium,
+                        photoUrl: userDataResult.photo_url || null
+                    };
+                }
+            } catch (e) {
+                console.log('getUserData() failed:', e);
+            }
+        }
+        
+        // Method 5: Try to get user data via Telegram Web App API (alternative method)
+        if (!userData && typeof tg.getUserData === 'function') {
+            try {
+                console.log('Trying alternative getUserData approach');
+                const userDataResult = tg.getUserData();
+                if (userDataResult && userDataResult.id) {
+                    console.log('Got user data via alternative getUserData()');
+                    userData = {
+                        id: userDataResult.id,
+                        firstName: userDataResult.first_name || '',
+                        lastName: userDataResult.last_name || '',
+                        username: userDataResult.username || '',
+                        languageCode: userDataResult.language_code || 'ru',
+                        isPremium: !!userDataResult.is_premium,
+                        photoUrl: userDataResult.photo_url || null
+                    };
+                }
+            } catch (e) {
+                console.log('Alternative getUserData() failed:', e);
+            }
+        }
+        
+        // If we still don't have user data, try to create a fallback
+        if (!userData) {
+            console.log('No user data available, creating fallback profile');
             userData = {
-                id: effectiveUser.id,
-                firstName: effectiveUser.first_name,
-                lastName: effectiveUser.last_name,
-                username: effectiveUser.username,
-                languageCode: effectiveUser.language_code,
-                isPremium: effectiveUser.is_premium || false,
-                photoUrl: effectiveUser.photo_url || null
+                id: 'unknown',
+                firstName: 'Пользователь',
+                lastName: 'Telegram',
+                username: '',
+                languageCode: 'ru',
+                isPremium: false,
+                photoUrl: null
             };
-            
-            console.log('User data processed:', userData);
-            
-            // Update profile display
-            console.log('Updating profile display...');
-            updateProfileDisplay();
-            ensureLogsButtonInProfile();
-            connectWebSocketIfPossible();
-            
-            // Send user data to bot
-            console.log('Sending user data to bot...');
-            const mode = getLaunchMode();
-            if (mode === 'query') {
-                const api = getBackendUrl();
-                if (api) {
-                    setTimeout(async () => {
+        }
+        
+        // Store user data globally
+        window.userData = userData;
+        console.log('Final user data:', userData);
+        
+        // Update profile display
+        console.log('Updating profile display...');
+        updateProfileDisplay();
+        ensureLogsButtonInProfile();
+        connectWebSocketIfPossible();
+        
+        // Send user data to bot (with retry logic)
+        console.log('Sending user data to bot...');
+        const mode = getLaunchMode();
+        console.log('Launch mode:', mode);
+        
+        if (mode === 'query') {
+            const api = getBackendUrl();
+            if (api) {
+                console.log('Query mode with backend URL, deferring send');
+                setTimeout(async () => {
+                    try {
                         if (await waitForBackendReady(api, 15000)) {
                             await sendUserDataToBot(userData);
                         } else {
                             console.error('Backend not ready after delay');
                         }
-                    }, 1000);
-                }
+                    } catch (e) {
+                        console.error('Error sending user data in query mode:', e);
+                    }
+                }, 1000);
             } else {
-                await sendUserDataToBot(userData);
+                console.log('Query mode without backend URL');
             }
-            
-            // Do not auto-send profile via tg.sendData here to avoid closing the app unexpectedly.
-            console.log('loadUserProfile completed successfully');
         } else {
-            console.log('No Telegram user data available');
-            showProfileError();
-            return;
+            try {
+                await sendUserDataToBot(userData);
+            } catch (e) {
+                console.error('Error sending user data:', e);
+            }
         }
+        
+        console.log('loadUserProfile completed successfully');
         
     } catch (error) {
         console.error('Error in loadUserProfile:', error);
@@ -904,12 +1165,17 @@ async function loadUserProfile() {
 
 // Update profile display with user data
 function updateProfileDisplay() {
-    console.log('updateProfileDisplay called with userData:', userData);
+    console.log('updateProfileDisplay called');
     
-    if (!userData) {
+    // Get userData from global scope or window object
+    const currentUserData = window.userData || userData;
+    
+    if (!currentUserData) {
         console.log('No userData available, skipping update');
         return;
     }
+    
+    console.log('Updating profile with userData:', currentUserData);
     
     // Update profile card
     const userNameElement = document.getElementById('userName');
@@ -923,31 +1189,47 @@ function updateProfileDisplay() {
     });
     
     if (userNameElement) {
-        userNameElement.textContent = `${userData.firstName} ${userData.lastName}`.trim();
-        console.log('User name updated');
+        const fullName = `${currentUserData.firstName} ${currentUserData.lastName}`.trim();
+        userNameElement.textContent = fullName || 'Пользователь';
+        console.log('User name updated:', fullName);
     }
     
     if (userStatusElement) {
-        userStatusElement.textContent = userData.isPremium ? 'Premium пользователь' : 'Пользователь';
-        console.log('User status updated');
+        const status = currentUserData.isPremium ? 'Premium пользователь' : 'Пользователь';
+        userStatusElement.textContent = status;
+        console.log('User status updated:', status);
     }
     
-    if (userAvatarElement && userData.photoUrl) {
-        userAvatarElement.innerHTML = `<img src="${userData.photoUrl}" alt="Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
-        console.log('User avatar updated');
+    if (userAvatarElement) {
+        if (currentUserData.photoUrl) {
+            userAvatarElement.innerHTML = `<img src="${currentUserData.photoUrl}" alt="Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+            console.log('User avatar updated with photo');
+        } else {
+            // Reset to default icon
+            userAvatarElement.innerHTML = '<i class="fas fa-user-tie"></i>';
+            console.log('User avatar reset to default icon');
+        }
     }
     
     // Update profile data section
     console.log('Updating profile data section...');
-    updateProfileDataSection();
+    updateProfileDataSection(currentUserData);
     
     console.log('updateProfileDisplay completed');
 }
 
 // Update profile data section
-function updateProfileDataSection() {
+function updateProfileDataSection(currentUserData) {
     const profileDataElement = document.getElementById('profileData');
-    if (!profileDataElement || !userData) return;
+    if (!profileDataElement) {
+        console.log('Profile data element not found');
+        return;
+    }
+    
+    if (!currentUserData) {
+        console.log('No user data for profile section update');
+        return;
+    }
     
     profileDataElement.innerHTML = `
         <div class="profile-info-grid">
@@ -956,7 +1238,7 @@ function updateProfileDataSection() {
                     <i class="fas fa-id-card"></i>
                     <span>ID пользователя</span>
                 </div>
-                <div class="info-value">${userData.id}</div>
+                <div class="info-value">${currentUserData.id}</div>
             </div>
             
             <div class="profile-info-item">
@@ -964,7 +1246,7 @@ function updateProfileDataSection() {
                     <i class="fas fa-user"></i>
                     <span>Имя</span>
                 </div>
-                <div class="info-value">${userData.firstName} ${userData.lastName}</div>
+                <div class="info-value">${currentUserData.firstName} ${currentUserData.lastName}</div>
             </div>
             
             <div class="profile-info-item">
@@ -972,7 +1254,7 @@ function updateProfileDataSection() {
                     <i class="fas fa-at"></i>
                     <span>Username</span>
                 </div>
-                <div class="info-value">${userData.username ? '@' + userData.username : 'Не указан'}</div>
+                <div class="info-value">${currentUserData.username ? '@' + currentUserData.username : 'Не указан'}</div>
             </div>
             
             <div class="profile-info-item">
@@ -980,7 +1262,7 @@ function updateProfileDataSection() {
                     <i class="fas fa-globe"></i>
                     <span>Язык</span>
                 </div>
-                <div class="info-value">${userData.languageCode.toUpperCase()}</div>
+                <div class="info-value">${currentUserData.languageCode.toUpperCase()}</div>
             </div>
             
             <div class="profile-info-item">
@@ -988,7 +1270,7 @@ function updateProfileDataSection() {
                     <i class="fas fa-crown"></i>
                     <span>Статус</span>
                 </div>
-                <div class="info-value">${userData.isPremium ? 'Premium' : 'Обычный'}</div>
+                <div class="info-value">${currentUserData.isPremium ? 'Premium' : 'Обычный'}</div>
             </div>
         </div>
         
@@ -1003,6 +1285,8 @@ function updateProfileDataSection() {
             </button>
         </div>
     `;
+    
+    console.log('Profile data section updated');
 }
 
 // Show profile error
@@ -1024,7 +1308,24 @@ function showProfileError() {
 
 // Refresh profile
 function refreshProfile() {
-    loadUserProfile();
+    console.log('refreshProfile called');
+    
+    // Show loading state
+    const profileDataElement = document.getElementById('profileData');
+    if (profileDataElement) {
+        profileDataElement.innerHTML = `
+            <div class="profile-loading">
+                <i class="fas fa-spinner fa-spin"></i>
+                <span>Обновление профиля...</span>
+            </div>
+        `;
+    }
+    
+    // Clear any existing user data
+    window.userData = null;
+    
+    // Reload user profile
+    loadUserProfileWithRetry(2, 500);
 }
 
 // Edit profile (placeholder for future functionality)
@@ -1033,6 +1334,15 @@ function editProfile() {
 }
 
 // Send user data to bot
+async function sendUserDataToBot(userData) {
+    const data = {
+        type: 'profile_load',
+        userData: userData,
+        timestamp: new Date().toISOString()
+    };
+    return await sendDataToBot(data);
+}
+
 // Send data from webapp to bot
 async function sendDataToBot(data) {
     console.log('sendDataToBot called with:', data);
@@ -1123,10 +1433,6 @@ async function sendDataToBot(data) {
     showNotification('Не удалось отправить данные. Проверьте интернет и попробуйте снова.', 'error');
     return false;
 }
-
-// Send data from webapp to bot
-d
-
 
 // Handle data from bot
 function handleDataFromBot(data) {
