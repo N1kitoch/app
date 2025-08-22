@@ -60,6 +60,14 @@ function showPage(pageId) {
         top: 0,
         behavior: 'auto'
     });
+    
+    // Отслеживаем навигацию (только если функция доступна)
+    if (typeof trackPageNavigation === 'function') {
+        const previousPage = getCurrentPage();
+        setTimeout(() => {
+            trackPageNavigation(pageId, previousPage);
+        }, 100);
+    }
 }
 
 // Initialize first page
@@ -1384,7 +1392,7 @@ async function sendEventFallback(eventType, eventData, userData) {
         ...eventData
     };
 
-    // Используем старую функцию sendDataToBot
+    // Используем старую функцию sendDataToBot, но НЕ tg.sendData()
     return await sendDataToBot(payload);
 }
 
@@ -1468,20 +1476,6 @@ function getCurrentPage() {
     return activePage ? activePage.id : 'unknown';
 }
 
-// Переопределяем функцию showPage для отслеживания навигации
-const originalShowPage = showPage;
-function showPage(pageId) {
-    const previousPage = getCurrentPage();
-    
-    // Вызываем оригинальную функцию
-    originalShowPage(pageId);
-    
-    // Отслеживаем навигацию
-    setTimeout(() => {
-        trackPageNavigation(pageId, previousPage);
-    }, 100);
-}
-
 // Переопределяем функцию openServiceModal для отслеживания
 const originalOpenServiceModal = openServiceModal;
 function openServiceModal(serviceType) {
@@ -1532,21 +1526,10 @@ async function sendDataToBot(data) {
     console.log('tg.sendData available:', typeof tg.sendData === 'function');
     console.log('tg.initDataUnsafe.query_id:', tg.initDataUnsafe?.query_id);
 
-    // First try: use tg.sendData if available (keyboard mode)
-    if (typeof tg.sendData === 'function') {
-        try {
-            console.log('Sending data to bot via tg.sendData:', data);
-            tg.sendData(JSON.stringify(data));
-            console.log('Data sent to bot successfully via tg.sendData()');
-            
-            showNotification('Данные отправлены через Telegram!', 'success');
-            return true;
-        } catch (error) {
-            console.error('Error sending data to bot (sendData):', error);
-        }
-    }
+    // НЕ используем tg.sendData для обычных событий, чтобы Mini App не закрывался
+    // tg.sendData() закрывает Mini App, поэтому используем только бэкенд
 
-    // Second try: use backend if available (for query mode or fallback)
+    // First try: use backend if available
     const api = getBackendUrl();
     if (api) {
         try {
@@ -1585,7 +1568,7 @@ async function sendDataToBot(data) {
         }
     }
 
-    // Third try: send directly to Telegram Bot API (fallback)
+    // Second try: send directly to Telegram Bot API (fallback)
     try {
         const message = `📱 Данные из Mini App:\n\n` +
             `Тип: ${data.type || 'unknown'}\n` +
