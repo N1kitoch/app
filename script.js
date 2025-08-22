@@ -163,6 +163,12 @@ async function initApp() {
         
         // Proceed to initial page
         showPage('home');
+        
+        // Обрабатываем диплинки после инициализации
+        handleDeeplink();
+        
+        // Добавляем кнопки диплинков на страницы
+        addDeeplinkButtons();
     } catch (e) {
         console.error('initApp failed', e);
         hideAppOverlay();
@@ -911,8 +917,8 @@ function initTelegramWebApp() {
         };
         
         // Update profile display for standalone mode
-        setTimeout(() => {
-            updateProfileDisplay();
+        setTimeout(async () => {
+            await updateProfileDisplay();
         }, 100);
     }
 }
@@ -1256,7 +1262,7 @@ async function loadUserProfile() {
         
         // Update profile display
         console.log('Updating profile display...');
-        updateProfileDisplay();
+        await updateProfileDisplay();
         ensureLogsButtonInProfile();
         connectWebSocketIfPossible();
         
@@ -1277,8 +1283,92 @@ async function loadUserProfile() {
     }
 }
 
+// Get user avatar from Telegram
+async function getUserAvatar(userId) {
+    try {
+        if (!tg || !tg.initDataUnsafe?.user) {
+            console.log('Telegram Web App not available for avatar');
+            return null;
+        }
+        
+        const user = tg.initDataUnsafe.user;
+        if (user.photo_url) {
+            console.log('User avatar found:', user.photo_url);
+            return user.photo_url;
+        }
+        
+        // Try to get avatar via bot API if we have bot token
+        if (BOT_TOKEN && userId) {
+            const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getUserProfilePhotos?user_id=${userId}&limit=1`);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.ok && data.result.photos.length > 0) {
+                    const photo = data.result.photos[0][0];
+                    const avatarUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${photo.file_id}`;
+                    console.log('Avatar obtained via Bot API:', avatarUrl);
+                    return avatarUrl;
+                }
+            }
+        }
+        
+        console.log('No avatar available');
+        return null;
+    } catch (error) {
+        console.error('Error getting user avatar:', error);
+        return null;
+    }
+}
+
+// Get user status (User/Admin) from backend or bot
+async function getUserStatus(userId) {
+    try {
+        // Check if user is admin (hardcoded for now, can be moved to backend)
+        if (String(userId) === String(ADMIN_ID)) {
+            return {
+                isAdmin: true,
+                status: 'Администратор',
+                icon: 'fas fa-shield-alt'
+            };
+        }
+        
+        // Try to get status from backend if available
+        const api = getBackendUrl();
+        if (api) {
+            try {
+                const response = await fetch(`${api}/api/user/status?user_id=${userId}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        return {
+                            isAdmin: data.isAdmin,
+                            status: data.isAdmin ? 'Администратор' : 'Пользователь',
+                            icon: data.isAdmin ? 'fas fa-shield-alt' : 'fas fa-user'
+                        };
+                    }
+                }
+            } catch (e) {
+                console.log('Backend status check failed, using default');
+            }
+        }
+        
+        // Default status
+        return {
+            isAdmin: false,
+            status: 'Пользователь',
+            icon: 'fas fa-user'
+        };
+    } catch (error) {
+        console.error('Error getting user status:', error);
+        return {
+            isAdmin: false,
+            status: 'Пользователь',
+            icon: 'fas fa-user'
+        };
+    }
+}
+
 // Update profile display with user data
-function updateProfileDisplay() {
+async function updateProfileDisplay() {
     console.log('updateProfileDisplay called');
     
     // Get userData from global scope or window object
@@ -1330,34 +1420,53 @@ function updateProfileDisplay() {
         console.log('User username updated:', username);
     }
     
-    // Update avatar
+    // Update avatar with Telegram photo
     if (userAvatarElement) {
-        if (currentUserData.photoUrl) {
-            userAvatarElement.innerHTML = `
-                <img src="${currentUserData.photoUrl}" alt="Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
-                <div class="profile-status">
-                    <i class="fas fa-circle"></i>
-                </div>
-            `;
-            console.log('User avatar updated with photo');
-        } else {
-            // Reset to default icon
+        try {
+            const avatarUrl = await getUserAvatar(currentUserData.id);
+            if (avatarUrl) {
+                userAvatarElement.innerHTML = `
+                    <img src="${avatarUrl}" alt="Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
+                    <div class="profile-status">
+                        <i class="fas fa-circle"></i>
+                    </div>
+                `;
+                console.log('User avatar updated with Telegram photo');
+            } else {
+                // Reset to default icon
+                userAvatarElement.innerHTML = `
+                    <i class="fas fa-user-tie"></i>
+                    <div class="profile-status">
+                        <i class="fas fa-circle"></i>
+                    </div>
+                `;
+                console.log('User avatar reset to default icon');
+            }
+        } catch (error) {
+            console.error('Error updating avatar:', error);
+            // Fallback to default icon
             userAvatarElement.innerHTML = `
                 <i class="fas fa-user-tie"></i>
                 <div class="profile-status">
                     <i class="fas fa-circle"></i>
                 </div>
             `;
-            console.log('User avatar reset to default icon');
         }
     }
     
-    // Update status badge (User/Admin)
+    // Update status badge (User/Admin) from backend or bot
     if (userStatusBadge) {
-        const status = currentUserData.id === '585028258' ? 'Админ' : 'Пользователь';
-        const icon = currentUserData.id === '585028258' ? 'fas fa-shield-alt' : 'fas fa-user';
-        userStatusBadge.innerHTML = `<i class="${icon}"></i> ${status}`;
-        console.log('User status badge updated:', status);
+        try {
+            const userStatus = await getUserStatus(currentUserData.id);
+            userStatusBadge.innerHTML = `<i class="${userStatus.icon}"></i> ${userStatus.status}`;
+            console.log('User status badge updated:', userStatus.status);
+        } catch (error) {
+            console.error('Error updating status:', error);
+            // Fallback to basic status
+            const status = currentUserData.id === '585028258' ? 'Админ' : 'Пользователь';
+            const icon = currentUserData.id === '585028258' ? 'fas fa-shield-alt' : 'fas fa-user';
+            userStatusBadge.innerHTML = `<i class="${icon}"></i> ${status}`;
+        }
     }
     
     // Update language badge
@@ -2021,5 +2130,329 @@ function tryRecoverByReopen() {
     } catch (e) {
         console.error('Failed to reopen via universal link', e);
         return false;
+    }
+}
+
+// Tag Modal Functionality
+function openTagModal(tagType) {
+    const tagData = {
+        'product-manager': {
+            title: 'Product Manager',
+            description: 'Ведю продукты от идеи до запуска. Анализирую рынок, создаю дорожные карты, координирую команды разработчиков и дизайнеров.',
+            details: [
+                'Анализ требований и планирование',
+                'Создание технических заданий',
+                'Управление сроками и бюджетом',
+                'A/B тестирование и аналитика',
+                'Коммуникация с заказчиками'
+            ],
+            icon: 'fas fa-project-diagram'
+        },
+        'automation': {
+            title: 'Автоматизация',
+            description: 'Создаю системы автоматизации для бизнес-процессов. От простых ботов до сложных интеграций с CRM и ERP системами.',
+            details: [
+                'Telegram боты и чат-боты',
+                'Автоматизация рутинных задач',
+                'Интеграция различных сервисов',
+                'Аналитика и отчеты',
+                'Масштабирование решений'
+            ],
+            icon: 'fas fa-cogs'
+        },
+        'ux-analyst': {
+            title: 'UX Аналитик',
+            description: 'Анализирую пользовательский опыт и создаю удобные интерфейсы. Провожу исследования, создаю прототипы и тестирую решения.',
+            details: [
+                'Пользовательские исследования',
+                'Создание прототипов',
+                'A/B тестирование',
+                'Анализ метрик',
+                'Оптимизация конверсии'
+            ],
+            icon: 'fas fa-users'
+        },
+        'ai-expert': {
+            title: 'AI Эксперт',
+            description: 'Интегрирую искусственный интеллект в бизнес-процессы. Создаю умных помощников, чат-ботов и системы автоматизации.',
+            details: [
+                'OpenAI GPT интеграции',
+                'Обработка естественного языка',
+                'Машинное обучение',
+                'Автоматизация ответов',
+                'Персонализация контента'
+            ],
+            icon: 'fas fa-robot'
+        },
+        'mobile-apps': {
+            title: 'Mobile Apps',
+            description: 'Консультирую по разработке мобильных приложений. Помогаю с архитектурой, UX/UI и стратегией развития продуктов.',
+            details: [
+                'Анализ требований',
+                'UX/UI консультации',
+                'Техническая архитектура',
+                'Стратегия развития',
+                'Аналитика и метрики'
+            ],
+            icon: 'fas fa-mobile-alt'
+        },
+        'analytics': {
+            title: 'Аналитика',
+            description: 'Настраиваю системы аналитики и создаю дашборды для отслеживания ключевых метрик бизнеса.',
+            details: [
+                'Настройка Google Analytics',
+                'Создание дашбордов',
+                'Отслеживание конверсии',
+                'A/B тестирование',
+                'Отчеты и рекомендации'
+            ],
+            icon: 'fas fa-chart-line'
+        },
+        'no-code': {
+            title: 'No-Code',
+            description: 'Создаю решения без написания кода. Использую современные платформы для быстрой разработки и прототипирования.',
+            details: [
+                'Webflow и Bubble',
+                'Zapier интеграции',
+                'Airtable автоматизация',
+                'Make (Integromat)',
+                'Быстрое прототипирование'
+            ],
+            icon: 'fas fa-code'
+        },
+        'startups': {
+            title: 'Стартапы',
+            description: 'Помогаю стартапам с MVP, стратегией развития и автоматизацией процессов. Опыт работы с проектами на разных стадиях.',
+            details: [
+                'MVP разработка',
+                'Стратегия развития',
+                'Автоматизация процессов',
+                'Аналитика и метрики',
+                'Масштабирование'
+            ],
+            icon: 'fas fa-rocket'
+        }
+    };
+
+    const tag = tagData[tagType];
+    if (tag) {
+        const modalContent = document.getElementById('tagModalContent');
+        modalContent.innerHTML = `
+            <div class="tag-modal">
+                <div class="tag-modal-header">
+                    <div class="tag-modal-icon">
+                        <i class="${tag.icon}"></i>
+                    </div>
+                    <h3>${tag.title}</h3>
+                </div>
+                <p class="tag-modal-description">${tag.description}</p>
+                <div class="tag-modal-details">
+                    <h4>Что включает:</h4>
+                    <ul>
+                        ${tag.details.map(detail => `<li>${detail}</li>`).join('')}
+                    </ul>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('tagModal').style.display = 'block';
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+// Close tag modal
+function closeTagModal() {
+    document.getElementById('tagModal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+// Randomize tag order on page load
+function randomizeTags() {
+    const authorBadges = document.querySelector('.author-badges');
+    if (authorBadges) {
+        const badges = Array.from(authorBadges.children);
+        
+        // Fisher-Yates shuffle algorithm
+        for (let i = badges.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            authorBadges.appendChild(badges[j]);
+        }
+    }
+}
+
+// Initialize tag modal functionality
+document.addEventListener('DOMContentLoaded', function() {
+    // Close modal when clicking on close button or outside modal
+    const tagModal = document.getElementById('tagModal');
+    const closeBtn = tagModal.querySelector('.close');
+    
+    closeBtn.addEventListener('click', closeTagModal);
+    
+    tagModal.addEventListener('click', function(e) {
+        if (e.target === tagModal) {
+            closeTagModal();
+        }
+    });
+    
+    // Randomize tags when page loads
+    if (document.getElementById('contact').classList.contains('active')) {
+        randomizeTags();
+    }
+});
+
+// Функция для обработки диплинков
+function handleDeeplink() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const startParam = urlParams.get('start');
+    
+    if (startParam) {
+        // Обрабатываем диплинк
+        console.log('Deeplink detected:', startParam);
+        
+        // Переходим на соответствующую страницу
+        switch (startParam.toLowerCase()) {
+            case 'services':
+            case 'услуги':
+                showPage('services');
+                break;
+            case 'about':
+            case 'о-нас':
+            case 'about-us':
+                showPage('about');
+                break;
+            case 'contact':
+            case 'контакты':
+                showPage('contact');
+                break;
+            case 'projects':
+            case 'проекты':
+                showPage('about'); // Проекты находятся на странице about
+                // Прокручиваем к секции проектов
+                setTimeout(() => {
+                    const projectsSection = document.querySelector('.projects-section');
+                    if (projectsSection) {
+                        projectsSection.scrollIntoView({ behavior: 'smooth' });
+                    }
+                }, 500);
+                break;
+            case 'home':
+            case 'главная':
+            default:
+                showPage('home');
+                break;
+        }
+        
+        // Убираем параметр из URL без перезагрузки страницы
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+    }
+}
+
+// Функция для создания диплинка
+function createDeeplink(page, section = '') {
+    // Получаем username бота из Telegram Web App или используем fallback
+    let botUsername = 'your_bot_username'; // fallback
+    
+    if (window.Telegram && window.Telegram.WebApp) {
+        const webApp = window.Telegram.WebApp;
+        if (webApp.initDataUnsafe && webApp.initDataUnsafe.user) {
+            // Пытаемся получить username из данных пользователя
+            const user = webApp.initDataUnsafe.user;
+            if (user.username) {
+                botUsername = user.username;
+            }
+        }
+        
+        // Альтернативный способ - из URL бота
+        if (webApp.initData) {
+            try {
+                const initData = new URLSearchParams(webApp.initData);
+                const userData = initData.get('user');
+                if (userData) {
+                    const user = JSON.parse(decodeURIComponent(userData));
+                    if (user.username) {
+                        botUsername = user.username;
+                    }
+                }
+            } catch (e) {
+                console.log('Could not parse user data from initData');
+            }
+        }
+    }
+    
+    // Если не удалось получить username, используем fallback
+    if (botUsername === 'your_bot_username') {
+        // Можно заменить на реальный username бота
+        botUsername = 'n1kitoch_bot'; // Замените на реальный username
+    }
+    
+    const path = section ? `${page}/${section}` : page;
+    return `https://t.me/${botUsername}?start=${path}`;
+}
+
+// Функция для копирования диплинка в буфер обмена
+async function copyDeeplink(page, section = '') {
+    const deeplink = createDeeplink(page, section);
+    
+    try {
+        await navigator.clipboard.writeText(deeplink);
+        showNotification('🔗 Диплинк скопирован в буфер обмена!', 'success');
+    } catch (err) {
+        // Fallback для старых браузеров
+        const textArea = document.createElement('textarea');
+        textArea.value = deeplink;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        showNotification('🔗 Диплинк скопирован в буфер обмена!', 'success');
+    }
+}
+
+// Функция для добавления кнопок диплинков
+function addDeeplinkButtons() {
+    // Добавляем кнопки на страницу услуг
+    const servicesSection = document.querySelector('.services');
+    if (servicesSection) {
+        const deeplinkButton = document.createElement('button');
+        deeplinkButton.className = 'btn btn-outline deeplink-btn';
+        deeplinkButton.innerHTML = '🔗 Поделиться ссылкой';
+        deeplinkButton.onclick = () => copyDeeplink('services');
+        
+        // Вставляем кнопку после заголовка секции
+        const sectionHeader = servicesSection.querySelector('.section-header');
+        if (sectionHeader) {
+            sectionHeader.appendChild(deeplinkButton);
+        }
+    }
+    
+    // Добавляем кнопки на страницу о нас
+    const aboutSection = document.querySelector('.about');
+    if (aboutSection) {
+        const deeplinkButton = document.createElement('button');
+        deeplinkButton.className = 'btn btn-outline deeplink-btn';
+        deeplinkButton.innerHTML = '🔗 Поделиться ссылкой';
+        deeplinkButton.onclick = () => copyDeeplink('about');
+        
+        // Вставляем кнопку после заголовка секции
+        const sectionHeader = aboutSection.querySelector('.section-header');
+        if (sectionHeader) {
+            sectionHeader.appendChild(deeplinkButton);
+        }
+    }
+    
+    // Добавляем кнопки на страницу контактов
+    const contactSection = document.querySelector('.contact');
+    if (contactSection) {
+        const deeplinkButton = document.createElement('button');
+        deeplinkButton.className = 'btn btn-outline deeplink-btn';
+        deeplinkButton.innerHTML = '🔗 Поделиться ссылкой';
+        deeplinkButton.onclick = () => copyDeeplink('contact');
+        
+        // Вставляем кнопку после заголовка секции
+        const sectionHeader = contactSection.querySelector('.section-header');
+        if (sectionHeader) {
+            sectionHeader.appendChild(deeplinkButton);
+        }
     }
 }
