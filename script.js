@@ -303,24 +303,10 @@ function contactForService(serviceName) {
         messageField.value = `Здравствуйте! Меня интересует услуга "${serviceName}". Пожалуйста, свяжитесь со мной для обсуждения деталей проекта.`;
     }
     
-    // Send service interest to bot if available
-    if (tg && userData) {
-        const serviceData = {
-            type: 'service_interest',
-            service: serviceName,
-            userData: userData,
-            timestamp: new Date().toISOString()
-        };
-        
-        console.log('Sending service interest:', serviceData);
-        sendDataToBot(serviceData).then(sent => {
-            if (sent) {
-                console.log('Service interest sent to bot');
-            } else {
-                console.log('Failed to send service interest to bot');
-            }
-        });
-    }
+    // Send service interest to backend
+    sendEventToBackend('service_interest', {
+        service: serviceName
+    });
 }
 
 // Contact Form Submission
@@ -342,34 +328,19 @@ contactForm.addEventListener('submit', async (e) => {
     };
     
     try {
-        // Send data to bot if available
-        if (tg && userData) {
-            const botData = {
-                type: 'contact_form',
-                formData: data,
-                userData: userData,
-                timestamp: new Date().toISOString()
-            };
-            
-            console.log('Sending contact form data:', botData);
-            const sentToBot = await sendDataToBot(botData);
-            if (sentToBot) {
-                showNotification('Сообщение отправлено в Telegram!', 'success');
-            } else {
-                showNotification('Сообщение отправлено через форму!', 'success');
-            }
-        } else {
-            // Fallback: simulate API call
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        showNotification('Сообщение успешно отправлено! Я свяжусь с вами в течение 2 часов.', 'success');
+        // Send data through new centralized system
+        const success = await sendEventToBackend('contact_form', {
+            formData: data
+        });
+        
+        if (success) {
+            // Reset form
+            contactForm.reset();
         }
         
-        // Reset form
-        contactForm.reset();
-        
     } catch (error) {
-        showNotification('Произошла ошибка при отправке. Попробуйте еще раз.', 'error');
         console.error('Form submission error:', error);
+        trackError(error, 'contact');
     } finally {
         // Reset button state
         submitBtn.disabled = false;
@@ -792,16 +763,22 @@ function getAppLaunchMethod() {
         start: startParam,
         startapp: startappParam,
         hasQueryId: !!(tg?.initDataUnsafe?.query_id),
-        hasSendData: typeof tg?.sendData === 'function'
+        hasSendData: typeof tg?.sendData === 'function',
+        initDataUnsafe: tg?.initDataUnsafe,
+        initData: tg?.initData ? 'present' : 'absent'
     });
     
     if (startParam || startappParam) {
+        console.log('Launch method: inline (start/startapp parameter)');
         return 'inline';
     } else if (tg?.initDataUnsafe?.query_id) {
+        console.log('Launch method: query (has query_id)');
         return 'query';
     } else if (typeof tg?.sendData === 'function') {
+        console.log('Launch method: keyboard (has sendData function)');
         return 'keyboard';
     } else {
+        console.log('Launch method: unknown (no clear indicators)');
         return 'unknown';
     }
 }
@@ -1119,36 +1096,11 @@ async function loadUserProfile() {
         ensureLogsButtonInProfile();
         connectWebSocketIfPossible();
         
-        // Send user data to bot (with retry logic)
-        console.log('Sending user data to bot...');
-        const mode = getLaunchMode();
-        console.log('Launch mode:', mode);
-        
-        if (mode === 'query') {
-            const api = getBackendUrl();
-            if (api) {
-                console.log('Query mode with backend URL, deferring send');
-                setTimeout(async () => {
-                    try {
-                        if (await waitForBackendReady(api, 15000)) {
-                            await sendUserDataToBot(userData);
-                        } else {
-                            console.error('Backend not ready after delay');
-                        }
-                    } catch (e) {
-                        console.error('Error sending user data in query mode:', e);
-                    }
-                }, 1000);
-            } else {
-                console.log('Query mode without backend URL');
-            }
-        } else {
-            try {
-                await sendUserDataToBot(userData);
-            } catch (e) {
-                console.error('Error sending user data:', e);
-            }
-        }
+        // Send user data through new centralized system
+        console.log('Sending user data through centralized system...');
+        await sendEventToBackend('profile_load', {
+            userData: userData
+        });
         
         console.log('loadUserProfile completed successfully');
         
@@ -1159,6 +1111,7 @@ async function loadUserProfile() {
             message: error.message,
             stack: error.stack
         });
+        trackError(error, 'about');
         showProfileError();
     }
 }
@@ -1333,23 +1286,233 @@ function editProfile() {
     showNotification('Функция редактирования профиля будет доступна в следующем обновлении', 'info');
 }
 
-// Send user data to bot
+// Send user data to bot (updated to use new system)
 async function sendUserDataToBot(userData) {
-    const data = {
-        type: 'profile_load',
-        userData: userData,
-        timestamp: new Date().toISOString()
-    };
-    return await sendDataToBot(data);
+    return await sendEventToBackend('profile_load', {
+        userData: userData
+    });
 }
 
-// Send data from webapp to bot
+// Универсальная функция отправки всех событий через бэкенд
+async function sendEventToBackend(eventType, eventData = {}, options = {}) {
+    console.log(`📤 Отправка события ${eventType}:`, eventData);
+    
+    if (!tg) {
+        console.log('Telegram Web App не доступен');
+        return false;
+    }
+
+    const currentUserData = window.userData || userData;
+    const api = getBackendUrl();
+    
+    if (!api) {
+        console.log('Бэкенд URL не найден, используем fallback');
+        return await sendEventFallback(eventType, eventData, currentUserData);
+    }
+
+    try {
+        const payload = {
+            type: eventType,
+            userData: currentUserData,
+            timestamp: new Date().toISOString(),
+            ...eventData
+        };
+
+        // Добавляем дополнительные данные
+        if (options.page) payload.page = options.page;
+        if (options.previousPage) payload.previousPage = options.previousPage;
+        if (options.button) payload.button = options.button;
+        if (options.formType) payload.formType = options.formType;
+
+        console.log('Отправка в бэкенд:', payload);
+
+        const response = await fetch(`${api}/api/event`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                type: eventType,
+                data: eventData,
+                userData: currentUserData,
+                queryId: tg.initDataUnsafe?.query_id || null
+            })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            console.log(`✅ Событие ${eventType} отправлено успешно`);
+            
+            // Показываем уведомление пользователю
+            if (options.showNotification !== false) {
+                const notificationMessage = getNotificationMessage(eventType, result);
+                showNotification(notificationMessage, 'success');
+            }
+            
+            return true;
+        } else {
+            console.error(`❌ Ошибка отправки события ${eventType}:`, result);
+            
+            if (options.showNotification !== false) {
+                showNotification('Ошибка отправки данных', 'error');
+            }
+            
+            return false;
+        }
+
+    } catch (error) {
+        console.error(`❌ Ошибка отправки события ${eventType}:`, error);
+        
+        // Fallback к старому методу
+        return await sendEventFallback(eventType, eventData, currentUserData);
+    }
+}
+
+// Fallback функция для отправки событий
+async function sendEventFallback(eventType, eventData, userData) {
+    console.log(`🔄 Используем fallback для события ${eventType}`);
+    
+    const payload = {
+        type: eventType,
+        userData: userData,
+        timestamp: new Date().toISOString(),
+        ...eventData
+    };
+
+    // Используем старую функцию sendDataToBot
+    return await sendDataToBot(payload);
+}
+
+// Функция для получения сообщения уведомления
+function getNotificationMessage(eventType, result) {
+    switch (eventType) {
+        case 'contact_form':
+            return 'Сообщение отправлено!';
+        case 'service_interest':
+            return 'Интерес к услуге зафиксирован!';
+        case 'profile_load':
+            return 'Профиль загружен!';
+        case 'page_navigation':
+            return 'Переход зафиксирован!';
+        case 'button_click':
+            return 'Действие выполнено!';
+        case 'form_submit':
+            return 'Форма отправлена!';
+        default:
+            return 'Данные отправлены!';
+    }
+}
+
+// Функция для отслеживания навигации
+function trackPageNavigation(pageId, previousPage = null) {
+    sendEventToBackend('page_navigation', {
+        page: pageId,
+        previousPage: previousPage
+    }, { showNotification: false });
+}
+
+// Функция для отслеживания кликов по кнопкам
+function trackButtonClick(buttonName, page = null) {
+    sendEventToBackend('button_click', {
+        button: buttonName,
+        page: page || getCurrentPage()
+    }, { showNotification: false });
+}
+
+// Функция для отслеживания отправки форм
+function trackFormSubmit(formType, formData) {
+    sendEventToBackend('form_submit', {
+        formType: formType,
+        formData: formData
+    });
+}
+
+// Функция для отслеживания ошибок
+function trackError(error, page = null) {
+    sendEventToBackend('error_report', {
+        error: error.message || error,
+        stack: error.stack || '',
+        page: page || getCurrentPage()
+    }, { showNotification: false });
+}
+
+// Функция для аналитических событий
+function trackAnalyticsEvent(event, category = null, value = null) {
+    sendEventToBackend('analytics_event', {
+        event: event,
+        category: category,
+        value: value
+    }, { showNotification: false });
+}
+
+// Функция для получения текущей страницы
+function getCurrentPage() {
+    const activePage = document.querySelector('.page.active');
+    return activePage ? activePage.id : 'unknown';
+}
+
+// Переопределяем функцию showPage для отслеживания навигации
+const originalShowPage = showPage;
+function showPage(pageId) {
+    const previousPage = getCurrentPage();
+    
+    // Вызываем оригинальную функцию
+    originalShowPage(pageId);
+    
+    // Отслеживаем навигацию
+    setTimeout(() => {
+        trackPageNavigation(pageId, previousPage);
+    }, 100);
+}
+
+// Переопределяем функцию openServiceModal для отслеживания
+const originalOpenServiceModal = openServiceModal;
+function openServiceModal(serviceType) {
+    // Отслеживаем открытие модального окна
+    trackButtonClick(`open_service_modal_${serviceType}`, getCurrentPage());
+    
+    // Вызываем оригинальную функцию
+    originalOpenServiceModal(serviceType);
+}
+
+// Переопределяем функцию contactForService для отслеживания
+const originalContactForService = contactForService;
+function contactForService(serviceName) {
+    // Отслеживаем интерес к услуге
+    trackButtonClick(`contact_for_service_${serviceName.replace(/\s+/g, '_')}`, getCurrentPage());
+    
+    // Вызываем оригинальную функцию
+    originalContactForService(serviceName);
+}
+
+// Переопределяем функцию refreshProfile для отслеживания
+const originalRefreshProfile = refreshProfile;
+function refreshProfile() {
+    // Отслеживаем обновление профиля
+    trackButtonClick('refresh_profile', 'about');
+    
+    // Вызываем оригинальную функцию
+    originalRefreshProfile();
+}
+
+// Обновляем функцию sendDataToBot для использования новой системы
 async function sendDataToBot(data) {
     console.log('sendDataToBot called with:', data);
+    
+    // Если это уже событие, отправляем через новую систему
+    if (data.type && data.type !== 'unknown') {
+        return await sendEventToBackend(data.type, data, { showNotification: true });
+    }
+    
+    // Fallback для старых вызовов
     if (!tg) {
         console.log('Telegram Web App not available (tg is null)');
         return false;
     }
+
+    const mode = getLaunchMode();
+    console.log('Launch mode:', mode);
+    console.log('tg.sendData available:', typeof tg.sendData === 'function');
+    console.log('tg.initDataUnsafe.query_id:', tg.initDataUnsafe?.query_id);
 
     // First try: use tg.sendData if available (keyboard mode)
     if (typeof tg.sendData === 'function') {
@@ -1357,13 +1520,15 @@ async function sendDataToBot(data) {
             console.log('Sending data to bot via tg.sendData:', data);
             tg.sendData(JSON.stringify(data));
             console.log('Data sent to bot successfully via tg.sendData()');
+            
+            showNotification('Данные отправлены через Telegram!', 'success');
             return true;
         } catch (error) {
             console.error('Error sending data to bot (sendData):', error);
         }
     }
 
-    // Second try: use backend if available
+    // Second try: use backend if available (for query mode or fallback)
     const api = getBackendUrl();
     if (api) {
         try {
@@ -1385,7 +1550,13 @@ async function sendDataToBot(data) {
                     showNotification('Сервер отклонил запрос. Попробуйте позже.', 'error');
                     return false;
                 }
-                console.log('Backend accepted data successfully');
+                console.log('Backend accepted data successfully:', json);
+                
+                if (json.sentToAdmin) {
+                    showNotification('Данные отправлены администратору!', 'success');
+                } else {
+                    showNotification('Данные получены сервером!', 'success');
+                }
                 return true;
             } else {
                 showNotification('Сервер не отвечает. Проверьте подключение.', 'error');
@@ -1429,7 +1600,6 @@ async function sendDataToBot(data) {
         console.error('Failed to send via Bot API:', e);
     }
 
-    // Final fallback: show error
     showNotification('Не удалось отправить данные. Проверьте интернет и попробуйте снова.', 'error');
     return false;
 }
@@ -1469,6 +1639,45 @@ function handleDataFromBot(data) {
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', initTelegramWebApp);
+
+// Глобальный обработчик ошибок для отслеживания
+window.addEventListener('error', (event) => {
+    console.error('Global error caught:', event.error);
+    trackError(event.error, getCurrentPage());
+});
+
+// Обработчик необработанных промисов
+window.addEventListener('unhandledrejection', (event) => {
+    console.error('Unhandled promise rejection:', event.reason);
+    trackError(event.reason, getCurrentPage());
+});
+
+// Инициализация системы отслеживания
+function initTrackingSystem() {
+    console.log('🚀 Инициализация системы отслеживания...');
+    
+    // Отслеживаем загрузку страницы
+    trackAnalyticsEvent('page_load', 'navigation', window.location.href);
+    
+    // Отслеживаем время загрузки
+    if (window.performance && window.performance.timing) {
+        const loadTime = window.performance.timing.loadEventEnd - window.performance.timing.navigationStart;
+        trackAnalyticsEvent('page_load_time', 'performance', loadTime);
+    }
+    
+    // Отслеживаем размер экрана
+    trackAnalyticsEvent('screen_size', 'device', `${window.screen.width}x${window.screen.height}`);
+    
+    // Отслеживаем тип устройства
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    trackAnalyticsEvent('device_type', 'device', isMobile ? 'mobile' : 'desktop');
+    
+    console.log('✅ Система отслеживания инициализирована');
+}
+
+// Инициализируем систему отслеживания после загрузки
+setTimeout(initTrackingSystem, 2000);
+
 // After init, set up WS or polling
 setTimeout(() => {
     connectWebSocketIfPossible();
