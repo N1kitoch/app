@@ -127,7 +127,14 @@ function hideAppOverlay() {
     if (overlay) overlay.style.display = 'none';
 }
 
+// Utility: hide any open modals (safety for fresh load or unexpected state)
+function hideAllModals(){
+  document.querySelectorAll('.modal').forEach(m=>{m.style.display='none';});
+  document.body.style.overflow='auto';
+}
+
 async function initApp() {
+    hideAllModals(); // ensure clean state on startup
     try {
         const mode = getLaunchMode?.() || 'unknown';
         const api = getBackendUrl?.() || '';
@@ -256,47 +263,51 @@ function openServiceModal(serviceType) {
     const service = serviceData[serviceType];
     if (service) {
         modalContent.innerHTML = `
-            <div class="service-modal">
-                <h2>${service.title}</h2>
-                <p class="service-description">${service.description}</p>
-                
-                <div class="service-details">
-                    <div class="detail-item">
-                        <h4>Что входит в услугу:</h4>
-                        <ul>
-                            ${service.features.map(feature => `<li>${feature}</li>`).join('')}
-                        </ul>
-                    </div>
-                    
-                    <div class="detail-item">
-                        <h4>Технологии:</h4>
-                        <div class="tech-tags">
-                            ${service.technologies.map(tech => `<span>${tech}</span>`).join('')}
-                        </div>
-                    </div>
-                    
-                    <div class="detail-item">
-                        <h4>Стоимость:</h4>
-                        <p class="price">${service.price}</p>
-                    </div>
-                    
-                    <div class="detail-item">
-                        <h4>Сроки:</h4>
-                        <p>${service.duration}</p>
-                    </div>
+          <div class="service-modal">
+            <h2 class="service-title">${service.title}</h2>
+            <p class="service-description">${service.description}</p>
+
+            <div class="service-details">
+              <div class="detail-item">
+                <h4>Технологии:</h4>
+                <div class="tech-tags">
+                  ${service.technologies.map(t=>`<span>${t}</span>`).join('')}
                 </div>
-                
-                <div class="modal-actions">
-                    <button class="btn btn-primary" onclick="contactForService('${service.title}')">
-                        <i class="fas fa-paper-plane"></i>
-                        Заказать услугу
-                    </button>
-                    <button class="btn btn-secondary" onclick="closeServiceModal()">
-                        Закрыть
-                    </button>
-                </div>
+              </div>
+
+              <div class="detail-item">
+                <h4>Что входит в услугу:</h4>
+                <ul class="feature-list">
+                  ${service.features.map(f=>`<li>${f}</li>`).join('')}
+                </ul>
+              </div>
             </div>
-        `;
+
+            <div class="service-pricing">
+              <div class="info-pill"><i class="fas fa-tag"></i><span>${service.price}</span></div>
+              <div class="info-pill"><i class="fas fa-clock"></i><span>${service.duration}</span></div>
+            </div>
+
+            <div class="modal-actions">
+              <button class="btn btn-primary" onclick="contactForService('${service.title}')"><i class="fas fa-paper-plane"></i><span>Заказать</span></button>
+              <button id="shareServiceBtn" class="icon-btn small" title="Поделиться"><i class="fas fa-share-alt"></i></button>
+            </div>
+
+            <div class="service-reviews">
+              ${renderReviews(serviceType)}
+            </div>
+          </div>`;
+
+        const shareBtnEl = document.getElementById('shareServiceBtn');
+        if (shareBtnEl){
+          shareBtnEl.onclick = () => {
+            if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.sendData) {
+              window.Telegram.WebApp.sendData(JSON.stringify({ action: 'share_service', serviceId: service.title }));
+            } else {
+              showNotification('Откройте через Telegram для получения диплинка', 'info');
+            }
+          };
+        }
         
         serviceModal.style.display = 'block';
         document.body.style.overflow = 'hidden';
@@ -2411,21 +2422,6 @@ async function copyDeeplink(page, section = '') {
 
 // Функция для добавления кнопок диплинков
 function addDeeplinkButtons() {
-    // Добавляем кнопки на страницу услуг
-    const servicesSection = document.querySelector('.services');
-    if (servicesSection) {
-        const deeplinkButton = document.createElement('button');
-        deeplinkButton.className = 'btn btn-outline deeplink-btn';
-        deeplinkButton.innerHTML = '🔗 Поделиться ссылкой';
-        deeplinkButton.onclick = () => copyDeeplink('services');
-        
-        // Вставляем кнопку после заголовка секции
-        const sectionHeader = servicesSection.querySelector('.section-header');
-        if (sectionHeader) {
-            sectionHeader.appendChild(deeplinkButton);
-        }
-    }
-    
     // Добавляем кнопки на страницу о нас
     const aboutSection = document.querySelector('.about');
     if (aboutSection) {
@@ -2456,3 +2452,99 @@ function addDeeplinkButtons() {
         }
     }
 }
+
+async function updateAuthorAvatar() {
+  const userAvatar = document.querySelector('.author-avatar#userAvatar');
+  if (!userAvatar) return;
+  const currentUserData = window.userData || userData;
+  if (currentUserData && currentUserData.photoUrl) {
+    userAvatar.innerHTML = `<img src="${currentUserData.photoUrl}" alt="Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+  } else {
+    userAvatar.innerHTML = `<i class="fas fa-user-tie"></i>`;
+  }
+}
+// После updateProfileDisplay и после загрузки профиля вызывать updateAuthorAvatar
+const origUpdateProfileDisplay = updateProfileDisplay;
+updateProfileDisplay = async function() {
+  await origUpdateProfileDisplay.apply(this, arguments);
+  await updateAuthorAvatar();
+};
+
+function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
+function renderAuthorBadges() {
+  const badges = [
+    {cls: 'badge-primary', icon: 'fas fa-project-diagram', text: 'Product Manager', tag: 'product-manager'},
+    {cls: 'badge-secondary', icon: 'fas fa-cogs', text: 'Автоматизация', tag: 'automation'},
+    {cls: 'badge-accent', icon: 'fas fa-users', text: 'UX Аналитик', tag: 'ux-analyst'},
+    {cls: 'badge-success', icon: 'fas fa-robot', text: 'AI Эксперт', tag: 'ai-expert'},
+    {cls: 'badge-info', icon: 'fas fa-mobile-alt', text: 'Mobile Apps', tag: 'mobile-apps'},
+    {cls: 'badge-warning', icon: 'fas fa-chart-line', text: 'Аналитика', tag: 'analytics'},
+    {cls: 'badge-dark', icon: 'fas fa-code', text: 'No-Code', tag: 'no-code'},
+    {cls: 'badge-light', icon: 'fas fa-rocket', text: 'Стартапы', tag: 'startups'}
+  ];
+  const shuffled = shuffleArray([...badges]);
+  const container = document.querySelector('.author-badges');
+  if (container) {
+    container.innerHTML = '';
+    shuffled.forEach(badge => {
+      const btn = document.createElement('button');
+      btn.className = `badge ${badge.cls}`;
+      btn.onclick = () => openTagModal(badge.tag);
+      btn.innerHTML = `<i class="${badge.icon}"></i> ${badge.text}`;
+      container.appendChild(btn);
+    });
+  }
+}
+// При открытии страницы 'Автор' вызывать renderAuthorBadges
+const origShowPage = showPage;
+showPage = function(pageId) {
+  origShowPage.apply(this, arguments);
+  if (pageId === 'contact') {
+    renderAuthorBadges();
+  }
+};
+
+// MOCK reviews per service
+const mockReviews={
+  'ai-managers':[{
+    user:'@alex',rating:5,comment:'Отличный ассистент, сэкономил кучу времени!',date:'12.11.23'},
+  {user:'@maria',rating:4,comment:'Хорошо, но пришлось пару раз донастроить.',date:'02.12.23'},
+  {user:'@ivan',rating:5,comment:'Вау, реально отвечает за меня ночью 👍',date:'28.12.23'}],
+  'channel-systems':[{
+    user:'@stas',rating:5,comment:'Автопостинг работает как часы!',date:'05.01.24'}]
+};
+
+function renderReviews(serviceId){
+  const reviews=mockReviews[serviceId]||[];
+  const avg=reviews.length?(reviews.reduce((s,r)=>s+r.rating,0)/reviews.length).toFixed(1):"-";
+  const starsAvg=Array(5).fill(0).map((_,i)=>`<i class="fas fa-star${reviews.length&&i+1<=Math.round(avg)?'':'-o'}"></i>`).join('');
+  const listHtml=reviews.slice(0,3).map(r=>`<div class="review-card"><div class="review-head"><span class="review-user">${r.user}</span><span class="review-date">${r.date}</span></div><div class="review-stars">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</div><p>${r.comment}</p></div>`).join('');
+  const listSection= reviews.length?`<div class="reviews-list">${listHtml}</div>`:'<p class="no-reviews">Пока нет отзывов</p>';
+
+  // star selector html
+  const starSelHtml=Array(5).fill(0).map((_,i)=>`<i data-val="${i+1}" class="fas fa-star"></i>`).join('');
+
+  return `<div class="review-tile"><div class="reviews-summary"><span class="avg">${avg}</span>${starsAvg}<span class="count">(${reviews.length})</span></div>${listSection}
+  <div class="leave-review-area"><div class="star-select" id="starSelect">${starSelHtml}</div><textarea id="reviewText" placeholder="Ваш отзыв..."></textarea><button class="btn btn-primary btn-send" id="sendReviewBtn" disabled>Отправить</button></div></div>`;
+}
+
+// handler update
+          const starsArr=[...starSel.querySelectorAll('i')];
+          const txt=document.getElementById('reviewText');
+          const sendBtn=document.getElementById('sendReviewBtn');
+          sendBtn.disabled=true;
+          starsArr.forEach(star=>{
+            star.addEventListener('click',()=>{
+              const val=parseInt(star.dataset.val);
+              starSel.dataset.selected=val;
+              starsArr.forEach((s,i)=>s.classList.toggle('active',i< val));
+              txt.style.display='block';
+              sendBtn.disabled=false;
+            });
+          });

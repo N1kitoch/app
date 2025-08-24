@@ -151,7 +151,7 @@
             <div class="container">
                 <!-- Profile Card -->
                 <div class="profile-card">
-                    <div class="profile-avatar">
+                    <div class="profile-avatar" id="userAvatar">
                         <i class="fas fa-user-tie"></i>
                         <div class="profile-status">
                             <i class="fas fa-circle"></i>
@@ -232,46 +232,48 @@
         <div class="contact">
             <div class="container">
                 <!-- Hero Section -->
-                <div class="author-hero">
-                    <div class="author-avatar">
-                        <i class="fas fa-user-tie"></i>
-                    </div>
-                    <div class="author-info">
-                        <h2>Сухоруков Никита</h2>
-                        <p class="author-title">Менеджер продуктов & Эксперт по автоматизации</p>
-                        <div class="author-badges">
-                            <button class="badge badge-primary" onclick="openTagModal('product-manager')">
-                                <i class="fas fa-project-diagram"></i>
-                                Product Manager
-                            </button>
-                            <button class="badge badge-secondary" onclick="openTagModal('automation')">
-                                <i class="fas fa-cogs"></i>
-                                Автоматизация
-                            </button>
-                            <button class="badge badge-accent" onclick="openTagModal('ux-analyst')">
-                                <i class="fas fa-users"></i>
-                                UX Аналитик
-                            </button>
-                            <button class="badge badge-success" onclick="openTagModal('ai-expert')">
-                                <i class="fas fa-robot"></i>
-                                AI Эксперт
-                            </button>
-                            <button class="badge badge-info" onclick="openTagModal('mobile-apps')">
-                                <i class="fas fa-mobile-alt"></i>
-                                Mobile Apps
-                            </button>
-                            <button class="badge badge-warning" onclick="openTagModal('analytics')">
-                                <i class="fas fa-chart-line"></i>
-                                Аналитика
-                            </button>
-                            <button class="badge badge-dark" onclick="openTagModal('no-code')">
-                                <i class="fas fa-code"></i>
-                                No-Code
-                            </button>
-                            <button class="badge badge-light" onclick="openTagModal('startups')">
-                                <i class="fas fa-rocket"></i>
-                                Стартапы
-                            </button>
+                <div class="author-card">
+                    <div class="author-hero">
+                        <div class="author-avatar" id="userAvatar">
+                            <i class="fas fa-user-tie"></i>
+                        </div>
+                        <div class="author-info">
+                            <h2>Сухоруков Никита</h2>
+                            <p class="author-title">Менеджер продуктов & Эксперт по автоматизации</p>
+                            <div class="author-badges">
+                                <button class="badge badge-primary" onclick="openTagModal('product-manager')">
+                                    <i class="fas fa-project-diagram"></i>
+                                    Product Manager
+                                </button>
+                                <button class="badge badge-secondary" onclick="openTagModal('automation')">
+                                    <i class="fas fa-cogs"></i>
+                                    Автоматизация
+                                </button>
+                                <button class="badge badge-accent" onclick="openTagModal('ux-analyst')">
+                                    <i class="fas fa-users"></i>
+                                    UX Аналитик
+                                </button>
+                                <button class="badge badge-success" onclick="openTagModal('ai-expert')">
+                                    <i class="fas fa-robot"></i>
+                                    AI Эксперт
+                                </button>
+                                <button class="badge badge-info" onclick="openTagModal('mobile-apps')">
+                                    <i class="fas fa-mobile-alt"></i>
+                                    Mobile Apps
+                                </button>
+                                <button class="badge badge-warning" onclick="openTagModal('analytics')">
+                                    <i class="fas fa-chart-line"></i>
+                                    Аналитика
+                                </button>
+                                <button class="badge badge-dark" onclick="openTagModal('no-code')">
+                                    <i class="fas fa-code"></i>
+                                    No-Code
+                                </button>
+                                <button class="badge badge-light" onclick="openTagModal('startups')">
+                                    <i class="fas fa-rocket"></i>
+                                    Стартапы
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -364,7 +366,7 @@
                         <i class="fas fa-briefcase"></i>
                         Последние проекты
                     </h3>
-                    <div class="projects-modern-grid">
+                    <div class="projects-modern-grid last-projects">
                         <div class="project-modern-card featured">
                             <div class="project-modern-header">
                                 <div class="project-modern-icon">
@@ -505,10 +507,28 @@
     </nav>
 
     <!-- Service Modal -->
-    <div id="serviceModal" class="modal">
+    <div id="serviceModal" class="modal full-screen-modal">
         <div class="modal-content">
-            <span class="close">&times;</span>
+            <span class="modal-back" onclick="closeServiceModal()"><i class="fas fa-arrow-left"></i></span>
             <div id="modalContent"></div>
+            <nav class="mobile-nav" id="modalMobileNav">
+                <div class="mobile-nav-item" onclick="showPage('home'); closeServiceModal();">
+                    <i class="fas fa-home"></i>
+                    <span>Главная</span>
+                </div>
+                <div class="mobile-nav-item" onclick="showPage('services'); closeServiceModal();">
+                    <i class="fas fa-rocket"></i>
+                    <span>Услуги</span>
+                </div>
+                <div class="mobile-nav-item" onclick="showPage('contact'); closeServiceModal();">
+                    <i class="fas fa-user-edit"></i>
+                    <span>Автор</span>
+                </div>
+                <div class="mobile-nav-item" onclick="showPage('about'); closeServiceModal();">
+                    <i class="fas fa-user"></i>
+                    <span>Профиль</span>
+                </div>
+            </nav>
         </div>
     </div>
 
