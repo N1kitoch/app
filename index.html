@@ -190,6 +190,108 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Help Card -->
+        <div class="help-card">
+            <div class="container">
+                <div class="help-section">
+                    <h3 class="help-title">
+                        <i class="fas fa-question-circle"></i>
+                        <span id="helpTitle">Помощь</span>
+                    </h3>
+                    
+                    <!-- FAQ Accordion -->
+                    <div class="faq-accordion">
+                        <div class="faq-item">
+                            <div class="faq-question" onclick="toggleFaq(this)">
+                                <span id="faqContactQuestion">Как связаться с поддержкой?</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </div>
+                            <div class="faq-answer">
+                                <p id="faqContactAnswer">Вы можете связаться с нами через форму обратной связи ниже или написать напрямую автору на странице "Контакты".</p>
+                            </div>
+                        </div>
+                        
+                        <div class="faq-item">
+                            <div class="faq-question" onclick="toggleFaq(this)">
+                                <span id="faqErrorQuestion">Что делать при ошибке в приложении?</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </div>
+                            <div class="faq-answer">
+                                <p id="faqErrorAnswer">Если вы столкнулись с ошибкой, используйте форму "Сообщить об ошибке" ниже. Опишите проблему подробно, и мы её исправим.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="faq-item">
+                            <div class="faq-question" onclick="toggleFaq(this)">
+                                <span id="faqOrderQuestion">Как заказать услугу?</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </div>
+                            <div class="faq-answer">
+                                <p id="faqOrderAnswer">Выберите интересующую услугу на главной странице, нажмите "Подробнее" и затем "Связаться". Заполните форму, и мы свяжемся с вами.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="faq-item">
+                            <div class="faq-question" onclick="toggleFaq(this)">
+                                <span id="faqTimeQuestion">Сколько времени занимает разработка?</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </div>
+                            <div class="faq-answer">
+                                <p id="faqTimeAnswer">Время разработки зависит от сложности проекта. Простые решения - 2-4 недели, сложные системы - 1-3 месяца. Точные сроки обсуждаются индивидуально.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="faq-item">
+                            <div class="faq-question" onclick="toggleFaq(this)">
+                                <span id="faqWarrantyQuestion">Есть ли гарантия на работы?</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </div>
+                            <div class="faq-answer">
+                                <p id="faqWarrantyAnswer">Да, мы предоставляем гарантию на все работы. После сдачи проекта вы получаете 30 дней бесплатной поддержки и доработок.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Report Error Form -->
+                    <div class="error-report-section">
+                        <h4 class="error-report-title">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <span id="errorReportTitle">Сообщить об ошибке</span>
+                        </h4>
+                        <form class="error-report-form" id="errorReportForm">
+                            <div class="form-group">
+                                <label for="errorType" id="errorTypeLabel">Тип проблемы:</label>
+                                <div class="custom-select">
+                                    <div class="select-trigger" id="selectTrigger">
+                                        <span class="select-value" id="selectValue">Выберите тип</span>
+                                        <i class="fas fa-chevron-down select-arrow"></i>
+                                    </div>
+                                    <div class="select-dropdown" id="selectDropdown">
+                                        <div class="select-option" data-value="" data-text="Выберите тип">Выберите тип</div>
+                                        <div class="select-option" data-value="bug" data-text="Ошибка в работе">Ошибка в работе</div>
+                                        <div class="select-option" data-value="ui" data-text="Проблема с интерфейсом">Проблема с интерфейсом</div>
+                                        <div class="select-option" data-value="performance" data-text="Медленная работа">Медленная работа</div>
+                                        <div class="select-option" data-value="other" data-text="Другое">Другое</div>
+                                    </div>
+                                    <input type="hidden" id="errorType" name="errorType" required>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="errorDescription" id="errorDescriptionLabel">Описание проблемы:</label>
+                                <textarea id="errorDescription" name="errorDescription" id="errorDescriptionPlaceholder" placeholder="Опишите, что произошло и как воспроизвести ошибку" rows="3" required></textarea>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane"></i>
+                                <span id="errorSubmitButton">Отправить</span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
     </section>
 
     <!-- Logs Page (admin only) -->
@@ -227,6 +329,8 @@
         </div>
     </section>
 
+
+
     <!-- Contact Page -->
     <section class="page" id="contact">
         <div class="contact">
@@ -234,45 +338,51 @@
                 <!-- Hero Section -->
                 <div class="author-card">
                     <div class="author-hero">
-                        <div class="author-avatar" id="userAvatar">
-                            <i class="fas fa-user-tie"></i>
-                        </div>
-                        <div class="author-info">
+                        <div class="author-header">
                             <h2>Сухоруков Никита</h2>
-                            <p class="author-title">Менеджер продуктов & Эксперт по автоматизации</p>
-                            <div class="author-badges">
-                                <button class="badge badge-primary" onclick="openTagModal('product-manager')">
+                            <p class="author-title">AI-bot builder &amp; Product Manager</p>
+                        </div>
+                        <div class="author-tags">
+                            <div class="tag-item" onclick="openTagModal('product-manager')">
+                                <div class="tag-icon">
                                     <i class="fas fa-project-diagram"></i>
-                                    Product Manager
-                                </button>
-                                <button class="badge badge-secondary" onclick="openTagModal('automation')">
+                                </div>
+                                <span class="tag-text">Product Manager</span>
+                            </div>
+                            
+                            <div class="tag-item" onclick="openTagModal('automation')">
+                                <div class="tag-icon">
                                     <i class="fas fa-cogs"></i>
-                                    Автоматизация
-                                </button>
-                                <button class="badge badge-accent" onclick="openTagModal('ux-analyst')">
-                                    <i class="fas fa-users"></i>
-                                    UX Аналитик
-                                </button>
-                                <button class="badge badge-success" onclick="openTagModal('ai-expert')">
+                                </div>
+                                <span class="tag-text">Автоматизация</span>
+                            </div>
+                            
+                            <div class="tag-item" onclick="openTagModal('ai-expert')">
+                                <div class="tag-icon">
                                     <i class="fas fa-robot"></i>
-                                    AI Эксперт
-                                </button>
-                                <button class="badge badge-info" onclick="openTagModal('mobile-apps')">
-                                    <i class="fas fa-mobile-alt"></i>
-                                    Mobile Apps
-                                </button>
-                                <button class="badge badge-warning" onclick="openTagModal('analytics')">
+                                </div>
+                                <span class="tag-text">AI Эксперт</span>
+                            </div>
+                            
+                            <div class="tag-item" onclick="openTagModal('analytics')">
+                                <div class="tag-icon">
                                     <i class="fas fa-chart-line"></i>
-                                    Аналитика
-                                </button>
-                                <button class="badge badge-dark" onclick="openTagModal('no-code')">
+                                </div>
+                                <span class="tag-text">Аналитика</span>
+                            </div>
+                            
+                            <div class="tag-item" onclick="openTagModal('no-code')">
+                                <div class="tag-icon">
                                     <i class="fas fa-code"></i>
-                                    No-Code
-                                </button>
-                                <button class="badge badge-light" onclick="openTagModal('startups')">
+                                </div>
+                                <span class="tag-text">No-Code</span>
+                            </div>
+                            
+                            <div class="tag-item" onclick="openTagModal('startups')">
+                                <div class="tag-icon">
                                     <i class="fas fa-rocket"></i>
-                                    Стартапы
-                                </button>
+                                </div>
+                                <span class="tag-text">Стартапы</span>
                             </div>
                         </div>
                     </div>
@@ -367,7 +477,7 @@
                         Последние проекты
                     </h3>
                     <div class="projects-modern-grid last-projects">
-                        <div class="project-modern-card featured">
+                        <div class="project-modern-card">
                             <div class="project-modern-header">
                                 <div class="project-modern-icon">
                                     <i class="fas fa-store"></i>
@@ -509,9 +619,8 @@
     <!-- Service Modal -->
     <div id="serviceModal" class="modal full-screen-modal">
         <div class="modal-content">
-            <span class="modal-back" onclick="closeServiceModal()"><i class="fas fa-arrow-left"></i></span>
-            <div id="modalContent"></div>
-            <nav class="mobile-nav" id="modalMobileNav">
+            <!-- Global Top Navigation inside modal for consistency -->
+            <nav class="mobile-nav top-mobile-nav" id="serviceTopNav">
                 <div class="mobile-nav-item" onclick="showPage('home'); closeServiceModal();">
                     <i class="fas fa-home"></i>
                     <span>Главная</span>
@@ -529,6 +638,8 @@
                     <span>Профиль</span>
                 </div>
             </nav>
+            <span class="modal-back" onclick="closeServiceModal()"><i class="fas fa-arrow-left"></i></span>
+            <div id="modalContent"></div>
         </div>
     </div>
 

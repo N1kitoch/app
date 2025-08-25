@@ -3,29 +3,40 @@ const serviceModal = document.getElementById('serviceModal');
 const modalContent = document.getElementById('modalContent');
 const closeModal = document.querySelector('.close');
 const contactForm = document.getElementById('contactForm');
-const mobileNavItems = document.querySelectorAll('.mobile-nav-item');
-const pages = document.querySelectorAll('.page');
+
+// Глобальные переменные для страниц и навигации (будут инициализированы после загрузки DOM)
+let mobileNavItems;
+let pages;
 
 // Page Navigation
 function showPage(pageId) {
-    // Remove active class from all pages and nav items
+    // Проверяем, что переменные инициализированы
+    if (!pages || !mobileNavItems) {
+        pages = document.querySelectorAll('.page');
+        mobileNavItems = document.querySelectorAll('.mobile-nav-item');
+    }
+    
+    // Скрываем все страницы
     pages.forEach(page => {
         page.classList.remove('active');
         page.classList.remove('fade-out');
+        page.style.display = 'none';
     });
     
     mobileNavItems.forEach(item => {
         item.classList.remove('active');
     });
     
-    // Add active class to target page and nav item
+    // Показываем целевую страницу
     const targetPage = document.getElementById(pageId);
     const targetNavItem = document.querySelector(`[onclick*="${pageId}"]`);
     
     if (targetPage) {
         targetPage.classList.add('active');
+        targetPage.style.display = 'block';
     }
     
+    // Добавляем активный класс к элементу навигации только если он найден
     if (targetNavItem) {
         targetNavItem.classList.add('active');
     }
@@ -34,11 +45,13 @@ function showPage(pageId) {
     document.body.style.overflow = 'auto';
     document.body.classList.remove('page-home');
     
-    // Initialize feature details on home page
-    if (pageId === 'home') {
-        setTimeout(initFeatureDetails, 100);
-        // Main button is always hidden
-    } else {
+            // Initialize feature details on home page
+        if (pageId === 'home') {
+            setTimeout(initFeatureDetails, 100);
+            // Main button is always hidden
+            // Останавливаем пульсации при переходе на главную
+            stopTagPulsing();
+        } else {
         // Clear auto-switch interval when leaving home page
         if (autoSwitchInterval) {
             clearInterval(autoSwitchInterval);
@@ -54,11 +67,18 @@ function showPage(pageId) {
             }
             // Initialize contact page animations
             setTimeout(initContactPage, 100);
+            // Initialize tag pulsing animations
+            setTimeout(initTagPulsing, 500);
         }
         
         // Initialize profile page animations
         if (pageId === 'about') {
             setTimeout(initProfilePage, 100);
+        }
+        
+        // Останавливаем пульсации тегов при переходе на другие страницы
+        if (pageId !== 'contact') {
+            stopTagPulsing();
         }
     }
     
@@ -78,7 +98,23 @@ function showPage(pageId) {
 }
 
 // Initialize first page
-document.addEventListener('DOMContentLoaded', initApp);
+document.addEventListener('DOMContentLoaded', async function() {
+    // Загружаем тексты в первую очередь
+    await loadTexts();
+    initApp();
+    
+    // Загружаем тексты блока помощи
+    loadHelpSectionTexts();
+    
+    // Инициализируем кастомный селект
+    initCustomSelect();
+    
+    // Добавляем обработчик для формы сообщения об ошибке
+    const errorReportForm = document.getElementById('errorReportForm');
+    if (errorReportForm) {
+        errorReportForm.addEventListener('submit', handleErrorReport);
+    }
+});
 
 function createAppOverlay() {
     let overlay = document.getElementById('appOverlay');
@@ -100,7 +136,7 @@ function showAppOverlay(message) {
     const overlay = createAppOverlay();
     const text = overlay.querySelector('#appOverlayText');
     const actions = overlay.querySelector('#appOverlayActions');
-    if (text) text.textContent = message || 'Подключение к серверу...';
+    if (text) text.textContent = message || getText('systemNotifications.server.connecting', 'Подключение к серверу...');
     if (actions) actions.style.display = 'none';
     overlay.style.display = 'flex';
 }
@@ -109,12 +145,12 @@ function showAppError(message, onRetry) {
     const overlay = createAppOverlay();
     const text = overlay.querySelector('#appOverlayText');
     const actions = overlay.querySelector('#appOverlayActions');
-    if (text) text.textContent = message || 'Сервер недоступен';
+    if (text) text.textContent = message || getText('systemNotifications.server.unavailable', 'Сервер недоступен');
     if (actions) {
         actions.innerHTML = '';
         const btn = document.createElement('button');
         btn.className = 'btn btn-primary';
-        btn.textContent = 'Повторить попытку';
+        btn.textContent = getText('systemNotifications.server.retry', 'Повторить попытку');
         btn.onclick = () => onRetry && onRetry();
         actions.appendChild(btn);
         actions.style.display = '';
@@ -134,6 +170,10 @@ function hideAllModals(){
 }
 
 async function initApp() {
+    // Инициализируем глобальные переменные для страниц и навигации
+    pages = document.querySelectorAll('.page');
+    mobileNavItems = document.querySelectorAll('.mobile-nav-item');
+    
     hideAllModals(); // ensure clean state on startup
     try {
         const mode = getLaunchMode?.() || 'unknown';
@@ -294,7 +334,7 @@ function openServiceModal(serviceType) {
             </div>
 
             <div class="service-reviews">
-              ${renderReviews(serviceType)}
+              ${renderReviews()}
             </div>
           </div>`;
 
@@ -308,6 +348,9 @@ function openServiceModal(serviceType) {
             }
           };
         }
+
+        // Инициализация звездочек для оценки
+        initReviewStars();
         
         serviceModal.style.display = 'block';
         document.body.style.overflow = 'hidden';
@@ -325,6 +368,359 @@ window.addEventListener('click', (e) => {
 function closeServiceModal() {
     serviceModal.style.display = 'none';
     document.body.style.overflow = 'auto';
+}
+
+// Инициализация интерактивных звездочек для оценки
+function initReviewStars() {
+    const starSelect = document.getElementById('starSelect');
+    const reviewText = document.getElementById('reviewText');
+    const sendBtn = document.getElementById('sendReviewBtn');
+    
+    if (!starSelect || !reviewText || !sendBtn) return;
+    
+    const stars = starSelect.querySelectorAll('i');
+    let selectedRating = 0;
+    
+    // Скрываем поле ввода по умолчанию, кнопка видна но неактивна
+    reviewText.style.display = 'none';
+    sendBtn.disabled = true;
+    
+    // Добавляем обработчики для звездочек
+    stars.forEach((star, index) => {
+        star.addEventListener('click', () => {
+            selectedRating = index + 1;
+            
+            // Подсвечиваем выбранные звезды
+            stars.forEach((s, i) => {
+                if (i < selectedRating) {
+                    s.classList.add('active');
+                } else {
+                    s.classList.remove('active');
+                }
+            });
+            
+            // Показываем поле ввода и активируем кнопку
+            reviewText.style.display = 'block';
+            reviewText.focus();
+            
+            // Активируем кнопку после выбора звезды
+            sendBtn.disabled = false;
+        });
+    });
+    
+    // Убираем проверку текста - кнопка активна после выбора звезды
+    
+    // Обработчик отправки отзыва
+    sendBtn.addEventListener('click', () => {
+        const reviewData = {
+            rating: selectedRating,
+            comment: reviewText.value.trim() || getText('servicesPage.reviews.messages.noComment', 'Без комментария'),
+            user: userData ? `@${userData.username || userData.firstName}` : '@гость',
+            date: new Date().toLocaleDateString('ru-RU').split('/').reverse().join('.')
+        };
+        
+        // Добавляем отзыв в общую базу
+        globalReviews.unshift(reviewData);
+        
+        // Обновляем отображение отзывов
+        const reviewsContainer = document.querySelector('.service-reviews');
+        if (reviewsContainer) {
+            reviewsContainer.innerHTML = renderReviews();
+            // Реинициализируем звездочки для нового HTML
+            setTimeout(() => initReviewStars(), 100);
+        }
+        
+        // Показываем уведомление
+        showNotification(getText('servicesPage.reviews.messages.success', 'Спасибо за отзыв!'), 'success');
+    });
+}
+
+// Инициализация кнопки помощи в профиле
+function initProfileHelp() {
+    const helpBtn = document.getElementById('profileHelpBtn');
+    if (!helpBtn) {
+        console.log('Кнопка помощи не найдена');
+        return;
+    }
+    
+    // Удаляем старые обработчики
+    helpBtn.replaceWith(helpBtn.cloneNode(true));
+    const newHelpBtn = document.getElementById('profileHelpBtn');
+    
+    newHelpBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        console.log('Кнопка помощи нажата');
+        
+        if (!currentUserData) {
+            showNotification('Данные пользователя не загружены', 'info');
+            return;
+        }
+        
+        const username = currentUserData.username ? `@${currentUserData.username}` : getText('profilePage.userInfo.defaults.username', 'Не указан');
+        const userId = currentUserData.id || '—';
+        
+        const modalContent = `
+            <div class="user-info-modal">
+                <div class="user-info-header">
+                    <h3>${getText('profilePage.userInfo.modal.title', 'Информация о пользователе')}</h3>
+                    <button class="modal-close-btn" onclick="closeUserInfoModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="user-info-content">
+                    <div class="user-info-item">
+                        <span class="user-info-label">${getText('profilePage.userInfo.fields.username', 'Username')}:</span>
+                        <span class="user-info-value">${username}</span>
+                    </div>
+                    <div class="user-info-item">
+                        <span class="user-info-label">${getText('profilePage.userInfo.fields.userId', 'ID пользователя')}:</span>
+                        <span class="user-info-value">${userId}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        showUserInfoModal(modalContent);
+    });
+    
+    console.log('Кнопка помощи инициализирована');
+}
+
+
+
+
+
+// Глобальная переменная для хранения интервала пульсаций
+let tagPulseInterval = null;
+
+// Функция для случайных пульсаций тегов
+function initTagPulsing() {
+    // Очищаем предыдущий интервал, если он существует
+    if (tagPulseInterval) {
+        clearInterval(tagPulseInterval);
+        tagPulseInterval = null;
+    }
+    
+    const tagItems = document.querySelectorAll('.tag-item');
+    if (tagItems.length === 0) return;
+    
+    function pulseRandomTag() {
+        // Убираем предыдущий класс pulse со всех тегов
+        tagItems.forEach(tag => tag.classList.remove('pulse'));
+        
+        // Выбираем случайный тег
+        const randomIndex = Math.floor(Math.random() * tagItems.length);
+        const randomTag = tagItems[randomIndex];
+        
+        // Добавляем класс pulse для анимации
+        randomTag.classList.add('pulse');
+        
+        // Убираем класс через время анимации
+        setTimeout(() => {
+            randomTag.classList.remove('pulse');
+        }, 600);
+    }
+    
+    // Запускаем пульсации каждые 3 секунды
+    tagPulseInterval = setInterval(pulseRandomTag, 3000);
+    
+    // Запускаем первую пульсацию через 2 секунды после загрузки
+    setTimeout(pulseRandomTag, 2000);
+}
+
+// Функция для остановки пульсаций
+function stopTagPulsing() {
+    if (tagPulseInterval) {
+        clearInterval(tagPulseInterval);
+        tagPulseInterval = null;
+    }
+    // Убираем все классы pulse
+    document.querySelectorAll('.tag-item').forEach(tag => tag.classList.remove('pulse'));
+}
+
+// Функция для переключения FAQ аккордеона
+function toggleFaq(element) {
+    const faqItem = element.parentElement;
+    const isActive = faqItem.classList.contains('active');
+    
+    // Закрываем все другие FAQ
+    document.querySelectorAll('.faq-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    // Открываем текущий FAQ, если он был закрыт
+    if (!isActive) {
+        faqItem.classList.add('active');
+    }
+}
+
+// Обработчик формы сообщения об ошибке
+function handleErrorReport(event) {
+    event.preventDefault();
+    
+    const form = event.target;
+    const formData = new FormData(form);
+    const errorType = formData.get('errorType');
+    const errorDescription = formData.get('errorDescription');
+    
+    // Отправляем данные об ошибке
+    trackImportantEvent('error_report', {
+        type: errorType,
+        description: errorDescription,
+        userAgent: navigator.userAgent,
+        timestamp: new Date().toISOString()
+    });
+    
+    // Показываем уведомление
+    showNotification(getText('helpSection.errorReport.successMessage', 'Спасибо! Ваше сообщение об ошибке отправлено. Мы исправим проблему в ближайшее время.'), 'success');
+    
+    // Очищаем форму
+    form.reset();
+}
+
+// Функция для загрузки текстов блока помощи
+function loadHelpSectionTexts() {
+    // Загружаем заголовок
+    const helpTitle = document.getElementById('helpTitle');
+    if (helpTitle) {
+        helpTitle.textContent = getText('helpSection.title', 'Помощь');
+    }
+    
+    // Загружаем FAQ
+    const faqElements = {
+        'faqContactQuestion': 'helpSection.faq.contactSupport.question',
+        'faqContactAnswer': 'helpSection.faq.contactSupport.answer',
+        'faqErrorQuestion': 'helpSection.faq.reportError.question',
+        'faqErrorAnswer': 'helpSection.faq.reportError.answer',
+        'faqOrderQuestion': 'helpSection.faq.orderService.question',
+        'faqOrderAnswer': 'helpSection.faq.orderService.answer',
+        'faqTimeQuestion': 'helpSection.faq.developmentTime.question',
+        'faqTimeAnswer': 'helpSection.faq.developmentTime.answer',
+        'faqWarrantyQuestion': 'helpSection.faq.warranty.question',
+        'faqWarrantyAnswer': 'helpSection.faq.warranty.answer'
+    };
+    
+    Object.entries(faqElements).forEach(([elementId, textPath]) => {
+        const element = document.getElementById(elementId);
+        if (element) {
+            element.textContent = getText(textPath, element.textContent);
+        }
+    });
+    
+    // Загружаем форму сообщения об ошибке
+    const errorElements = {
+        'errorReportTitle': 'helpSection.errorReport.title',
+        'errorTypeLabel': 'helpSection.errorReport.typeLabel',
+        'errorDescriptionLabel': 'helpSection.errorReport.descriptionLabel',
+        'errorDescriptionPlaceholder': 'helpSection.errorReport.descriptionPlaceholder',
+        'errorSubmitButton': 'helpSection.errorReport.submitButton'
+    };
+    
+    Object.entries(errorElements).forEach(([elementId, textPath]) => {
+        const element = document.getElementById(elementId);
+        if (element) {
+            if (element.tagName === 'TEXTAREA') {
+                element.placeholder = getText(textPath, element.placeholder);
+            } else {
+                element.textContent = getText(textPath, element.textContent);
+            }
+        }
+    });
+    
+    // Обновляем тексты кастомного селекта
+    const selectValue = document.getElementById('selectValue');
+    if (selectValue) {
+        selectValue.textContent = getText('helpSection.errorReport.typePlaceholder', 'Выберите тип');
+        selectValue.classList.add('placeholder');
+    }
+    
+    // Обновляем опции селекта
+    const selectOptions = document.querySelectorAll('.select-option');
+    const optionTexts = {
+        0: 'helpSection.errorReport.typePlaceholder',
+        1: 'helpSection.errorReport.types.bug',
+        2: 'helpSection.errorReport.types.ui',
+        3: 'helpSection.errorReport.types.performance',
+        4: 'helpSection.errorReport.types.other'
+    };
+    
+    selectOptions.forEach((option, index) => {
+        const textPath = optionTexts[index];
+        if (textPath) {
+            const text = getText(textPath, option.textContent);
+            option.textContent = text;
+            option.dataset.text = text;
+        }
+    });
+}
+
+// Инициализация кастомного селекта
+function initCustomSelect() {
+    const selectTrigger = document.getElementById('selectTrigger');
+    const selectDropdown = document.getElementById('selectDropdown');
+    const selectValue = document.getElementById('selectValue');
+    const hiddenInput = document.getElementById('errorType');
+    
+    if (!selectTrigger || !selectDropdown || !selectValue || !hiddenInput) return;
+    
+    // Обработчик клика по триггеру
+    selectTrigger.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const isActive = selectTrigger.classList.contains('active');
+        
+        // Закрываем все другие селекты
+        document.querySelectorAll('.select-trigger').forEach(trigger => {
+            trigger.classList.remove('active');
+        });
+        document.querySelectorAll('.select-dropdown').forEach(dropdown => {
+            dropdown.classList.remove('active');
+        });
+        
+        // Переключаем текущий селект
+        if (!isActive) {
+            selectTrigger.classList.add('active');
+            selectDropdown.classList.add('active');
+        }
+    });
+    
+    // Обработчики клика по опциям
+    selectDropdown.addEventListener('click', function(e) {
+        if (e.target.classList.contains('select-option')) {
+            const value = e.target.dataset.value;
+            const text = e.target.dataset.text;
+            
+            // Обновляем отображение
+            selectValue.textContent = text;
+            if (value === '') {
+                selectValue.classList.add('placeholder');
+            } else {
+                selectValue.classList.remove('placeholder');
+            }
+            
+            // Обновляем скрытое поле
+            hiddenInput.value = value;
+            
+            // Обновляем стили опций
+            selectDropdown.querySelectorAll('.select-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            e.target.classList.add('selected');
+            
+            // Закрываем дропдаун
+            selectTrigger.classList.remove('active');
+            selectDropdown.classList.remove('active');
+        }
+    });
+    
+    // Закрытие при клике вне селекта
+    document.addEventListener('click', function(e) {
+        if (!selectTrigger.contains(e.target) && !selectDropdown.contains(e.target)) {
+            selectTrigger.classList.remove('active');
+            selectDropdown.classList.remove('active');
+        }
+    });
 }
 
 // Contact form for specific service
@@ -497,6 +893,12 @@ function showProjectDetails(projectId) {
 function initProfilePage() {
     if (document.getElementById('about').classList.contains('active')) {
         animateProfileStats();
+        // Инициализируем кнопку помощи при загрузке страницы профиля
+        setTimeout(() => {
+            if (document.getElementById('profileHelpBtn')) {
+                initProfileHelp();
+            }
+        }, 100);
     }
 }
 
@@ -580,12 +982,11 @@ notificationStyles.textContent = `
     .notification-error i { color: #ef4444; }
     .notification-info i { color: #3b82f6; }
     
-    @media (max-width: 768px) {
-        .notification {
-            right: 16px;
-            left: 16px;
-            max-width: none;
-        }
+    /* Mobile notification styles */
+    .notification {
+        right: 16px;
+        left: 16px;
+        max-width: none;
     }
 `;
 document.head.appendChild(notificationStyles);
@@ -620,11 +1021,55 @@ document.addEventListener('DOMContentLoaded', () => {
 // Telegram Web App Integration
 let tg = null;
 let userData = null;
+let appTexts = null;
 let DEBUG_MODE = false;
 const ADMIN_ID = 585028258; // TODO: optionally sync from bot; for now hardcoded
 const BOT_TOKEN = "8117473255:AAHT3Nm6nq7Jz4HRN_8i3rT1eQVWZ5tsdLE"; // Bot token for direct API calls
 const logsBuffer = [];
 const BACKEND_URL = 'https://server-iyp2.onrender.com';
+
+// Функция для загрузки текстов из JSON файла
+async function loadTexts() {
+    try {
+        const response = await fetch('./texts.json');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        appTexts = await response.json();
+        console.log('Тексты загружены успешно');
+        return true;
+    } catch (error) {
+        console.error('Ошибка загрузки текстов:', error);
+        // Fallback - используем базовые тексты
+        appTexts = {
+            notifications: {
+                server: {
+                    connecting: "Подключение к серверу...",
+                    unavailable: "Сервер недоступен"
+                }
+            }
+        };
+        return false;
+    }
+}
+
+// Функция для получения текста по ключу с поддержкой вложенности
+function getText(path, defaultText = '') {
+    if (!appTexts) return defaultText;
+    
+    const keys = path.split('.');
+    let current = appTexts;
+    
+    for (const key of keys) {
+        if (current && typeof current === 'object' && key in current) {
+            current = current[key];
+        } else {
+            return defaultText;
+        }
+    }
+    
+    return typeof current === 'string' ? current : defaultText;
+}
 
 function getBackendUrl() {
     const p = new URLSearchParams(window.location.search);
@@ -1496,6 +1941,13 @@ async function updateProfileDisplay() {
     }
     
     console.log('updateProfileDisplay completed');
+    
+    // Инициализируем кнопку помощи после обновления профиля
+    setTimeout(() => {
+        if (document.getElementById('profileHelpBtn')) {
+            initProfileHelp();
+        }
+    }, 100);
 }
 
 // Update profile data section
@@ -2047,14 +2499,13 @@ modalStyles.textContent = `
         flex-wrap: wrap;
     }
     
-    @media (max-width: 768px) {
-        .modal-actions {
-            flex-direction: column;
-        }
-        
-        .modal-actions .btn {
-            width: 100%;
-        }
+    /* Mobile modal actions */
+    .modal-actions {
+        flex-direction: column;
+    }
+    
+    .modal-actions .btn {
+        width: 100%;
     }
 `;
 document.head.appendChild(modalStyles); 
@@ -2149,11 +2600,12 @@ function openTagModal(tagType) {
     const tagData = {
         'product-manager': {
             title: 'Product Manager',
-            description: 'Ведю продукты от идеи до запуска. Анализирую рынок, создаю дорожные карты, координирую команды разработчиков и дизайнеров.',
+            description: 'Ведю продукты от идеи до запуска. Анализирую рынок, создаю дорожные карты, координирую команды разработчиков и дизайнеров. Включаю UX анализ и консультации по мобильным приложениям.',
             details: [
                 'Анализ требований и планирование',
                 'Создание технических заданий',
-                'Управление сроками и бюджетом',
+                'UX/UI консультации',
+                'Мобильные приложения',
                 'A/B тестирование и аналитика',
                 'Коммуникация с заказчиками'
             ],
@@ -2171,18 +2623,7 @@ function openTagModal(tagType) {
             ],
             icon: 'fas fa-cogs'
         },
-        'ux-analyst': {
-            title: 'UX Аналитик',
-            description: 'Анализирую пользовательский опыт и создаю удобные интерфейсы. Провожу исследования, создаю прототипы и тестирую решения.',
-            details: [
-                'Пользовательские исследования',
-                'Создание прототипов',
-                'A/B тестирование',
-                'Анализ метрик',
-                'Оптимизация конверсии'
-            ],
-            icon: 'fas fa-users'
-        },
+
         'ai-expert': {
             title: 'AI Эксперт',
             description: 'Интегрирую искусственный интеллект в бизнес-процессы. Создаю умных помощников, чат-ботов и системы автоматизации.',
@@ -2195,24 +2636,14 @@ function openTagModal(tagType) {
             ],
             icon: 'fas fa-robot'
         },
-        'mobile-apps': {
-            title: 'Mobile Apps',
-            description: 'Консультирую по разработке мобильных приложений. Помогаю с архитектурой, UX/UI и стратегией развития продуктов.',
-            details: [
-                'Анализ требований',
-                'UX/UI консультации',
-                'Техническая архитектура',
-                'Стратегия развития',
-                'Аналитика и метрики'
-            ],
-            icon: 'fas fa-mobile-alt'
-        },
+
         'analytics': {
             title: 'Аналитика',
-            description: 'Настраиваю системы аналитики и создаю дашборды для отслеживания ключевых метрик бизнеса.',
+            description: 'Настраиваю системы аналитики и создаю дашборды для отслеживания ключевых метрик бизнеса. Включаю UX анализ и пользовательские исследования.',
             details: [
                 'Настройка Google Analytics',
                 'Создание дашбордов',
+                'UX анализ и исследования',
                 'Отслеживание конверсии',
                 'A/B тестирование',
                 'Отчеты и рекомендации'
@@ -2510,41 +2941,28 @@ showPage = function(pageId) {
   }
 };
 
-// MOCK reviews per service
-const mockReviews={
-  'ai-managers':[{
-    user:'@alex',rating:5,comment:'Отличный ассистент, сэкономил кучу времени!',date:'12.11.23'},
+// Общая база отзывов для всех услуг
+const globalReviews = [
+  {user:'@alex',rating:5,comment:'Отличный ассистент, сэкономил кучу времени!',date:'12.11.23'},
   {user:'@maria',rating:4,comment:'Хорошо, но пришлось пару раз донастроить.',date:'02.12.23'},
-  {user:'@ivan',rating:5,comment:'Вау, реально отвечает за меня ночью 👍',date:'28.12.23'}],
-  'channel-systems':[{
-    user:'@stas',rating:5,comment:'Автопостинг работает как часы!',date:'05.01.24'}]
-};
+  {user:'@ivan',rating:5,comment:'Вау, реально отвечает за меня ночью 👍',date:'28.12.23'},
+  {user:'@stas',rating:5,comment:'Автопостинг работает как часы!',date:'05.01.24'},
+  {user:'@katya',rating:5,comment:'Быстрая настройка, все работает стабильно',date:'15.01.24'},
+  {user:'@denis',rating:4,comment:'Качественная работа, рекомендую!',date:'22.01.24'}
+];
 
-function renderReviews(serviceId){
-  const reviews=mockReviews[serviceId]||[];
+function renderReviews(){
+  // Используем общую базу отзывов для всех услуг
+  const reviews = globalReviews;
   const avg=reviews.length?(reviews.reduce((s,r)=>s+r.rating,0)/reviews.length).toFixed(1):"-";
   const starsAvg=Array(5).fill(0).map((_,i)=>`<i class="fas fa-star${reviews.length&&i+1<=Math.round(avg)?'':'-o'}"></i>`).join('');
-  const listHtml=reviews.slice(0,3).map(r=>`<div class="review-card"><div class="review-head"><span class="review-user">${r.user}</span><span class="review-date">${r.date}</span></div><div class="review-stars">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</div><p>${r.comment}</p></div>`).join('');
-  const listSection= reviews.length?`<div class="reviews-list">${listHtml}</div>`:'<p class="no-reviews">Пока нет отзывов</p>';
+  const listHtml=reviews.map(r=>`<div class="review-card"><div class="review-head"><span class="review-user">${r.user}</span><span class="review-date">${r.date}</span></div><div class="review-stars">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</div><p>${r.comment}</p></div>`).join('');
+  const listSection= reviews.length?`<div class="reviews-list scrollable">${listHtml}</div>`:'<p class="no-reviews">Пока нет отзывов</p>';
 
   // star selector html
   const starSelHtml=Array(5).fill(0).map((_,i)=>`<i data-val="${i+1}" class="fas fa-star"></i>`).join('');
 
   return `<div class="review-tile"><div class="reviews-summary"><span class="avg">${avg}</span>${starsAvg}<span class="count">(${reviews.length})</span></div>${listSection}
-  <div class="leave-review-area"><div class="star-select" id="starSelect">${starSelHtml}</div><textarea id="reviewText" placeholder="Ваш отзыв..."></textarea><button class="btn btn-primary btn-send" id="sendReviewBtn" disabled>Отправить</button></div></div>`;
+  <div class="leave-review-area"><div class="star-select" id="starSelect">${starSelHtml}</div><textarea id="reviewText" placeholder="${getText('servicesPage.reviews.form.placeholder', 'Ваш отзыв...')}"></textarea><button class="btn btn-primary btn-send" id="sendReviewBtn" disabled>${getText('servicesPage.reviews.form.submitButton', 'Отправить')}</button></div></div>`;
 }
 
-// handler update
-          const starsArr=[...starSel.querySelectorAll('i')];
-          const txt=document.getElementById('reviewText');
-          const sendBtn=document.getElementById('sendReviewBtn');
-          sendBtn.disabled=true;
-          starsArr.forEach(star=>{
-            star.addEventListener('click',()=>{
-              const val=parseInt(star.dataset.val);
-              starSel.dataset.selected=val;
-              starsArr.forEach((s,i)=>s.classList.toggle('active',i< val));
-              txt.style.display='block';
-              sendBtn.disabled=false;
-            });
-          });
