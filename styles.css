@@ -442,8 +442,8 @@ body.page-home ::-webkit-scrollbar {
 }
 
 .profile-avatar {
-    width: 96px;
-    height: 96px;
+    width: 192px;
+    height: 192px;
     border-radius: 50%;
     background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
     display: flex;
@@ -458,12 +458,17 @@ body.page-home ::-webkit-scrollbar {
     height: 100%;
     border-radius: 50%;
     object-fit: cover;
+    border: 3px solid var(--primary-color);
+    box-shadow: var(--shadow-md);
+    flex-shrink: 0;
 }
 
 .profile-avatar i {
-    font-size: 3rem;
+    font-size: 6rem;
     color: white;
 }
+
+
 
 .profile-info h3 {
     margin-bottom: 0.5rem;
@@ -1185,10 +1190,7 @@ a:focus {
 }
 
 
-.profile-avatar img {
-    border: 3px solid var(--primary-color);
-    box-shadow: var(--shadow-md);
-}
+
 
 /* Mobile Profile Styles */
     .profile-info-item {
@@ -3600,22 +3602,9 @@ body, .page, .modal-content {
   display: block;
 }
 
-.profile-avatar{
-  width:192px;
-  height:192px;
-  font-size:6rem;
-  margin:0 auto 1.5rem auto; /* center */
-  position: relative;
-  overflow: hidden;
-}
 
-.profile-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 50%;
-  display: block;
-}
+
+
 
 /* Ensure author hero centers content on all screens */
 .author-hero{
@@ -3756,10 +3745,7 @@ body, .page, .modal-content {
 [data-theme="dark"] .profile-avatar-large,
 [data-theme="dark"] .author-avatar,
 [data-theme="dark"] .author-avatar-large,
-[data-theme="dark"] .author-header {
-    background: linear-gradient(135deg, #4c63d2, #6b46c1);
-    box-shadow: 0 4px 12px rgba(76, 99, 210, 0.25);
-}
+
 
 /* Более тёмные баннеры и градиенты в тёмной теме */
 [data-theme="dark"] .hero {

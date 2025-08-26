@@ -706,7 +706,7 @@ function loadThemeSectionTexts() {
 // Управление темами
 let currentTheme = 'auto';
 
-function selectTheme(theme) {
+function selectTheme(theme, showNotification = true) {
     currentTheme = theme;
     
     // Сохраняем в localStorage
@@ -715,12 +715,14 @@ function selectTheme(theme) {
     // Применяем тему
     applyTheme(theme);
     
-    // Показываем уведомление
-    const themeNames = {
-        'light': 'светлая',
-        'dark': 'тёмная'
-    };
-    showNotification(`Тема изменена на ${themeNames[theme]}`, 'success');
+    // Показываем уведомление только если это требуется
+    if (showNotification) {
+        const themeNames = {
+            'light': 'светлая',
+            'dark': 'тёмная'
+        };
+        showNotification(`Тема изменена на ${themeNames[theme]}`, 'success');
+    }
 }
 
 function applyTheme(theme) {
@@ -817,8 +819,8 @@ function initTheme() {
         localStorage.setItem('appTheme', 'light');
     }
     
-    // Применяем сохранённую тему
-    selectTheme(savedTheme);
+    // Применяем сохранённую тему без показа уведомления
+    selectTheme(savedTheme, false);
 }
 
 // Инициализация кастомного селекта
@@ -2048,19 +2050,13 @@ async function updateProfileDisplay() {
             const avatarUrl = await getUserAvatar(currentUserData.id);
             if (avatarUrl) {
                 userAvatarElement.innerHTML = `
-                    <img src="${avatarUrl}" alt="Avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
-                    <div class="profile-status">
-                        <i class="fas fa-circle"></i>
-                    </div>
+                    <img src="${avatarUrl}" alt="Avatar">
                 `;
                 console.log('User avatar updated with Telegram photo');
             } else {
                 // Reset to default icon
                 userAvatarElement.innerHTML = `
                     <i class="fas fa-user-tie"></i>
-                    <div class="profile-status">
-                        <i class="fas fa-circle"></i>
-                    </div>
                 `;
                 console.log('User avatar reset to default icon');
             }
@@ -2069,9 +2065,6 @@ async function updateProfileDisplay() {
             // Fallback to default icon
             userAvatarElement.innerHTML = `
                 <i class="fas fa-user-tie"></i>
-                <div class="profile-status">
-                    <i class="fas fa-circle"></i>
-                </div>
             `;
         }
     }
