@@ -114,7 +114,7 @@
                             <i class="fas fa-tasks"></i>
                         </div>
                         <h3>Менеджер продукта</h3>
-                        <p>Ведю ваш продукт от идеи до реализации, общаюсь с командой и пишу технические задания для специалистов</p>
+                        <p>Веду ваш продукт от идеи до реализации, общаюсь с командой и пишу технические задания для специалистов</p>
                         <div class="service-features">
                             <span>Управление проектом</span>
                             <span>Коммуникация с командой</span>
@@ -130,7 +130,7 @@
                             <i class="fas fa-cogs"></i>
                         </div>
                         <h3>Другие услуги</h3>
-                        <p>Индивидуальные решения под ваши задачи. Обсудим проект и найдем оптимальное решение</p>
+                        <p>Индивидуальные решения под ваши задачи. Обсудим проект и найдём оптимальное решение</p>
                         <div class="service-features">
                             <span>Индивидуальный подход</span>
                             <span>Гибкие решения</span>
@@ -292,6 +292,28 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Theme Selection Card -->
+        <div class="theme-card">
+            <div class="container">
+                <div class="theme-section">
+                    <h3 class="theme-title">
+                        <i class="fas fa-palette"></i>
+                        <span id="themeTitle">Тема приложения</span>
+                    </h3>
+                    
+                    <div class="theme-options">
+                        <div class="theme-option" data-theme="light" onclick="selectTheme('light')" title="Светлая тема">
+                            <i class="fas fa-sun"></i>
+                        </div>
+                        
+                        <div class="theme-option" data-theme="dark" onclick="selectTheme('dark')" title="Тёмная тема">
+                            <i class="fas fa-moon"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </section>
 
     <!-- Logs Page (admin only) -->
@@ -301,7 +323,7 @@
                 <div class="about-content">
                     <div class="about-text">
                         <h2>Системные логи</h2>
-                        <p>Диагностика мини‑аппа (видно только администратору)</p>
+                        <p>Диагностика мини-аппа (видно только администратору)</p>
                         <div class="profile-data">
                             <div style="display:flex; gap: .5rem; margin-bottom: .75rem; flex-wrap: wrap;">
                                 <button class="btn btn-outline" onclick="clearLogs()">
@@ -343,6 +365,22 @@
                             <p class="author-title">AI-bot builder &amp; Product Manager</p>
                         </div>
                         <div class="author-tags">
+                            <div class="sticky-hint" id="stickyHint">
+                                <div class="sticky-content">
+                                    <div class="sticky-icon">
+                                        <i class="fas fa-lightbulb"></i>
+                                    </div>
+                                    <div class="sticky-text">
+                                        <div class="sticky-title">Подсказка</div>
+                                        <div class="sticky-message">Нажмите на любой тег для подробной информации</div>
+                                    </div>
+                                    <button class="sticky-close" onclick="closeStickyHint()">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                <div class="sticky-arrow"></div>
+                            </div>
+                            
                             <div class="tag-item" onclick="openTagModal('product-manager')">
                                 <div class="tag-icon">
                                     <i class="fas fa-project-diagram"></i>
@@ -380,7 +418,7 @@
                             
                             <div class="tag-item" onclick="openTagModal('startups')">
                                 <div class="tag-icon">
-                                    <i class="fas fa-rocket"></i>
+                                    <i class="fas fa-lightbulb"></i>
                                 </div>
                                 <span class="tag-text">Стартапы</span>
                             </div>

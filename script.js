@@ -29,14 +29,29 @@ function showPage(pageId) {
     
     // Показываем целевую страницу
     const targetPage = document.getElementById(pageId);
-    const targetNavItem = document.querySelector(`[onclick*="${pageId}"]`);
     
     if (targetPage) {
         targetPage.classList.add('active');
         targetPage.style.display = 'block';
     }
     
-    // Добавляем активный класс к элементу навигации только если он найден
+    // Находим и активируем соответствующую кнопку навигации
+    let targetNavItem = null;
+    
+    // Создаем маппинг страниц к индексам кнопок
+    const pageToNavIndex = {
+        'home': 0,
+        'services': 1,
+        'contact': 2,
+        'about': 3
+    };
+    
+    const navIndex = pageToNavIndex[pageId];
+    if (navIndex !== undefined) {
+        targetNavItem = mobileNavItems[navIndex];
+    }
+    
+    // Добавляем активный класс к элементу навигации
     if (targetNavItem) {
         targetNavItem.classList.add('active');
     }
@@ -105,6 +120,12 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     // Загружаем тексты блока помощи
     loadHelpSectionTexts();
+    
+    // Загружаем тексты блока темы
+    loadThemeSectionTexts();
+    
+    // Инициализируем тему
+    initTheme();
     
     // Инициализируем кастомный селект
     initCustomSelect();
@@ -195,7 +216,7 @@ async function initApp() {
                         hideAppOverlay();
                         showPage('home');
                     } else {
-                        showAppError('Сервер по‑прежнему недоступен. Попробуйте позже.');
+                        showAppError('Сервер по-прежнему недоступен. Попробуйте позже.');
                     }
                 });
                 return;
@@ -228,8 +249,8 @@ async function initApp() {
     const s = document.createElement('style');
     s.textContent = `
     #appOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 99999; }
-    #appOverlay .app-overlay-content { background: white; color: #111827; padding: 20px 24px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); min-width: 260px; text-align: center; }
-    #appOverlay .spinner { width: 28px; height: 28px; border: 3px solid #e5e7eb; border-top-color: var(--primary-color, #2563eb); border-radius: 50%; margin: 0 auto 12px auto; animation: spin .8s linear infinite; }
+    #appOverlay .app-overlay-content { background: var(--bg-primary); color: var(--text-primary); padding: 20px 24px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); min-width: 260px; text-align: center; }
+    #appOverlay .spinner { width: 28px; height: 28px; border: 3px solid var(--border-color); border-top-color: var(--primary-color, #2563eb); border-radius: 50%; margin: 0 auto 12px auto; animation: spin .8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
     `;
     document.head.appendChild(s);
@@ -270,7 +291,7 @@ function openServiceModal(serviceType) {
         },
         'product-manager': {
             title: 'Менеджер продукта',
-            description: 'Ведю ваш продукт от идеи до реализации, обеспечиваю эффективную коммуникацию с командой и создаю качественные технические задания.',
+            description: 'Веду ваш продукт от идеи до реализации, обеспечиваю эффективную коммуникацию с командой и создаю качественные технические задания.',
             features: [
                 'Анализ требований и планирование',
                 'Коммуникация с разработчиками',
@@ -285,7 +306,7 @@ function openServiceModal(serviceType) {
         },
         'other-services': {
             title: 'Другие услуги',
-            description: 'Индивидуальные решения под ваши уникальные задачи. Обсудим проект и найдем оптимальное решение.',
+            description: 'Индивидуальные решения под ваши уникальные задачи. Обсудим проект и найдём оптимальное решение.',
             features: [
                 'Анализ бизнес-процессов',
                 'Консультации по автоматизации',
@@ -351,6 +372,12 @@ function openServiceModal(serviceType) {
 
         // Инициализация звездочек для оценки
         initReviewStars();
+        
+        // Подсвечиваем кнопку "Услуги" в модальном окне
+        const serviceNavItem = document.querySelector('#serviceTopNav .mobile-nav-item:nth-child(2)');
+        if (serviceNavItem) {
+            serviceNavItem.classList.add('active');
+        }
         
         serviceModal.style.display = 'block';
         document.body.style.overflow = 'hidden';
@@ -656,6 +683,144 @@ function loadHelpSectionTexts() {
     });
 }
 
+// Функция для загрузки текстов блока темы
+function loadThemeSectionTexts() {
+    const themeElements = {
+        'themeTitle': 'themeSection.title',
+        'themeLightTitle': 'themeSection.light.title',
+        'themeLightDescription': 'themeSection.light.description',
+        'themeDarkTitle': 'themeSection.dark.title',
+        'themeDarkDescription': 'themeSection.dark.description',
+        'themeAutoTitle': 'themeSection.auto.title',
+        'themeAutoDescription': 'themeSection.auto.description'
+    };
+    
+    Object.entries(themeElements).forEach(([elementId, textPath]) => {
+        const element = document.getElementById(elementId);
+        if (element) {
+            element.textContent = getText(textPath, element.textContent);
+        }
+    });
+}
+
+// Управление темами
+let currentTheme = 'auto';
+
+function selectTheme(theme) {
+    currentTheme = theme;
+    
+    // Сохраняем в localStorage
+    localStorage.setItem('appTheme', theme);
+    
+    // Применяем тему
+    applyTheme(theme);
+    
+    // Показываем уведомление
+    const themeNames = {
+        'light': 'светлая',
+        'dark': 'тёмная'
+    };
+    showNotification(`Тема изменена на ${themeNames[theme]}`, 'success');
+}
+
+function applyTheme(theme) {
+    const root = document.documentElement;
+    
+    if (theme === 'dark') {
+        // Тёмная тема
+        root.setAttribute('data-theme', 'dark');
+        root.style.setProperty('--bg-primary', '#1a1a1a');
+        root.style.setProperty('--bg-secondary', '#2d2d2d');
+        root.style.setProperty('--bg-accent', '#3a3a3a');
+        root.style.setProperty('--text-primary', '#ffffff');
+        root.style.setProperty('--text-secondary', '#b0b0b0');
+        root.style.setProperty('--text-light', '#808080');
+        root.style.setProperty('--border-color', '#404040');
+        root.style.setProperty('--shadow', '0 4px 12px rgba(0, 0, 0, 0.3)');
+        root.style.setProperty('--shadow-md', '0 8px 24px rgba(0, 0, 0, 0.4)');
+        root.style.setProperty('--shadow-sm', '0 1px 2px 0 rgba(0, 0, 0, 0.3)');
+        root.style.setProperty('--shadow-lg', '0 10px 15px -3px rgba(0, 0, 0, 0.3)');
+        root.style.setProperty('--shadow-xl', '0 20px 25px -5px rgba(0, 0, 0, 0.3)');
+    } else if (theme === 'light') {
+        // Светлая тема
+        root.setAttribute('data-theme', 'light');
+        root.style.setProperty('--bg-primary', '#ffffff');
+        root.style.setProperty('--bg-secondary', '#f8f9fa');
+        root.style.setProperty('--bg-accent', '#f3f4f6');
+        root.style.setProperty('--text-primary', '#1f2937');
+        root.style.setProperty('--text-secondary', '#6b7280');
+        root.style.setProperty('--text-light', '#9ca3af');
+        root.style.setProperty('--border-color', '#e5e7eb');
+        root.style.setProperty('--shadow', '0 4px 12px rgba(0, 0, 0, 0.1)');
+        root.style.setProperty('--shadow-md', '0 8px 24px rgba(0, 0, 0, 0.15)');
+        root.style.setProperty('--shadow-sm', '0 1px 2px 0 rgba(0, 0, 0, 0.05)');
+        root.style.setProperty('--shadow-lg', '0 10px 15px -3px rgba(0, 0, 0, 0.1)');
+        root.style.setProperty('--shadow-xl', '0 20px 25px -5px rgba(0, 0, 0, 0.1)');
+    }
+    
+    // Обновляем активное состояние кнопок темы
+    updateThemeButtons();
+}
+
+// Функция для обновления активного состояния кнопок темы
+function updateThemeButtons() {
+    // Получаем сохранённую тему из localStorage
+    const savedTheme = localStorage.getItem('appTheme') || 'light';
+    
+    console.log('🔍 updateThemeButtons: savedTheme =', savedTheme);
+    
+    // Убираем активное состояние со всех кнопок
+    const allOptions = document.querySelectorAll('.theme-option');
+    console.log('🔍 Found theme options:', allOptions.length);
+    
+    allOptions.forEach(option => {
+        const theme = option.getAttribute('data-theme');
+        option.classList.remove('active');
+        console.log('🔍 Removed active from:', theme);
+    });
+    
+    // Добавляем активное состояние к кнопке с сохранённой темой
+    const activeOption = document.querySelector(`[data-theme="${savedTheme}"]`);
+    if (activeOption) {
+        activeOption.classList.add('active');
+        console.log('✅ Activated button for saved theme:', savedTheme);
+        
+        // Проверяем, что класс действительно добавлен
+        setTimeout(() => {
+            const isActive = activeOption.classList.contains('active');
+            console.log('🔍 Button active check:', savedTheme, '=', isActive);
+            
+            // Проверяем вычисленные стили
+            const computedStyle = window.getComputedStyle(activeOption);
+            console.log('🔍 Computed background:', computedStyle.background);
+            console.log('🔍 Computed border-color:', computedStyle.borderColor);
+            console.log('🔍 Computed color:', computedStyle.color);
+        }, 100);
+    } else {
+        console.log('❌ Button not found for saved theme:', savedTheme);
+        console.log('🔍 Available buttons:');
+        allOptions.forEach(option => {
+            console.log('- data-theme:', option.getAttribute('data-theme'));
+        });
+    }
+}
+
+
+
+function initTheme() {
+    // Проверяем, есть ли сохранённая тема в localStorage
+    let savedTheme = localStorage.getItem('appTheme');
+    
+    // Если тема не сохранена, устанавливаем 'light' по умолчанию
+    if (!savedTheme) {
+        savedTheme = 'light';
+        localStorage.setItem('appTheme', 'light');
+    }
+    
+    // Применяем сохранённую тему
+    selectTheme(savedTheme);
+}
+
 // Инициализация кастомного селекта
 function initCustomSelect() {
     const selectTrigger = document.getElementById('selectTrigger');
@@ -958,7 +1123,7 @@ notificationStyles.textContent = `
         position: fixed;
         top: 20px;
         right: 20px;
-        background: white;
+        background: var(--bg-primary);
         border-radius: 8px;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         padding: 1rem;
@@ -976,6 +1141,7 @@ notificationStyles.textContent = `
         display: flex;
         align-items: center;
         gap: 0.75rem;
+        color: var(--text-primary);
     }
     
     .notification-success i { color: #10b981; }
@@ -2600,7 +2766,7 @@ function openTagModal(tagType) {
     const tagData = {
         'product-manager': {
             title: 'Product Manager',
-            description: 'Ведю продукты от идеи до запуска. Анализирую рынок, создаю дорожные карты, координирую команды разработчиков и дизайнеров. Включаю UX анализ и консультации по мобильным приложениям.',
+            description: 'Веду продукты от идеи до запуска. Анализирую рынок, создаю дорожные карты, координирую команды разработчиков и дизайнеров. Включаю UX анализ и консультации по мобильным приложениям.',
             details: [
                 'Анализ требований и планирование',
                 'Создание технических заданий',
@@ -2917,7 +3083,7 @@ function renderAuthorBadges() {
     {cls: 'badge-info', icon: 'fas fa-mobile-alt', text: 'Mobile Apps', tag: 'mobile-apps'},
     {cls: 'badge-warning', icon: 'fas fa-chart-line', text: 'Аналитика', tag: 'analytics'},
     {cls: 'badge-dark', icon: 'fas fa-code', text: 'No-Code', tag: 'no-code'},
-    {cls: 'badge-light', icon: 'fas fa-rocket', text: 'Стартапы', tag: 'startups'}
+    {cls: 'badge-light', icon: 'fas fa-lightbulb', text: 'Стартапы', tag: 'startups'}
   ];
   const shuffled = shuffleArray([...badges]);
   const container = document.querySelector('.author-badges');
@@ -2938,8 +3104,37 @@ showPage = function(pageId) {
   origShowPage.apply(this, arguments);
   if (pageId === 'contact') {
     renderAuthorBadges();
+    // Показываем стикер-подсказку для тегов
+    setTimeout(() => {
+      showStickyHint();
+    }, 1000);
   }
 };
+
+// Функции для стикер-подсказки тегов
+function showStickyHint() {
+    const hint = document.getElementById('stickyHint');
+    if (!hint) return;
+    
+    // Для тестов показываем каждый раз
+    // const hintShown = localStorage.getItem('stickyHintShown');
+    // if (hintShown) {
+    //     hint.style.display = 'none';
+    //     return;
+    // }
+    
+    hint.style.display = 'block';
+    hint.style.animation = 'stickyBounce 0.8s ease-out';
+}
+
+function closeStickyHint() {
+    const hint = document.getElementById('stickyHint');
+    if (hint) {
+        hint.style.display = 'none';
+        // Сохраняем, что подсказка была показана
+        localStorage.setItem('stickyHintShown', 'true');
+    }
+}
 
 // Общая база отзывов для всех услуг
 const globalReviews = [
@@ -2963,6 +3158,11 @@ function renderReviews(){
   const starSelHtml=Array(5).fill(0).map((_,i)=>`<i data-val="${i+1}" class="fas fa-star"></i>`).join('');
 
   return `<div class="review-tile"><div class="reviews-summary"><span class="avg">${avg}</span>${starsAvg}<span class="count">(${reviews.length})</span></div>${listSection}
-  <div class="leave-review-area"><div class="star-select" id="starSelect">${starSelHtml}</div><textarea id="reviewText" placeholder="${getText('servicesPage.reviews.form.placeholder', 'Ваш отзыв...')}"></textarea><button class="btn btn-primary btn-send" id="sendReviewBtn" disabled>${getText('servicesPage.reviews.form.submitButton', 'Отправить')}</button></div></div>`;
+  <div class="leave-review-area">
+    <div class="review-invite-text">Оставьте свой отзыв</div>
+    <div class="star-select" id="starSelect">${starSelHtml}</div>
+    <textarea id="reviewText" placeholder="${getText('servicesPage.reviews.form.placeholder', 'Ваш отзыв...')}"></textarea>
+    <button class="btn btn-primary btn-send" id="sendReviewBtn" disabled>${getText('servicesPage.reviews.form.submitButton', 'Отправить')}</button>
+  </div></div>`;
 }
 
