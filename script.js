@@ -60,9 +60,8 @@ function showPage(pageId) {
     document.body.style.overflow = 'auto';
     document.body.classList.remove('page-home');
     
-            // Initialize feature details on home page
+            // Home page initialization
         if (pageId === 'home') {
-            setTimeout(initFeatureDetails, 100);
             // Main button is always hidden
             // Останавливаем пульсации при переходе на главную
             stopTagPulsing();
@@ -93,9 +92,10 @@ function showPage(pageId) {
         
         // Initialize services page
         if (pageId === 'services') {
+            console.log('Initializing services page');
             setTimeout(() => {
+                console.log('Loading service cards...');
                 loadServiceCards();
-                initServiceCategories();
             }, 100);
         }
         
@@ -146,6 +146,23 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (errorReportForm) {
         errorReportForm.addEventListener('submit', handleErrorReport);
     }
+    
+    // Тестовый вызов загрузки услуг
+    setTimeout(() => {
+        console.log('Testing service cards loading...');
+        loadServiceCards();
+    }, 1000);
+    
+    // Тест категорий через 2 секунды
+    setTimeout(() => {
+        console.log('Testing category filtering...');
+        const categoryTabs = document.querySelectorAll('.category-tab');
+        if (categoryTabs.length > 0) {
+            console.log('Category tabs found, testing click...');
+            // Симулируем клик на первую категорию
+            categoryTabs[1].click();
+        }
+    }, 2000);
 });
 
 function createAppOverlay() {
@@ -268,24 +285,38 @@ async function initApp() {
 
 // Service Categories Filtering
 function initServiceCategories() {
+    console.log('initServiceCategories called');
     const categoryTabs = document.querySelectorAll('.category-tab');
     const serviceCards = document.querySelectorAll('.service-compact-card');
+    
+    console.log('categoryTabs found:', categoryTabs.length);
+    console.log('serviceCards found:', serviceCards.length);
+    
+    if (serviceCards.length === 0) {
+        console.error('No service cards found! Categories will not work.');
+        return;
+    }
     
     categoryTabs.forEach(tab => {
         tab.addEventListener('click', () => {
             const category = tab.getAttribute('data-category');
+            console.log('Category clicked:', category);
             
             // Update active tab
             categoryTabs.forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
             
             // Filter services
+            let visibleCount = 0;
             serviceCards.forEach(card => {
                 const cardCategory = card.getAttribute('data-category');
+                console.log(`Card category: ${cardCategory}, filter: ${category}`);
+                
                 if (category === 'all' || cardCategory === category) {
                     card.style.display = 'block';
                     card.style.opacity = '1';
                     card.style.transform = 'translateY(0)';
+                    visibleCount++;
                 } else {
                     card.style.opacity = '0';
                     card.style.transform = 'translateY(10px)';
@@ -294,8 +325,12 @@ function initServiceCategories() {
                     }, 200);
                 }
             });
+            
+            console.log(`Filtered to ${visibleCount} visible cards`);
         });
     });
+    
+    console.log('Service categories initialized successfully');
 }
 
 // Show contact form with scroll to form
@@ -316,52 +351,69 @@ function showContactForm() {
 
 // Load service cards from JSON
 function loadServiceCards() {
+    console.log('loadServiceCards called');
     const servicesGrid = document.querySelector('.services-compact-grid');
-    if (!servicesGrid) return;
+    if (!servicesGrid) {
+        console.error('services-compact-grid not found');
+        return;
+    }
+    console.log('servicesGrid found:', servicesGrid);
     
     // Get services data from JSON
     const servicesData = {
         'aiTelegram': {
-            title: getText('homePage.servicesSection.cards.aiTelegram.title'),
-            description: getText('homePage.servicesSection.cards.aiTelegram.description'),
-            price: getText('homePage.servicesSection.cards.aiTelegram.price'),
-            button: getText('homePage.servicesSection.cards.aiTelegram.button')
+            title: 'AI-ассистенты для Telegram',
+            description: 'Интеллектуальные помощники для автоматизации коммуникации',
+            price: 'от 50,000₽',
+            button: 'Подробнее'
         },
         'channelAutomation': {
-            title: getText('homePage.servicesSection.cards.channelAutomation.title'),
-            description: getText('homePage.servicesSection.cards.channelAutomation.description'),
-            price: getText('homePage.servicesSection.cards.channelAutomation.price'),
-            button: getText('homePage.servicesSection.cards.channelAutomation.button')
+            title: 'Автоматизация каналов',
+            description: 'Системы для автоматического ведения Telegram-каналов',
+            price: 'от 75,000₽',
+            button: 'Подробнее'
         },
         'onboardingSystems': {
-            title: getText('homePage.servicesSection.cards.onboardingSystems.title'),
-            description: getText('homePage.servicesSection.cards.onboardingSystems.description'),
-            price: getText('homePage.servicesSection.cards.onboardingSystems.price'),
-            button: getText('homePage.servicesSection.cards.onboardingSystems.button')
+            title: 'Системы онбординга',
+            description: 'Автоматизированные системы адаптации новых пользователей',
+            price: 'от 60,000₽',
+            button: 'Подробнее'
         },
         'socialManagement': {
-            title: getText('homePage.servicesSection.cards.socialManagement.title'),
-            description: getText('homePage.servicesSection.cards.socialManagement.description'),
-            price: getText('homePage.servicesSection.cards.socialManagement.price'),
-            button: getText('homePage.servicesSection.cards.socialManagement.button')
+            title: 'Ведение социальных каналов',
+            description: 'Организация работы в соцсетях с фокусом на процессах',
+            price: 'от 60,000₽/мес',
+            button: 'Подробнее'
         },
         'productSupport': {
-            title: getText('homePage.servicesSection.cards.productSupport.title'),
-            description: getText('homePage.servicesSection.cards.productSupport.description'),
-            price: getText('homePage.servicesSection.cards.productSupport.price'),
-            button: getText('homePage.servicesSection.cards.productSupport.button')
+            title: 'Продуктовое сопровождение',
+            description: 'Ведение продукта "под ключ" от идеи до реализации',
+            price: 'от 150,000₽/мес',
+            button: 'Подробнее'
         },
         'noCodeWebsites': {
-            title: getText('homePage.servicesSection.cards.noCodeWebsites.title'),
-            description: getText('homePage.servicesSection.cards.noCodeWebsites.description'),
-            price: getText('homePage.servicesSection.cards.noCodeWebsites.price'),
-            button: getText('homePage.servicesSection.cards.noCodeWebsites.button')
+            title: 'Сайты и веб-приложения',
+            description: 'No-code разработка с vibe-coding подходом',
+            price: 'от 40,000₽',
+            button: 'Подробнее'
         },
         'customDevelopment': {
-            title: getText('homePage.servicesSection.cards.customDevelopment.title'),
-            description: getText('homePage.servicesSection.cards.customDevelopment.description'),
-            price: getText('homePage.servicesSection.cards.customDevelopment.price'),
-            button: getText('homePage.servicesSection.cards.customDevelopment.button')
+            title: 'Индивидуальная разработка',
+            description: 'Уникальные решения под специфические задачи',
+            price: 'Договорная',
+            button: 'Подробнее'
+        },
+        'telegramBots': {
+            title: 'Создание Telegram ботов',
+            description: 'Разработка функциональных ботов для бизнеса и личного использования',
+            price: 'от 35,000₽',
+            button: 'Подробнее'
+        },
+        'projectManager': {
+            title: 'Проектный менеджер',
+            description: 'Управление проектами от старта до финиша с фокусом на сроках, бюджете и качестве',
+            price: 'от 150,000₽/мес',
+            button: 'Подробнее'
         }
     };
     
@@ -370,17 +422,26 @@ function loadServiceCards() {
         { id: 'channel-automation', category: 'ai', icon: 'fas fa-broadcast-tower', dataKey: 'channelAutomation' },
         { id: 'onboarding-systems', category: 'ai', icon: 'fas fa-user-graduate', dataKey: 'onboardingSystems' },
         { id: 'social-management', category: 'social', icon: 'fas fa-users', dataKey: 'socialManagement' },
-        { id: 'product-support', category: 'development', icon: 'fas fa-project-diagram', dataKey: 'productSupport' },
+        { id: 'product-support', category: 'professions', icon: 'fas fa-project-diagram', dataKey: 'productSupport' },
+        { id: 'project-manager', category: 'professions', icon: 'fas fa-tasks', dataKey: 'projectManager' },
         { id: 'no-code-websites', category: 'development', icon: 'fas fa-code', dataKey: 'noCodeWebsites' },
+        { id: 'telegram-bots', category: 'development', icon: 'fas fa-paper-plane', dataKey: 'telegramBots' },
         { id: 'custom-development', category: 'development', icon: 'fas fa-cogs', dataKey: 'customDevelopment' }
     ];
     
-    servicesGrid.innerHTML = serviceCards.map(service => {
+    console.log('servicesData:', servicesData);
+    console.log('serviceCards:', serviceCards);
+    
+    const htmlContent = serviceCards.map(service => {
         const serviceData = servicesData[service.dataKey];
-        if (!serviceData) return '';
+        console.log(`Service ${service.dataKey}:`, serviceData);
+        if (!serviceData) {
+            console.error(`No data found for service: ${service.dataKey}`);
+            return '';
+        }
         
         return `
-            <div class="service-compact-card" data-category="${service.category}">
+            <div class="service-compact-card" data-category="${service.category}" onclick="openServiceModal('${service.id}')">
                 <div class="service-compact-header">
                     <div class="service-compact-icon">
                         <i class="${service.icon}"></i>
@@ -388,164 +449,248 @@ function loadServiceCards() {
                     <div class="service-compact-info">
                         <div class="service-compact-title-row">
                             <h3>${serviceData.title}</h3>
-                            <div class="service-compact-price">
-                                <span>${serviceData.price}</span>
-                            </div>
                         </div>
                         <p>${serviceData.description}</p>
                     </div>
                 </div>
                 <div class="service-compact-actions">
-                    <button class="btn btn-primary btn-sm" onclick="openServiceModal('${service.id}')">
+                    <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); openServiceModal('${service.id}')">
                         <i class="fas fa-info-circle"></i>
                         <span>${serviceData.button}</span>
                     </button>
+                    <div class="service-compact-price-new">
+                        <span>${serviceData.price}</span>
+                    </div>
                 </div>
             </div>
         `;
     }).join('');
+    
+    console.log('Generated HTML:', htmlContent);
+    servicesGrid.innerHTML = htmlContent;
+    console.log('Services grid innerHTML set');
+    
+    // Initialize categories after cards are loaded
+    setTimeout(() => {
+        initServiceCategories();
+    }, 100);
 }
 
-// Service Modal Functionality
-function openServiceModal(serviceType) {
-    const serviceData = {
-        'ai-telegram': {
+// Get modal data from static object
+function getModalData(serviceKey) {
+    const modalData = {
+        'aiTelegram': {
             title: 'AI-ассистенты для Telegram',
-            description: 'Настройка и подключение интеллектуальных помощников в Telegram для автоматизации коммуникации, ответов на запросы и обработки рутинных задач.',
+            description: 'Создаю интеллектуальных помощников для автоматизации коммуникации в Telegram. От простых автоответов до сложных систем обработки запросов.',
             features: [
-                'Автоматические ответы на сообщения',
-                'Обработка типовых запросов клиентов',
-                'Интеграция с базой знаний компании',
-                'Многоязычная поддержка',
-                'Аналитика взаимодействий',
-                'Обучение на ваших данных'
-            ],
-            technologies: ['Telegram Bot API', 'OpenAI GPT', 'Python', 'NLP'],
-            price: 'от 50,000 ₽',
-            duration: '2-4 недели'
-        },
-        'channel-automation': {
-            title: 'Автоматизация управления каналами',
-            description: 'Настройка и внедрение систем для автоматического ведения Telegram-каналов и групп: публикация, модерация, взаимодействие с аудиторией.',
-            features: [
-                'Автоматическое создание и публикация постов',
-                'Модерация комментариев и сообщений',
-                'Управление несколькими каналами',
-                'Планирование контента',
+                'Автоматические ответы на частые вопросы',
+                'Обработка заявок и запросов',
+                'Интеграция с CRM и другими системами',
                 'Аналитика и отчеты',
-                'Интеграция с внешними источниками'
+                'Персонализация ответов',
+                '24/7 доступность'
             ],
-            technologies: ['Telegram Bot API', 'Python', 'PostgreSQL', 'Redis'],
-            price: 'от 75,000 ₽',
-            duration: '3-6 недель'
+            technologies: ['OpenAI GPT', 'Telegram Bot API', 'Python', 'Node.js'],
+            price: 'от 50,000₽',
+            duration: '2-3 недели'
         },
-        'social-management': {
-            title: 'Ведение социальных каналов',
-            description: 'Организация и сопровождение работы в социальных сетях и мессенджерах с акцентом на процессах и коммуникации.',
+        'channelAutomation': {
+            title: 'Автоматизация каналов',
+            description: 'Системы для автоматического ведения Telegram-каналов с умной модерацией и аналитикой.',
             features: [
-                'Разработка стратегии ведения каналов',
-                'Создание контент-планов',
-                'Организация взаимодействия с аудиторией',
-                'Настройка процессов модерации',
-                'Анализ эффективности',
-                'Обучение команды'
+                'Автоматический постинг контента',
+                'Умная модерация комментариев',
+                'Аналитика активности подписчиков',
+                'Интеграция с внешними источниками',
+                'Планировщик публикаций',
+                'Отчеты по эффективности'
             ],
-            technologies: ['Telegram', 'Instagram', 'VK', 'Аналитические инструменты'],
-            price: 'от 60,000 ₽/месяц',
+            technologies: ['Telegram API', 'Python', 'Базы данных', 'Аналитика'],
+            price: 'от 75,000₽',
+            duration: '3-4 недели'
+        },
+        'onboardingSystems': {
+            title: 'Системы онбординга',
+            description: 'Автоматизированные системы адаптации новых пользователей и сотрудников.',
+            features: [
+                'Интерактивные обучающие материалы',
+                'Прогресс-трекинг',
+                'Автоматические напоминания',
+                'Тестирование и оценка',
+                'Персонализация обучения',
+                'Интеграция с HR-системами'
+            ],
+            technologies: ['LMS', 'API интеграции', 'Аналитика', 'Базы данных'],
+            price: 'от 60,000₽',
+            duration: '4-6 недель'
+        },
+        'socialManagement': {
+            title: 'Ведение социальных каналов',
+            description: 'Организация работы в социальных сетях с фокусом на процессах и автоматизации.',
+            features: [
+                'Стратегическое планирование контента',
+                'Автоматизация рутинных задач',
+                'Аналитика и отчетность',
+                'Управление командой',
+                'Интеграция с CRM',
+                'A/B тестирование'
+            ],
+            technologies: ['Социальные API', 'Аналитика', 'Автоматизация', 'CRM'],
+            price: 'от 60,000₽/мес',
             duration: 'Постоянно'
         },
-        'product-support': {
-            title: 'Полное продуктовое сопровождение',
-            description: 'Ведение продукта "под ключ" — от идеи и анализа до запуска и сопровождения, включая контроль сроков и координацию команды.',
+        'productSupport': {
+            title: 'Продуктовое сопровождение',
+            description: 'Ведение продукта "под ключ" от идеи до реализации с полным контролем процессов.',
             features: [
                 'Анализ требований и планирование',
-                'Координация команды разработки',
-                'Контроль сроков и качества',
-                'Управление рисками проекта',
-                'Тестирование и запуск',
-                'Сопровождение после релиза'
+                'Создание технических заданий',
+                'Координация команды разработчиков',
+                'Контроль качества и сроков',
+                'UX/UI консультации',
+                'Поддержка после запуска'
             ],
-            technologies: ['Agile', 'Scrum', 'Figma', 'Jira', 'Notion'],
-            price: 'от 120,000 ₽/месяц',
+            technologies: ['Agile', 'Scrum', 'Jira', 'Figma', 'Аналитика'],
+            price: 'от 150,000₽/мес',
             duration: 'По проекту'
         },
-        'custom-development': {
-            title: 'Индивидуальная разработка',
-            description: 'Создание уникальных решений для специфических потребностей бизнеса — от простых автоматизаций до сложных интеграций.',
+        'projectManager': {
+            title: 'Проектный менеджер',
+            description: 'Профессиональное управление проектами с акцентом на достижение целей в рамках бюджета и сроков.',
             features: [
-                'Анализ бизнес-процессов',
-                'Проектирование архитектуры решения',
-                'Разработка и интеграция',
-                'Тестирование и внедрение',
-                'Обучение персонала',
-                'Техническая поддержка'
+                'Планирование и контроль сроков проекта',
+                'Управление бюджетом и ресурсами',
+                'Координация команды и подрядчиков',
+                'Контроль качества и соответствия требованиям',
+                'Управление рисками и изменениями',
+                'Отчетность и коммуникация с заказчиком'
             ],
-            technologies: ['По требованию проекта'],
-            price: 'Договорная',
-            duration: 'Индивидуально'
+            technologies: ['Agile', 'Scrum', 'Kanban', 'Jira', 'Trello', 'Notion'],
+            price: 'от 150,000₽/мес',
+            duration: 'По проекту'
         },
-        'no-code-websites': {
-            title: 'Создание сайтов и веб-приложений',
-            description: 'Быстрая разработка прототипов, лендингов и полноценных решений на no-code платформах с использованием vibe-coding.',
+        'noCodeWebsites': {
+            title: 'Сайты и веб-приложения',
+            description: 'No-code разработка с vibe-coding подходом для быстрого создания современных веб-решений.',
             features: [
                 'Создание лендингов и сайтов',
-                'Разработка веб-приложений',
+                'Веб-приложения без кода',
                 'Интеграция с внешними сервисами',
                 'Адаптивный дизайн',
                 'SEO-оптимизация',
                 'Техническая поддержка'
             ],
-            technologies: ['No-code платформы', 'Vibe-coding', 'Интеграции'],
-            price: 'от 40,000 ₽',
-            duration: '1-3 недели'
+            technologies: ['Webflow', 'Bubble', 'Zapier', 'Airtable', 'API'],
+            price: 'от 40,000₽',
+            duration: '1-2 недели'
         },
-        'onboarding-systems': {
-            title: 'Системы онбординга',
-            description: 'Создание автоматизированных систем для эффективного ввода новых сотрудников, клиентов или пользователей, а также настройка внутренних процессов.',
+        'telegramBots': {
+            title: 'Создание Telegram ботов',
+            description: 'Разработка функциональных Telegram ботов для автоматизации бизнес-процессов.',
             features: [
-                'Автоматизация процессов адаптации',
-                'Создание обучающих материалов',
-                'Система проверки знаний',
-                'Интеграция с HR-системами',
-                'Аналитика эффективности',
-                'Настройка внутренних процессов'
+                'Разработка ботов под ваши задачи',
+                'Интеграция с внешними API',
+                'Автоматизация рутинных процессов',
+                'Система уведомлений и оповещений',
+                'Аналитика и отчеты',
+                'Техническая поддержка и доработки'
             ],
-            technologies: ['Telegram Bot API', 'Python', 'Базы данных', 'Интеграции'],
-            price: 'от 80,000 ₽',
-            duration: '4-8 недель'
+            technologies: ['Telegram Bot API', 'Python', 'Базы данных'],
+            price: 'от 35,000₽',
+            duration: '2-4 недели'
+        },
+        'customDevelopment': {
+            title: 'Индивидуальная разработка',
+            description: 'Уникальные технические решения под специфические задачи вашего бизнеса.',
+            features: [
+                'Анализ требований и проектирование',
+                'Разработка уникальных решений',
+                'Интеграция с существующими системами',
+                'Автоматизация бизнес-процессов',
+                'Тестирование и внедрение',
+                'Поддержка и развитие'
+            ],
+            technologies: ['Python', 'JavaScript', 'API', 'Базы данных', 'Облачные сервисы'],
+            price: 'Договорная',
+            duration: 'По проекту'
         }
     };
+    
+    return modalData[serviceKey];
+}
 
-    const service = serviceData[serviceType];
-    if (service) {
+// Service Modal Functionality
+function openServiceModal(serviceType) {
+    console.log('openServiceModal called with:', serviceType);
+    
+    // Проверяем, что модальное окно существует
+    if (!serviceModal) {
+        console.error('serviceModal element not found');
+        return;
+    }
+    
+    if (!modalContent) {
+        console.error('modalContent element not found');
+        return;
+    }
+    
+    // Map service IDs to JSON keys
+    const serviceIdToKey = {
+        'ai-telegram': 'aiTelegram',
+        'channel-automation': 'channelAutomation',
+        'social-management': 'socialManagement',
+        'product-support': 'productSupport',
+        'project-manager': 'projectManager',
+        'custom-development': 'customDevelopment',
+        'no-code-websites': 'noCodeWebsites',
+        'onboarding-systems': 'onboardingSystems',
+        'telegram-bots': 'telegramBots'
+    };
+    
+    const serviceKey = serviceIdToKey[serviceType];
+    console.log('serviceKey:', serviceKey);
+    if (!serviceKey) {
+        console.error('No serviceKey found for:', serviceType);
+        return;
+    }
+    
+    // Get data from static object
+    const modalData = getModalData(serviceKey);
+    console.log('modalData:', modalData);
+    if (!modalData) {
+        console.error('No modalData found for key:', serviceKey);
+        return;
+    }
+    
+    if (modalData) {
         modalContent.innerHTML = `
           <div class="service-modal">
-            <h2 class="service-title">${service.title}</h2>
-            <p class="service-description">${service.description}</p>
+            <h2 class="service-title">${modalData.title}</h2>
+            <p class="service-description">${modalData.description}</p>
 
             <div class="service-details">
               <div class="detail-item">
                 <h4>Технологии:</h4>
                 <div class="tech-tags">
-                  ${service.technologies.map(t=>`<span>${t}</span>`).join('')}
+                  ${modalData.technologies.map(t=>`<span>${t}</span>`).join('')}
                 </div>
               </div>
 
               <div class="detail-item">
                 <h4>Что входит в услугу:</h4>
                 <ul class="feature-list">
-                  ${service.features.map(f=>`<li>${f}</li>`).join('')}
+                  ${modalData.features.map(f=>`<li>${f}</li>`).join('')}
                 </ul>
               </div>
             </div>
 
             <div class="service-pricing">
-              <div class="info-pill"><i class="fas fa-tag"></i><span>${service.price}</span></div>
-              <div class="info-pill"><i class="fas fa-clock"></i><span>${service.duration}</span></div>
+              <div class="info-pill"><i class="fas fa-tag"></i><span>${modalData.price}</span></div>
+              <div class="info-pill"><i class="fas fa-clock"></i><span>${modalData.duration}</span></div>
             </div>
 
             <div class="modal-actions">
-              <button class="btn btn-primary" onclick="contactForService('${service.title}')"><i class="fas fa-paper-plane"></i><span>Заказать</span></button>
+              <button class="btn btn-primary" onclick="contactForService('${modalData.title}')"><i class="fas fa-paper-plane"></i><span>Заказать</span></button>
             </div>
 
             <div class="service-reviews">
@@ -564,8 +709,12 @@ function openServiceModal(serviceType) {
             serviceNavItem.classList.add('active');
         }
         
+        console.log('Opening modal...');
         serviceModal.style.display = 'block';
         document.body.style.overflow = 'hidden';
+        console.log('Modal opened successfully');
+    } else {
+        console.error('modalData is falsy');
     }
 }
 
@@ -1416,7 +1565,10 @@ async function loadTexts() {
 
 // Функция для получения текста по ключу с поддержкой вложенности
 function getText(path, defaultText = '') {
-    if (!appTexts) return defaultText;
+    if (!appTexts) {
+        console.error('appTexts is null');
+        return defaultText;
+    }
     
     const keys = path.split('.');
     let current = appTexts;
@@ -1425,11 +1577,14 @@ function getText(path, defaultText = '') {
         if (current && typeof current === 'object' && key in current) {
             current = current[key];
         } else {
+            console.error(`Key not found: ${key} in path: ${path}`);
             return defaultText;
         }
     }
     
-    return typeof current === 'string' ? current : defaultText;
+    console.log(`getText(${path}) returned:`, current);
+    // Возвращаем объект или строку в зависимости от типа
+    return current;
 }
 
 function getBackendUrl() {
@@ -2953,63 +3108,7 @@ modalStyles.textContent = `
 `;
 document.head.appendChild(modalStyles); 
 
-// Interactive Feature Details
-let currentFeatureIndex = 0;
-let autoSwitchInterval;
-const features = ['ai-solutions', 'quick-start', 'growth'];
-
-function selectFeature(featureId) {
-    // Remove active class from all cards and details
-    document.querySelectorAll('.floating-card').forEach(card => {
-        card.classList.remove('active');
-    });
-    
-    document.querySelectorAll('.feature-detail').forEach(detail => {
-        detail.classList.remove('active');
-    });
-    
-    // Add active class to selected card and detail
-    const selectedCard = document.querySelector(`[onclick*="${featureId}"]`);
-    const selectedDetail = document.getElementById(`${featureId}-detail`);
-    
-    if (selectedCard) {
-        selectedCard.classList.add('active');
-    }
-    
-    if (selectedDetail) {
-        selectedDetail.classList.add('active');
-    }
-    
-    // Update current index for auto-switching
-    currentFeatureIndex = features.indexOf(featureId);
-    
-    // Reset auto-switch timer
-    resetAutoSwitch();
-}
-
-function nextFeature() {
-    currentFeatureIndex = (currentFeatureIndex + 1) % features.length;
-    selectFeature(features[currentFeatureIndex]);
-}
-
-function resetAutoSwitch() {
-    if (autoSwitchInterval) {
-        clearInterval(autoSwitchInterval);
-    }
-    
-    // Start auto-switching after 5 seconds
-    autoSwitchInterval = setInterval(() => {
-        nextFeature();
-    }, 5000);
-}
-
-// Initialize feature details on home page load
-function initFeatureDetails() {
-    if (document.getElementById('home').classList.contains('active')) {
-        selectFeature('ai-solutions');
-        resetAutoSwitch();
-    }
-}
+// Home page functionality - removed old feature details
 
 // Tag Modal Functionality
 function openTagModal(tagType) {
