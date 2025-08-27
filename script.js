@@ -1479,6 +1479,45 @@ function initTelegramWebApp() {
             console.error('Error calling tg.ready():', e);
         }
         
+        // Set up safe area for Telegram Mini App
+        try {
+            // Set viewport to cover safe area
+            if (tg.viewportStableHeight) {
+                document.documentElement.style.setProperty('--tg-viewport-height', `${tg.viewportStableHeight}px`);
+                console.log('Viewport height set to:', tg.viewportStableHeight);
+            }
+            
+            // Set safe area insets if available
+            if (tg.safeAreaInsets) {
+                const insets = tg.safeAreaInsets;
+                document.documentElement.style.setProperty('--safe-area-inset-top', `${insets.top}px`);
+                document.documentElement.style.setProperty('--safe-area-inset-bottom', `${insets.bottom}px`);
+                document.documentElement.style.setProperty('--safe-area-inset-left', `${insets.left}px`);
+                document.documentElement.style.setProperty('--safe-area-inset-right', `${insets.right}px`);
+                console.log('Safe area insets set:', insets);
+            }
+            
+            // Listen for viewport changes
+            if (typeof tg.onEvent === 'function') {
+                tg.onEvent('viewportChanged', () => {
+                    console.log('Viewport changed, updating safe area...');
+                    if (tg.viewportStableHeight) {
+                        document.documentElement.style.setProperty('--tg-viewport-height', `${tg.viewportStableHeight}px`);
+                    }
+                    if (tg.safeAreaInsets) {
+                        const insets = tg.safeAreaInsets;
+                        document.documentElement.style.setProperty('--safe-area-inset-top', `${insets.top}px`);
+                        document.documentElement.style.setProperty('--safe-area-inset-bottom', `${insets.bottom}px`);
+                        document.documentElement.style.setProperty('--safe-area-inset-left', `${insets.left}px`);
+                        document.documentElement.style.setProperty('--safe-area-inset-right', `${insets.right}px`);
+                    }
+                });
+                console.log('Viewport change listener added');
+            }
+        } catch (e) {
+            console.error('Error setting up safe area:', e);
+        }
+        
         // Set theme
         try {
             if (tg.colorScheme === 'dark') {
@@ -1527,6 +1566,12 @@ function initTelegramWebApp() {
         console.log('Telegram Web App initialized successfully');
     } else {
         console.log('Telegram Web App not available, running in standalone mode');
+        
+        // Set default safe area values for standalone mode
+        document.documentElement.style.setProperty('--safe-area-inset-top', '20px');
+        document.documentElement.style.setProperty('--safe-area-inset-bottom', '0px');
+        document.documentElement.style.setProperty('--safe-area-inset-left', '0px');
+        document.documentElement.style.setProperty('--safe-area-inset-right', '0px');
         console.log('Available global objects:', Object.keys(window).filter(key => key.toLowerCase().includes('telegram')));
         
         // Create fallback user data for standalone mode
@@ -1574,6 +1619,18 @@ function getAppLaunchMethod() {
     } else {
         console.log('Launch method: unknown (no clear indicators)');
         return 'unknown';
+    }
+}
+
+// Function to update safe area insets
+function updateSafeAreaInsets() {
+    if (tg && tg.safeAreaInsets) {
+        const insets = tg.safeAreaInsets;
+        document.documentElement.style.setProperty('--safe-area-inset-top', `${insets.top}px`);
+        document.documentElement.style.setProperty('--safe-area-inset-bottom', `${insets.bottom}px`);
+        document.documentElement.style.setProperty('--safe-area-inset-left', `${insets.left}px`);
+        document.documentElement.style.setProperty('--safe-area-inset-right', `${insets.right}px`);
+        console.log('Safe area insets updated:', insets);
     }
 }
 

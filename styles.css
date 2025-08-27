@@ -24,6 +24,13 @@
     --border-radius: 12px;
     --border-radius-lg: 16px;
     --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    
+    /* Telegram Mini App safe area variables */
+    --safe-area-inset-top: 0px;
+    --safe-area-inset-bottom: 0px;
+    --safe-area-inset-left: 0px;
+    --safe-area-inset-right: 0px;
+    --tg-viewport-height: 100vh;
 }
 
 /* Layout metrics */
@@ -106,7 +113,7 @@ p {
 /* Hero Section */
 .hero {
     padding: 60px 0 40px;
-    background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+    background: var(--bg-secondary);
     position: relative;
     overflow: hidden;
     display: flex;
@@ -115,12 +122,13 @@ p {
 
 /* Home specific: allow scroll */
 #home .hero {
-    padding: 20px 0 40px;
+    padding: calc(var(--safe-area-inset-top) + 60px) 0 40px;
     min-height: calc(100vh - var(--bottom-nav-height));
     height: auto;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
+    background: var(--bg-secondary) !important;
 }
 
 #home .hero-title {
@@ -324,7 +332,7 @@ body.page-home ::-webkit-scrollbar {
 
 /* Services */
 .services {
-    padding: 60px 0 80px;
+    padding: calc(var(--safe-area-inset-top) + 60px) 0 80px;
     background: var(--bg-secondary);
 }
 
@@ -390,7 +398,7 @@ body.page-home ::-webkit-scrollbar {
 
 /* About */
 .about {
-    padding: 60px 0 40px;
+    padding: calc(var(--safe-area-inset-top) + 60px) 0 40px;
 }
 
 .about-content {
@@ -503,7 +511,7 @@ body.page-home ::-webkit-scrollbar {
 
 /* Contact */
 .contact {
-    padding: 60px 0 80px;
+    padding: calc(var(--safe-area-inset-top) + 60px) 0 80px;
     background: var(--bg-secondary);
 }
 
@@ -788,6 +796,63 @@ button, a, .clickable {
 }
 
 /* Telegram Web App Specific Styles */
+/* Safe area for Telegram Mini App */
+@supports (padding-top: env(safe-area-inset-top)) {
+    body {
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+    }
+    
+    .page {
+        padding-top: calc(env(safe-area-inset-top) + 20px);
+    }
+    
+    .hero {
+        padding-top: calc(env(safe-area-inset-top) + 60px);
+    }
+    
+    .mobile-nav {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+}
+
+/* Use CSS variables for Telegram Mini App safe area */
+body {
+    padding-top: var(--safe-area-inset-top);
+    padding-bottom: var(--safe-area-inset-bottom);
+    padding-left: var(--safe-area-inset-left);
+    padding-right: var(--safe-area-inset-right);
+}
+
+.page {
+    padding-top: calc(var(--safe-area-inset-top) + 20px);
+}
+
+.hero {
+    padding-top: calc(var(--safe-area-inset-top) + 60px);
+}
+
+.mobile-nav {
+    padding-bottom: var(--safe-area-inset-bottom);
+}
+
+/* Fallback for browsers without safe-area support */
+@supports not (padding-top: env(safe-area-inset-top)) {
+    body {
+        padding-top: 20px;
+    }
+    
+    .page {
+        padding-top: 40px;
+    }
+    
+    .hero {
+        padding-top: 60px;
+    }
+}
+
 @media (max-width: 375px) {
     .container {
         padding: 0 12px;
@@ -918,25 +983,17 @@ a:focus {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.5rem;
+    justify-content: center;
     padding: 0.75rem;
     cursor: pointer;
     /* Mobile: убираем transition */
     flex: 1;
     text-align: center;
     height: 100%;
-    justify-content: center;
 }
 
 .mobile-nav-item i {
-    font-size: 1.5rem;
-    color: var(--text-secondary);
-    /* Mobile: убираем transition */
-}
-
-.mobile-nav-item span {
-    font-size: 0.8rem;
-    font-weight: 500;
+    font-size: 2rem;
     color: var(--text-secondary);
     /* Mobile: убираем transition */
 }
@@ -1219,6 +1276,11 @@ a:focus {
 
 .tg-dark-theme .info-value {
     color: var(--text-primary);
+}
+
+/* Ensure home page has light background even in dark theme */
+.tg-dark-theme #home .hero {
+    background: var(--bg-secondary) !important;
 }
 
 /* Loading Animation */
@@ -3290,6 +3352,11 @@ input::placeholder, textarea::placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
+  /* Safe area support for Telegram Mini App */
+  padding-top: var(--safe-area-inset-top);
+  padding-bottom: var(--safe-area-inset-bottom);
+  padding-left: var(--safe-area-inset-left);
+  padding-right: var(--safe-area-inset-right);
 }
 .full-screen-modal .modal-content {
   width: 100vw;
@@ -3344,8 +3411,8 @@ input::placeholder, textarea::placeholder {
 }
 .modal-back {
   position: fixed;
-  top: 16px;
-  left: 16px;
+  top: calc(80px + var(--safe-area-inset-top));
+  left: calc(16px + var(--safe-area-inset-left));
   z-index: 10000;
   width: 48px;
   height: 48px;
@@ -3378,7 +3445,7 @@ input::placeholder, textarea::placeholder {
 /* Мобильная поддержка для кнопки назад */
 @media (max-width: 768px) {
   .modal-back {
-    top: 12px;
+    top: calc(60px + var(--safe-area-inset-top));
     left: 12px;
     width: 44px;
     height: 44px;
@@ -3542,6 +3609,8 @@ body.full-screen-modal-open{margin-bottom:0!important;}
   right:0;
   margin:0 16px;
   border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;
+  /* Safe area support for Telegram Mini App */
+  padding-bottom: var(--safe-area-inset-bottom);
 }
 
 /* Remove legacy overrides that stretched modal nav */
