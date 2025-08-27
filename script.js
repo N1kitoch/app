@@ -91,6 +91,14 @@ function showPage(pageId) {
             setTimeout(initProfilePage, 100);
         }
         
+        // Initialize services page
+        if (pageId === 'services') {
+            setTimeout(() => {
+                loadServiceCards();
+                initServiceCategories();
+            }, 100);
+        }
+        
         // Останавливаем пульсации тегов при переходе на другие страницы
         if (pageId !== 'contact') {
             stopTagPulsing();
@@ -102,6 +110,9 @@ function showPage(pageId) {
         top: 0,
         behavior: 'auto'
     });
+    
+    // Handle responsive tags after page change
+    setTimeout(handleResponsiveTags, 100);
     
     // Отслеживаем навигацию (только если функция доступна)
     if (typeof trackPageNavigation === 'function') {
@@ -232,6 +243,9 @@ async function initApp() {
         // Proceed to initial page
         showPage('home');
         
+        // Handle responsive tags after page is shown
+        setTimeout(handleResponsiveTags, 100);
+        
         // Инициализация завершена
     } catch (e) {
         console.error('initApp failed', e);
@@ -252,68 +266,253 @@ async function initApp() {
     document.head.appendChild(s);
 })();
 
+// Service Categories Filtering
+function initServiceCategories() {
+    const categoryTabs = document.querySelectorAll('.category-tab');
+    const serviceCards = document.querySelectorAll('.service-compact-card');
+    
+    categoryTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const category = tab.getAttribute('data-category');
+            
+            // Update active tab
+            categoryTabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            
+            // Filter services
+            serviceCards.forEach(card => {
+                const cardCategory = card.getAttribute('data-category');
+                if (category === 'all' || cardCategory === category) {
+                    card.style.display = 'block';
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                } else {
+                    card.style.opacity = '0';
+                    card.style.transform = 'translateY(10px)';
+                    setTimeout(() => {
+                        card.style.display = 'none';
+                    }, 200);
+                }
+            });
+        });
+    });
+}
+
+// Show contact form with scroll to form
+function showContactForm() {
+    showPage('contact');
+    
+    // Wait for page to load and then scroll to contact form
+    setTimeout(() => {
+        const contactForm = document.querySelector('.contact-form-section');
+        if (contactForm) {
+            contactForm.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'start' 
+            });
+        }
+    }, 300);
+}
+
+// Load service cards from JSON
+function loadServiceCards() {
+    const servicesGrid = document.querySelector('.services-compact-grid');
+    if (!servicesGrid) return;
+    
+    // Get services data from JSON
+    const servicesData = {
+        'aiTelegram': {
+            title: getText('homePage.servicesSection.cards.aiTelegram.title'),
+            description: getText('homePage.servicesSection.cards.aiTelegram.description'),
+            price: getText('homePage.servicesSection.cards.aiTelegram.price'),
+            button: getText('homePage.servicesSection.cards.aiTelegram.button')
+        },
+        'channelAutomation': {
+            title: getText('homePage.servicesSection.cards.channelAutomation.title'),
+            description: getText('homePage.servicesSection.cards.channelAutomation.description'),
+            price: getText('homePage.servicesSection.cards.channelAutomation.price'),
+            button: getText('homePage.servicesSection.cards.channelAutomation.button')
+        },
+        'onboardingSystems': {
+            title: getText('homePage.servicesSection.cards.onboardingSystems.title'),
+            description: getText('homePage.servicesSection.cards.onboardingSystems.description'),
+            price: getText('homePage.servicesSection.cards.onboardingSystems.price'),
+            button: getText('homePage.servicesSection.cards.onboardingSystems.button')
+        },
+        'socialManagement': {
+            title: getText('homePage.servicesSection.cards.socialManagement.title'),
+            description: getText('homePage.servicesSection.cards.socialManagement.description'),
+            price: getText('homePage.servicesSection.cards.socialManagement.price'),
+            button: getText('homePage.servicesSection.cards.socialManagement.button')
+        },
+        'productSupport': {
+            title: getText('homePage.servicesSection.cards.productSupport.title'),
+            description: getText('homePage.servicesSection.cards.productSupport.description'),
+            price: getText('homePage.servicesSection.cards.productSupport.price'),
+            button: getText('homePage.servicesSection.cards.productSupport.button')
+        },
+        'noCodeWebsites': {
+            title: getText('homePage.servicesSection.cards.noCodeWebsites.title'),
+            description: getText('homePage.servicesSection.cards.noCodeWebsites.description'),
+            price: getText('homePage.servicesSection.cards.noCodeWebsites.price'),
+            button: getText('homePage.servicesSection.cards.noCodeWebsites.button')
+        },
+        'customDevelopment': {
+            title: getText('homePage.servicesSection.cards.customDevelopment.title'),
+            description: getText('homePage.servicesSection.cards.customDevelopment.description'),
+            price: getText('homePage.servicesSection.cards.customDevelopment.price'),
+            button: getText('homePage.servicesSection.cards.customDevelopment.button')
+        }
+    };
+    
+    const serviceCards = [
+        { id: 'ai-telegram', category: 'ai', icon: 'fas fa-robot', dataKey: 'aiTelegram' },
+        { id: 'channel-automation', category: 'ai', icon: 'fas fa-broadcast-tower', dataKey: 'channelAutomation' },
+        { id: 'onboarding-systems', category: 'ai', icon: 'fas fa-user-graduate', dataKey: 'onboardingSystems' },
+        { id: 'social-management', category: 'social', icon: 'fas fa-users', dataKey: 'socialManagement' },
+        { id: 'product-support', category: 'development', icon: 'fas fa-project-diagram', dataKey: 'productSupport' },
+        { id: 'no-code-websites', category: 'development', icon: 'fas fa-code', dataKey: 'noCodeWebsites' },
+        { id: 'custom-development', category: 'development', icon: 'fas fa-cogs', dataKey: 'customDevelopment' }
+    ];
+    
+    servicesGrid.innerHTML = serviceCards.map(service => {
+        const serviceData = servicesData[service.dataKey];
+        if (!serviceData) return '';
+        
+        return `
+            <div class="service-compact-card" data-category="${service.category}">
+                <div class="service-compact-header">
+                    <div class="service-compact-icon">
+                        <i class="${service.icon}"></i>
+                    </div>
+                    <div class="service-compact-info">
+                        <div class="service-compact-title-row">
+                            <h3>${serviceData.title}</h3>
+                            <div class="service-compact-price">
+                                <span>${serviceData.price}</span>
+                            </div>
+                        </div>
+                        <p>${serviceData.description}</p>
+                    </div>
+                </div>
+                <div class="service-compact-actions">
+                    <button class="btn btn-primary btn-sm" onclick="openServiceModal('${service.id}')">
+                        <i class="fas fa-info-circle"></i>
+                        <span>${serviceData.button}</span>
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
 // Service Modal Functionality
 function openServiceModal(serviceType) {
     const serviceData = {
-        'ai-managers': {
-            title: 'AI-менеджеры и ассистенты',
-            description: 'Создаю интеллектуальных помощников, которые автоматически обрабатывают запросы клиентов и повышают эффективность вашего бизнеса.',
+        'ai-telegram': {
+            title: 'AI-ассистенты для Telegram',
+            description: 'Настройка и подключение интеллектуальных помощников в Telegram для автоматизации коммуникации, ответов на запросы и обработки рутинных задач.',
             features: [
                 'Автоматические ответы на сообщения',
-                'Консультации клиентов 24/7',
-                'Обработка типовых запросов',
-                'Интеграция с мессенджерами',
-                'Обучение на ваших данных',
-                'Аналитика взаимодействий'
+                'Обработка типовых запросов клиентов',
+                'Интеграция с базой знаний компании',
+                'Многоязычная поддержка',
+                'Аналитика взаимодействий',
+                'Обучение на ваших данных'
             ],
-            technologies: ['OpenAI GPT', 'Claude', 'LangChain', 'Python', 'API интеграции', 'NLP'],
-            price: 'от 80,000 ₽',
+            technologies: ['Telegram Bot API', 'OpenAI GPT', 'Python', 'NLP'],
+            price: 'от 50,000 ₽',
             duration: '2-4 недели'
         },
-        'channel-systems': {
-            title: 'Системы ведения каналов',
-            description: 'Разрабатываю и подключаю комплексные системы автоматизации для управления социальными каналами и мессенджерами.',
+        'channel-automation': {
+            title: 'Автоматизация управления каналами',
+            description: 'Настройка и внедрение систем для автоматического ведения Telegram-каналов и групп: публикация, модерация, взаимодействие с аудиторией.',
             features: [
-                'Автоматические ответы в Директе',
-                'Модерация комментариев',
-                'Автоматическое создание постов',
+                'Автоматическое создание и публикация постов',
+                'Модерация комментариев и сообщений',
                 'Управление несколькими каналами',
+                'Планирование контента',
                 'Аналитика и отчеты',
-                'Интеграция с CRM'
+                'Интеграция с внешними источниками'
             ],
-            technologies: ['Telegram Bot API', 'VK API', 'Python', 'PostgreSQL', 'Redis', 'Docker'],
-            price: 'от 120,000 ₽',
+            technologies: ['Telegram Bot API', 'Python', 'PostgreSQL', 'Redis'],
+            price: 'от 75,000 ₽',
             duration: '3-6 недель'
         },
-        'product-manager': {
-            title: 'Менеджер продукта',
-            description: 'Веду ваш продукт от идеи до реализации, обеспечиваю эффективную коммуникацию с командой и создаю качественные технические задания.',
+        'social-management': {
+            title: 'Ведение социальных каналов',
+            description: 'Организация и сопровождение работы в социальных сетях и мессенджерах с акцентом на процессах и коммуникации.',
+            features: [
+                'Разработка стратегии ведения каналов',
+                'Создание контент-планов',
+                'Организация взаимодействия с аудиторией',
+                'Настройка процессов модерации',
+                'Анализ эффективности',
+                'Обучение команды'
+            ],
+            technologies: ['Telegram', 'Instagram', 'VK', 'Аналитические инструменты'],
+            price: 'от 60,000 ₽/месяц',
+            duration: 'Постоянно'
+        },
+        'product-support': {
+            title: 'Полное продуктовое сопровождение',
+            description: 'Ведение продукта "под ключ" — от идеи и анализа до запуска и сопровождения, включая контроль сроков и координацию команды.',
             features: [
                 'Анализ требований и планирование',
-                'Коммуникация с разработчиками',
-                'Написание технических заданий',
-                'Управление сроками и бюджетом',
-                'Тестирование и контроль качества',
-                'Поддержка после запуска'
+                'Координация команды разработки',
+                'Контроль сроков и качества',
+                'Управление рисками проекта',
+                'Тестирование и запуск',
+                'Сопровождение после релиза'
             ],
-            technologies: ['Jira', 'Confluence', 'Figma', 'Miro', 'Notion', 'Slack'],
-            price: 'от 150,000 ₽',
+            technologies: ['Agile', 'Scrum', 'Figma', 'Jira', 'Notion'],
+            price: 'от 120,000 ₽/месяц',
             duration: 'По проекту'
         },
-        'other-services': {
-            title: 'Другие услуги',
-            description: 'Индивидуальные решения под ваши уникальные задачи. Обсудим проект и найдём оптимальное решение.',
+        'custom-development': {
+            title: 'Индивидуальная разработка',
+            description: 'Создание уникальных решений для специфических потребностей бизнеса — от простых автоматизаций до сложных интеграций.',
             features: [
                 'Анализ бизнес-процессов',
-                'Консультации по автоматизации',
-                'Интеграция различных систем',
+                'Проектирование архитектуры решения',
+                'Разработка и интеграция',
+                'Тестирование и внедрение',
                 'Обучение персонала',
-                'Техническая поддержка',
-                'Аудит существующих решений'
+                'Техническая поддержка'
             ],
-            technologies: ['Индивидуально под проект', 'Современные технологии', 'Гибкие решения'],
-            price: 'По договоренности',
-            duration: 'По проекту'
+            technologies: ['По требованию проекта'],
+            price: 'Договорная',
+            duration: 'Индивидуально'
+        },
+        'no-code-websites': {
+            title: 'Создание сайтов и веб-приложений',
+            description: 'Быстрая разработка прототипов, лендингов и полноценных решений на no-code платформах с использованием vibe-coding.',
+            features: [
+                'Создание лендингов и сайтов',
+                'Разработка веб-приложений',
+                'Интеграция с внешними сервисами',
+                'Адаптивный дизайн',
+                'SEO-оптимизация',
+                'Техническая поддержка'
+            ],
+            technologies: ['No-code платформы', 'Vibe-coding', 'Интеграции'],
+            price: 'от 40,000 ₽',
+            duration: '1-3 недели'
+        },
+        'onboarding-systems': {
+            title: 'Системы онбординга',
+            description: 'Создание автоматизированных систем для эффективного ввода новых сотрудников, клиентов или пользователей, а также настройка внутренних процессов.',
+            features: [
+                'Автоматизация процессов адаптации',
+                'Создание обучающих материалов',
+                'Система проверки знаний',
+                'Интеграция с HR-системами',
+                'Аналитика эффективности',
+                'Настройка внутренних процессов'
+            ],
+            technologies: ['Telegram Bot API', 'Python', 'Базы данных', 'Интеграции'],
+            price: 'от 80,000 ₽',
+            duration: '4-8 недель'
         }
     };
 
@@ -425,12 +624,17 @@ function initReviewStars() {
     
     // Обработчик отправки отзыва
     sendBtn.addEventListener('click', () => {
+        const currentUserData = window.userData || userData;
+        console.log('📝 Отправка отзыва, userData:', currentUserData);
+        
         const reviewData = {
             rating: selectedRating,
             comment: reviewText.value.trim() || getText('servicesPage.reviews.messages.noComment', 'Без комментария'),
-            user: userData ? `@${userData.username || userData.firstName}` : '@гость',
+            user: currentUserData ? `@${currentUserData.username || currentUserData.firstName}` : '@гость',
             date: new Date().toLocaleDateString('ru-RU').split('/').reverse().join('.')
         };
+        
+        console.log('📝 Данные отзыва:', reviewData);
         
         // Отправляем отзыв в бэкенд
         trackImportantEvent('review_submit', {
@@ -2542,6 +2746,47 @@ function handleDataFromBot(data) {
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', initTelegramWebApp);
+
+// Function to handle responsive tag hiding
+function handleResponsiveTags() {
+    const featureDetails = document.querySelectorAll('.feature-detail');
+    
+    featureDetails.forEach(detail => {
+        const highlights = detail.querySelector('.feature-highlights');
+        const tags = highlights?.querySelectorAll('span');
+        const text = detail.querySelector('p');
+        
+        if (!highlights || !tags || !text) return;
+        
+        // Check if text is being cut off
+        const textRect = text.getBoundingClientRect();
+        const highlightsRect = highlights.getBoundingClientRect();
+        const detailRect = detail.getBoundingClientRect();
+        
+        // If highlights overlap with text area, hide tags progressively
+        if (highlightsRect.top < textRect.bottom + 10) {
+            // Hide tags from right to left
+            for (let i = tags.length - 1; i >= 0; i--) {
+                tags[i].style.display = 'none';
+                
+                // Check if there's enough space now
+                const newHighlightsRect = highlights.getBoundingClientRect();
+                if (newHighlightsRect.top >= textRect.bottom + 5) {
+                    break;
+                }
+            }
+        } else {
+            // Show all tags if there's enough space
+            tags.forEach(tag => {
+                tag.style.display = 'inline-block';
+            });
+        }
+    });
+}
+
+// Call on load and resize
+window.addEventListener('resize', handleResponsiveTags);
+window.addEventListener('load', handleResponsiveTags);
 
 // Глобальный обработчик ошибок для отслеживания
 window.addEventListener('error', (event) => {

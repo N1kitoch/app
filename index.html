@@ -73,71 +73,49 @@
         <div class="services">
             <div class="container">
                 <div class="section-header">
-                    <h2>Мои услуги</h2>
-                    <p>Специализируюсь на создании интеллектуальных решений для бизнеса</p>
+                    <h2>Услуги</h2>
+                    <p>Интеллектуальные решения для вашего бизнеса</p>
                 </div>
-                <div class="services-grid">
-                    <div class="service-card">
-                        <div class="service-icon">
-                            <i class="fas fa-robot"></i>
+                
+                <!-- Service Categories -->
+                <div class="service-categories">
+                    <div class="category-scroll-container">
+                        <div class="category-tabs">
+                            <button class="category-tab active" data-category="all">
+                                <i class="fas fa-th-large"></i>
+                                <span>Все услуги</span>
+                            </button>
+                            <button class="category-tab" data-category="ai">
+                                <i class="fas fa-robot"></i>
+                                <span>AI & Автоматизация</span>
+                            </button>
+                            <button class="category-tab" data-category="social">
+                                <i class="fas fa-users"></i>
+                                <span>Социальные сети</span>
+                            </button>
+                            <button class="category-tab" data-category="development">
+                                <i class="fas fa-code"></i>
+                                <span>Разработка</span>
+                            </button>
                         </div>
-                        <h3>AI-менеджеры и ассистенты</h3>
-                        <p>Создаю интеллектуальных помощников, которые автоматически отвечают на сообщения, консультируют клиентов и обрабатывают запросы</p>
-                        <div class="service-features">
-                            <span>Автоответы</span>
-                            <span>Консультации</span>
-                            <span>Обработка запросов</span>
-                        </div>
-                        <button class="btn btn-outline" onclick="openServiceModal('ai-managers')">
-                            Подробнее
-                        </button>
                     </div>
+                </div>
 
-                    <div class="service-card">
-                        <div class="service-icon">
-                            <i class="fas fa-broadcast-tower"></i>
-                        </div>
-                        <h3>Системы ведения каналов</h3>
-                        <p>Разрабатываю и подключаю автоматизированные системы для управления социальными каналами с полным функционалом</p>
-                        <div class="service-features">
-                            <span>Ответы в Директе</span>
-                            <span>Авто-модерация</span>
-                            <span>Автопостинг</span>
-                        </div>
-                        <button class="btn btn-outline" onclick="openServiceModal('channel-systems')">
-                            Подробнее
-                        </button>
-                    </div>
+                <!-- Compact Services Grid -->
+                <div class="services-compact-grid">
+                    <!-- Service cards will be loaded dynamically from JSON -->
+                </div>
 
-                    <div class="service-card">
-                        <div class="service-icon">
-                            <i class="fas fa-tasks"></i>
+                <!-- Quick Contact Section -->
+                <div class="quick-contact-section">
+                    <div class="quick-contact-card">
+                        <div class="quick-contact-content">
+                            <h3>Нужна консультация?</h3>
+                            <p>Обсудим ваш проект и подберем оптимальное решение</p>
                         </div>
-                        <h3>Менеджер продукта</h3>
-                        <p>Веду ваш продукт от идеи до реализации, общаюсь с командой и пишу технические задания для специалистов</p>
-                        <div class="service-features">
-                            <span>Управление проектом</span>
-                            <span>Коммуникация с командой</span>
-                            <span>Написание ТЗ</span>
-                        </div>
-                        <button class="btn btn-outline" onclick="openServiceModal('product-manager')">
-                            Подробнее
-                        </button>
-                    </div>
-
-                    <div class="service-card">
-                        <div class="service-icon">
-                            <i class="fas fa-cogs"></i>
-                        </div>
-                        <h3>Другие услуги</h3>
-                        <p>Индивидуальные решения под ваши задачи. Обсудим проект и найдём оптимальное решение</p>
-                        <div class="service-features">
-                            <span>Индивидуальный подход</span>
-                            <span>Гибкие решения</span>
-                            <span>Консультации</span>
-                        </div>
-                        <button class="btn btn-outline" onclick="openServiceModal('other-services')">
-                            Подробнее
+                        <button class="btn btn-primary" onclick="showContactForm()">
+                            <i class="fas fa-paper-plane"></i>
+                            <span>Связаться</span>
                         </button>
                     </div>
                 </div>
