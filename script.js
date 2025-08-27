@@ -432,6 +432,14 @@ function initReviewStars() {
             date: new Date().toLocaleDateString('ru-RU').split('/').reverse().join('.')
         };
         
+        // Отправляем отзыв в бэкенд
+        trackImportantEvent('review_submit', {
+            rating: selectedRating,
+            comment: reviewData.comment,
+            user: reviewData.user,
+            date: reviewData.date
+        });
+        
         // Добавляем отзыв в общую базу
         globalReviews.unshift(reviewData);
         
@@ -889,7 +897,7 @@ function contactForService(serviceName) {
     const userName = currentUserData ? `${currentUserData.firstName} ${currentUserData.lastName}`.trim() : 'Пользователь';
     const message = `Здравствуйте! Меня интересует услуга "${serviceName}". Пожалуйста, свяжитесь со мной для обсуждения деталей проекта.`;
     
-    // Отправляем данные через бэкенд
+    // Отправляем данные через бэкенд (только один раз)
     trackImportantEvent('service_interest', {
         service: serviceName,
         userName: userName,
@@ -898,11 +906,6 @@ function contactForService(serviceName) {
     
     // Показываем уведомление об успешной отправке
     showNotification('Ваш запрос отправлен! Мы свяжемся с вами в ближайшее время.', 'success');
-    
-    // Отслеживаем интерес к услуге
-    trackImportantEvent('service_interest', {
-        service: serviceName
-    });
 }
 
 // Contact Form Submission
@@ -2310,6 +2313,8 @@ function trackImportantEvent(eventType, eventData = {}) {
     const importantEvents = [
         'contact_form',
         'service_interest',
+        'review_submit',
+        'error_report',
         'order_submit',
         'payment_request',
         'support_request'
@@ -2376,7 +2381,7 @@ function trackButtonClick(buttonName, page = null) {
 
 // Упрощенная функция для отслеживания форм
 function trackFormSubmit(formType, formData) {
-    const isImportant = ['contact_form', 'order_submit', 'support_request'].includes(formType);
+    const isImportant = ['contact_form', 'order_submit', 'support_request', 'error_report'].includes(formType);
     if (isImportant) {
         trackImportantEvent(formType, { formData: formData });
     } else {

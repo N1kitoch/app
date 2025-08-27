@@ -918,7 +918,7 @@ body {
     }
     
     .service-modal {
-        padding-top: 5%; /* Больше отступ сверху */
+        padding-top: 10%; /* Больше отступ сверху */
     }
 }
 
@@ -3430,7 +3430,7 @@ input::placeholder, textarea::placeholder {
   width: 100%;
   max-width: 84vw;
   margin: 0 auto;
-  padding: 72px 8vw 80px 8vw;
+  padding: 120px 8vw 80px 8vw;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -3444,7 +3444,7 @@ input::placeholder, textarea::placeholder {
   #modalContent {
     max-width: 100vw;
     border-radius: 0;
-    padding: 64px 0 72px 0;
+    padding: 100px 0 72px 0;
   }
 }
 
@@ -3466,7 +3466,7 @@ input::placeholder, textarea::placeholder {
 }
 .modal-back {
   position: fixed;
-  top: calc(80px + var(--safe-area-inset-top));
+  top: calc(120px + var(--safe-area-inset-top));
   left: calc(16px + var(--safe-area-inset-left));
   z-index: 10000;
   width: 48px;
@@ -3500,7 +3500,7 @@ input::placeholder, textarea::placeholder {
 /* Мобильная поддержка для кнопки назад */
 @media (max-width: 768px) {
   .modal-back {
-    top: calc(60px + var(--safe-area-inset-top));
+    top: calc(100px + var(--safe-area-inset-top));
     left: 12px;
     width: 44px;
     height: 44px;
@@ -3520,7 +3520,7 @@ input::placeholder, textarea::placeholder {
   }
   
   .service-modal {
-    padding-top: 4%; /* Больше отступ сверху на мобильных */
+    padding-top: 9%; /* Больше отступ сверху на мобильных */
   }
 }
 
@@ -3558,7 +3558,7 @@ input::placeholder, textarea::placeholder {
   grid-template-columns: 1fr;
   grid-auto-rows: auto;
 }
-.service-modal{width:100%;max-width:700px;margin:0 auto;padding-top:3%;}
+.service-modal{width:100%;max-width:700px;margin:0 auto;padding-top:8%;}
 .service-description{margin-bottom:1rem;color:var(--text-secondary);text-align:center;}
 
 /* Стили для заголовка услуги в модальном окне */
