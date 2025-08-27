@@ -232,11 +232,7 @@ async function initApp() {
         // Proceed to initial page
         showPage('home');
         
-        // Обрабатываем диплинки после инициализации
-        handleDeeplink();
-        
-        // Добавляем кнопки диплинков на страницы
-        addDeeplinkButtons();
+        // Инициализация завершена
     } catch (e) {
         console.error('initApp failed', e);
         hideAppOverlay();
@@ -351,7 +347,6 @@ function openServiceModal(serviceType) {
 
             <div class="modal-actions">
               <button class="btn btn-primary" onclick="contactForService('${service.title}')"><i class="fas fa-paper-plane"></i><span>Заказать</span></button>
-              <button id="shareServiceBtn" class="icon-btn small" title="Поделиться"><i class="fas fa-share-alt"></i></button>
             </div>
 
             <div class="service-reviews">
@@ -359,16 +354,7 @@ function openServiceModal(serviceType) {
             </div>
           </div>`;
 
-        const shareBtnEl = document.getElementById('shareServiceBtn');
-        if (shareBtnEl){
-          shareBtnEl.onclick = () => {
-            if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.sendData) {
-              window.Telegram.WebApp.sendData(JSON.stringify({ action: 'share_service', serviceId: service.title }));
-            } else {
-              showNotification('Откройте через Telegram для получения диплинка', 'info');
-            }
-          };
-        }
+
 
         // Инициализация звездочек для оценки
         initReviewStars();
@@ -1594,23 +1580,14 @@ function initTelegramWebApp() {
 
 // Determine how the app was opened
 function getAppLaunchMethod() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const startParam = urlParams.get('start');
-    const startappParam = urlParams.get('startapp');
-    
     console.log('Launch parameters:', {
-        start: startParam,
-        startapp: startappParam,
         hasQueryId: !!(tg?.initDataUnsafe?.query_id),
         hasSendData: typeof tg?.sendData === 'function',
         initDataUnsafe: tg?.initDataUnsafe,
         initData: tg?.initData ? 'present' : 'absent'
     });
     
-    if (startParam || startappParam) {
-        console.log('Launch method: inline (start/startapp parameter)');
-        return 'inline';
-    } else if (tg?.initDataUnsafe?.query_id) {
+    if (tg?.initDataUnsafe?.query_id) {
         console.log('Launch method: query (has query_id)');
         return 'query';
     } else if (typeof tg?.sendData === 'function') {
@@ -2782,33 +2759,6 @@ function initFeatureDetails() {
         selectFeature('ai-solutions');
         resetAutoSwitch();
     }
-} 
-
-function getBotUsernameFromUrl() {
-    try {
-        const p = new URLSearchParams(window.location.search);
-        const b = p.get('bot');
-        return b && /^\w{5,}$/.test(b) ? b : '';
-    } catch { return ''; }
-}
-
-function tryRecoverByReopen() {
-    const bot = getBotUsernameFromUrl();
-    if (!bot) return false;
-    const link = `https://t.me/${bot}/app?startapp=open`;
-    console.log('Reopening via universal link to refresh api:', link);
-    try {
-        if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openTelegramLink === 'function') {
-            window.Telegram.WebApp.openTelegramLink(link);
-            return true;
-        }
-        // Fallback hard redirect
-        window.location.href = link;
-        return true;
-    } catch (e) {
-        console.error('Failed to reopen via universal link', e);
-        return false;
-    }
 }
 
 // Tag Modal Functionality
@@ -2958,147 +2908,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Функция для обработки диплинков
-function handleDeeplink() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const startParam = urlParams.get('start');
-    
-    if (startParam) {
-        // Обрабатываем диплинк
-        console.log('Deeplink detected:', startParam);
-        
-        // Переходим на соответствующую страницу
-        switch (startParam.toLowerCase()) {
-            case 'services':
-            case 'услуги':
-                showPage('services');
-                break;
-            case 'about':
-            case 'о-нас':
-            case 'about-us':
-                showPage('about');
-                break;
-            case 'contact':
-            case 'контакты':
-                showPage('contact');
-                break;
-            case 'projects':
-            case 'проекты':
-                showPage('about'); // Проекты находятся на странице about
-                // Прокручиваем к секции проектов
-                setTimeout(() => {
-                    const projectsSection = document.querySelector('.projects-section');
-                    if (projectsSection) {
-                        projectsSection.scrollIntoView({ behavior: 'smooth' });
-                    }
-                }, 500);
-                break;
-            case 'home':
-            case 'главная':
-            default:
-                showPage('home');
-                break;
-        }
-        
-        // Убираем параметр из URL без перезагрузки страницы
-        const newUrl = window.location.pathname;
-        window.history.replaceState({}, document.title, newUrl);
-    }
-}
 
-// Функция для создания диплинка
-function createDeeplink(page, section = '') {
-    // Получаем username бота из Telegram Web App или используем fallback
-    let botUsername = 'your_bot_username'; // fallback
-    
-    if (window.Telegram && window.Telegram.WebApp) {
-        const webApp = window.Telegram.WebApp;
-        if (webApp.initDataUnsafe && webApp.initDataUnsafe.user) {
-            // Пытаемся получить username из данных пользователя
-            const user = webApp.initDataUnsafe.user;
-            if (user.username) {
-                botUsername = user.username;
-            }
-        }
-        
-        // Альтернативный способ - из URL бота
-        if (webApp.initData) {
-            try {
-                const initData = new URLSearchParams(webApp.initData);
-                const userData = initData.get('user');
-                if (userData) {
-                    const user = JSON.parse(decodeURIComponent(userData));
-                    if (user.username) {
-                        botUsername = user.username;
-                    }
-                }
-            } catch (e) {
-                console.log('Could not parse user data from initData');
-            }
-        }
-    }
-    
-    // Если не удалось получить username, используем fallback
-    if (botUsername === 'your_bot_username') {
-        // Можно заменить на реальный username бота
-        botUsername = 'n1kitoch_bot'; // Замените на реальный username
-    }
-    
-    const path = section ? `${page}/${section}` : page;
-    return `https://t.me/${botUsername}?start=${path}`;
-}
-
-// Функция для копирования диплинка в буфер обмена
-async function copyDeeplink(page, section = '') {
-    const deeplink = createDeeplink(page, section);
-    
-    try {
-        await navigator.clipboard.writeText(deeplink);
-        showNotification('🔗 Диплинк скопирован в буфер обмена!', 'success');
-    } catch (err) {
-        // Fallback для старых браузеров
-        const textArea = document.createElement('textarea');
-        textArea.value = deeplink;
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
-        showNotification('🔗 Диплинк скопирован в буфер обмена!', 'success');
-    }
-}
-
-// Функция для добавления кнопок диплинков
-function addDeeplinkButtons() {
-    // Добавляем кнопки на страницу о нас
-    const aboutSection = document.querySelector('.about');
-    if (aboutSection) {
-        const deeplinkButton = document.createElement('button');
-        deeplinkButton.className = 'btn btn-outline deeplink-btn';
-        deeplinkButton.innerHTML = '🔗 Поделиться ссылкой';
-        deeplinkButton.onclick = () => copyDeeplink('about');
-        
-        // Вставляем кнопку после заголовка секции
-        const sectionHeader = aboutSection.querySelector('.section-header');
-        if (sectionHeader) {
-            sectionHeader.appendChild(deeplinkButton);
-        }
-    }
-    
-    // Добавляем кнопки на страницу контактов
-    const contactSection = document.querySelector('.contact');
-    if (contactSection) {
-        const deeplinkButton = document.createElement('button');
-        deeplinkButton.className = 'btn btn-outline deeplink-btn';
-        deeplinkButton.innerHTML = '🔗 Поделиться ссылкой';
-        deeplinkButton.onclick = () => copyDeeplink('contact');
-        
-        // Вставляем кнопку после заголовка секции
-        const sectionHeader = contactSection.querySelector('.section-header');
-        if (sectionHeader) {
-            sectionHeader.appendChild(deeplinkButton);
-        }
-    }
-}
 
 async function updateAuthorAvatar() {
   const userAvatar = document.querySelector('.author-avatar#userAvatar');

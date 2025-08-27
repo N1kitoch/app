@@ -625,6 +625,12 @@ body.page-home ::-webkit-scrollbar {
     overflow-y: auto;
 }
 
+/* Специальное позиционирование для модального окна тегов */
+#tagModal .modal-content {
+    margin: 15% auto 5% auto;
+    max-height: 80vh;
+}
+
 .close {
     color: var(--text-light);
     float: right;
@@ -885,6 +891,35 @@ body {
     .hero {
         padding: 25px 0 15px;
     }
+    
+    /* Дополнительные стили для навигации на очень маленьких экранах */
+    .mobile-nav-item {
+        padding: 0.3rem 0.5rem 0.75rem 0.5rem;
+    }
+    
+    .mobile-nav-item i {
+        transform: translateY(-4px);
+        font-size: 1.8rem;
+    }
+    
+    /* Модальное окно тегов на очень маленьких экранах */
+    #tagModal .modal-content {
+        margin: 25% auto 5% auto;
+        padding: 1rem;
+        width: 98%;
+        max-height: 80vh;
+    }
+    
+    /* Стили для модального окна услуг на очень маленьких экранах */
+    .service-title {
+        margin-left: 45px; /* Еще меньший отступ */
+        margin-right: 10px;
+        font-size: 1.4rem;
+    }
+    
+    .service-modal {
+        padding-top: 5%; /* Больше отступ сверху */
+    }
 }
 
 /* Smooth scrolling */
@@ -984,7 +1019,7 @@ a:focus {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 0.75rem;
+    padding: 0.5rem 0.75rem 0.75rem 0.75rem;
     cursor: pointer;
     /* Mobile: убираем transition */
     flex: 1;
@@ -996,6 +1031,8 @@ a:focus {
     font-size: 2rem;
     color: var(--text-secondary);
     /* Mobile: убираем transition */
+    margin-bottom: 0.25rem;
+    transform: translateY(-2px);
 }
 
 
@@ -3268,6 +3305,14 @@ input::placeholder, textarea::placeholder {
 }
 
 /* Mobile Tag Modal Design */
+@media (max-width: 768px) {
+    #tagModal .modal-content {
+        margin: 20% auto 5% auto;
+        padding: 1.5rem;
+        width: 95%;
+        max-height: 80vh;
+    }
+    
     .tag-modal-header {
         flex-direction: column;
         text-align: center;
@@ -3287,6 +3332,16 @@ input::placeholder, textarea::placeholder {
     .tag-modal-details li::before {
         display: none;
     }
+    
+    /* Поднимаем иконки в навигации выше */
+    .mobile-nav-item {
+        padding: 0.4rem 0.75rem 0.75rem 0.75rem;
+    }
+    
+    .mobile-nav-item i {
+        transform: translateY(-3px);
+    }
+}
     
     .deeplink-btn {
         width: 100%;
@@ -3456,6 +3511,17 @@ input::placeholder, textarea::placeholder {
     transform: scale(0.9);
     background: rgba(255, 255, 255, 0.6);
   }
+  
+  /* Адаптивные стили для заголовка услуги на мобильных */
+  .service-title {
+    margin-left: 50px; /* Меньший отступ на мобильных */
+    margin-right: 15px;
+    font-size: 1.5rem;
+  }
+  
+  .service-modal {
+    padding-top: 4%; /* Больше отступ сверху на мобильных */
+  }
 }
 
 /* 2x2 grid для плиток */
@@ -3492,8 +3558,19 @@ input::placeholder, textarea::placeholder {
   grid-template-columns: 1fr;
   grid-auto-rows: auto;
 }
-.service-modal{width:100%;max-width:700px;margin:0 auto;}
+.service-modal{width:100%;max-width:700px;margin:0 auto;padding-top:3%;}
 .service-description{margin-bottom:1rem;color:var(--text-secondary);text-align:center;}
+
+/* Стили для заголовка услуги в модальном окне */
+.service-title {
+    margin-left: 60px; /* Отступ слева, чтобы не пересекаться с кнопкой назад */
+    margin-right: 20px;
+    text-align: center;
+    color: var(--text-primary);
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
 .service-details{display:grid;grid-template-columns:1fr;gap:1.25rem;margin-bottom:1.75rem;} 
 
 .service-details .detail-item{margin-bottom:1rem;}
