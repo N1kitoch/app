@@ -60,6 +60,12 @@ function showPage(pageId) {
     document.body.style.overflow = 'auto';
     document.body.classList.remove('page-home');
     
+    // Прокручиваем страницу вверх при переходе
+    window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+    });
+    
             // Home page initialization
         if (pageId === 'home') {
             // Main button is always hidden
@@ -85,9 +91,28 @@ function showPage(pageId) {
             setTimeout(initTagPulsing, 500);
         }
         
+
+        
         // Initialize profile page animations
         if (pageId === 'about') {
             setTimeout(initProfilePage, 100);
+        }
+        
+        // При переходе на страницы используем данные из кэша
+        if (pageId === 'reviews-page') {
+            // Обновляем отображение отзывов из кэша
+            setTimeout(() => {
+                updateReviewsDisplay();
+            }, 500);
+        }
+        
+        if (pageId === 'chat-page') {
+            // Обновляем отображение чата из кэша
+            setTimeout(() => {
+                if (currentChat) {
+                    loadChatMessages(currentChat);
+                }
+            }, 500);
         }
         
         // Initialize services page
@@ -141,6 +166,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Инициализируем кастомный селект
     initCustomSelect();
     
+
+    
     // Добавляем обработчик для формы сообщения об ошибке
     const errorReportForm = document.getElementById('errorReportForm');
     if (errorReportForm) {
@@ -153,16 +180,29 @@ document.addEventListener('DOMContentLoaded', async function() {
         loadServiceCards();
     }, 1000);
     
-    // Тест категорий через 2 секунды
-    setTimeout(() => {
-        console.log('Testing category filtering...');
-        const categoryTabs = document.querySelectorAll('.category-tab');
-        if (categoryTabs.length > 0) {
-            console.log('Category tabs found, testing click...');
-            // Симулируем клик на первую категорию
-            categoryTabs[1].click();
-        }
-    }, 2000);
+    // Загружаем данные из БД
+    setTimeout(async () => {
+        console.log('Loading data from database...');
+        await loadAllDataFromDB();
+    }, 1500);
+    
+    // Очищаем интервалы при закрытии страницы
+    window.addEventListener('beforeunload', () => {
+        stopPeriodicUpdates();
+    });
+    
+    // Добавляем отладочные функции в глобальную область
+    window.debugData = {
+        forceUpdate: forceUpdateAllData,
+        getCacheInfo: getCacheInfo,
+        startUpdates: startPeriodicUpdates,
+        stopUpdates: stopPeriodicUpdates
+    };
+    
+    console.log('🔧 Отладочные функции доступны: window.debugData');
+    console.log('📊 Информация о кэше:', getCacheInfo());
+    
+    // Удален тестовый код автоматического переключения категорий
 });
 
 function createAppOverlay() {
@@ -222,6 +262,8 @@ async function initApp() {
     // Инициализируем глобальные переменные для страниц и навигации
     pages = document.querySelectorAll('.page');
     mobileNavItems = document.querySelectorAll('.mobile-nav-item');
+    
+    // Обработка страницы контактов перенесена в основную функцию showPage
     
     hideAllModals(); // ensure clean state on startup
     try {
@@ -335,18 +377,7 @@ function initServiceCategories() {
 
 // Show contact form with scroll to form
 function showContactForm() {
-    showPage('contact');
-    
-    // Wait for page to load and then scroll to contact form
-    setTimeout(() => {
-        const contactForm = document.querySelector('.contact-form-section');
-        if (contactForm) {
-            contactForm.scrollIntoView({ 
-                behavior: 'smooth', 
-                block: 'start' 
-            });
-        }
-    }, 300);
+    showPage('feedback-page');
 }
 
 // Load service cards from JSON
@@ -1050,6 +1081,186 @@ function loadThemeSectionTexts() {
     });
 }
 
+// Функция для загрузки текстов блока действий профиля
+function loadProfileActionsTexts() {
+    const profileActionElements = {
+        'profileActionsTitle': 'profilePage.profileActions.title',
+        'profileActionHelp': 'profilePage.profileActions.buttons.help',
+        'profileActionFeedback': 'profilePage.profileActions.buttons.feedback',
+        'profileActionOrders': 'profilePage.profileActions.buttons.orders',
+        'profileActionChat': 'profilePage.profileActions.buttons.chat',
+        'profileActionReviews': 'profilePage.profileActions.buttons.reviews'
+    };
+    
+    Object.entries(profileActionElements).forEach(([elementId, textPath]) => {
+        const element = document.getElementById(elementId);
+        if (element) {
+            element.textContent = getText(textPath, element.textContent);
+        }
+    });
+}
+
+// Функция для загрузки текстов страницы помощи
+function loadHelpPageTexts() {
+    const helpPageElements = {
+        'helpPageTitle': 'helpPage.title'
+    };
+    
+    Object.entries(helpPageElements).forEach(([elementId, textPath]) => {
+        const element = document.getElementById(elementId);
+        if (element) {
+            element.textContent = getText(textPath, element.textContent);
+        }
+    });
+}
+
+// Функция для загрузки текстов страницы обратной связи
+function loadFeedbackPageTexts() {
+    const feedbackPageElements = {
+        'feedbackPageTitle': 'feedbackPage.title',
+        'feedbackFormTitle': 'feedbackPage.form.title',
+        'feedbackNameLabel': 'feedbackPage.form.nameLabel',
+        'feedbackNamePlaceholder': 'feedbackPage.form.namePlaceholder',
+        'feedbackSubjectLabel': 'feedbackPage.form.subjectLabel',
+        'feedbackSubjectPlaceholder': 'feedbackPage.form.subjectPlaceholder',
+        'feedbackMessageLabel': 'feedbackPage.form.messageLabel',
+        'feedbackMessagePlaceholder': 'feedbackPage.form.messagePlaceholder',
+        'feedbackSubmitButton': 'feedbackPage.form.submitButton'
+    };
+    
+    Object.entries(feedbackPageElements).forEach(([elementId, textPath]) => {
+        const element = document.getElementById(elementId);
+        if (element) {
+            if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+                element.placeholder = getText(textPath, element.placeholder);
+            } else {
+                element.textContent = getText(textPath, element.textContent);
+            }
+        }
+    });
+}
+
+// Функция для загрузки текстов страницы заказов
+function loadOrdersPageTexts() {
+    const ordersPageElements = {
+        'ordersPageTitle': 'ordersPage.title',
+        'ordersEmptyTitle': 'ordersPage.emptyState.title',
+        'ordersEmptyDescription': 'ordersPage.emptyState.description',
+        'ordersEmptyButton': 'ordersPage.emptyState.button'
+    };
+    
+    Object.entries(ordersPageElements).forEach(([elementId, textPath]) => {
+        const element = document.getElementById(elementId);
+        if (element) {
+            element.textContent = getText(textPath, element.textContent);
+        }
+    });
+}
+
+// Функция для загрузки текстов страницы чата
+function loadChatPageTexts() {
+    console.log('loadChatPageTexts called');
+    
+    const chatPageElements = {
+        'chatPageTitle': 'chatPage.title',
+        'chatContactName': 'chatPage.contact.name',
+        'chatContactTitle': 'chatPage.contact.title',
+        'chatContactStatus': 'chatPage.contact.status',
+        'chatTelegramButton': 'chatPage.buttons.telegram',
+        'chatCopyLinkButton': 'chatPage.buttons.copyLink',
+        'chatFeaturesTitle': 'chatPage.features.title',
+        'chatFeature1': 'chatPage.features.consultation',
+        'chatFeature2': 'chatPage.features.support',
+        'chatFeature3': 'chatPage.features.requirements',
+        'chatFeature4': 'chatPage.features.updates'
+    };
+    
+    Object.entries(chatPageElements).forEach(([elementId, textPath]) => {
+        const element = document.getElementById(elementId);
+        if (element) {
+            element.textContent = getText(textPath, element.textContent);
+        }
+    });
+    
+    console.log('About to call updateChatInputArea');
+    // Update input area for current chat
+    updateChatInputArea(currentChat);
+    
+    // Загружаем теги заказов
+    loadOrderTags();
+}
+
+// Функция для загрузки текстов страницы отзывов
+function loadReviewsPageTexts() {
+    const reviewsPageElements = {
+        'reviewsPageTitle': 'reviewsPage.title',
+        'reviewsHeaderTitle': 'reviewsPage.header.title',
+        'reviewsHeaderDescription': 'reviewsPage.header.description',
+        'reviewsAddButton': 'reviewsPage.addButton'
+    };
+    
+    Object.entries(reviewsPageElements).forEach(([elementId, textPath]) => {
+        const element = document.getElementById(elementId);
+        if (element) {
+            element.textContent = getText(textPath, element.textContent);
+        }
+    });
+    
+    // Загружаем отзывы
+    loadReviewsForPage();
+}
+
+// Функция для загрузки отзывов на страницу отзывов
+function loadReviewsForPage() {
+    const reviewsContainer = document.getElementById('reviewsContainer');
+    if (!reviewsContainer) return;
+    
+    const reviews = globalReviews;
+    const avg = reviews.length ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : "-";
+    
+    // Создаем HTML для отзывов
+    const reviewsHtml = reviews.map(review => {
+        // Определяем, есть ли у пользователя юзернейм
+        const hasUsername = review.user.startsWith('@');
+        
+        return `
+            <div class="review-card">
+                <div class="review-header">
+                    <div class="review-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="review-info">
+                        <h4 data-has-username="${hasUsername}">${review.user}</h4>
+                        <div class="review-stars">
+                            ${'<i class="fas fa-star"></i>'.repeat(review.rating)}${'<i class="far fa-star"></i>'.repeat(5 - review.rating)}
+                        </div>
+                    </div>
+                </div>
+                <p class="review-text">${review.comment}</p>
+                <div class="review-date">${review.date}</div>
+            </div>
+        `;
+    }).join('');
+    
+    // Добавляем статистику и отзывы
+    reviewsContainer.innerHTML = `
+        <div class="reviews-summary">
+            <div class="reviews-stats">
+                <div class="avg-rating">
+                    <span class="avg-number">${avg}</span>
+                    <div class="avg-stars">
+                        ${'<i class="fas fa-star"></i>'.repeat(Math.round(avg))}${'<i class="far fa-star"></i>'.repeat(5 - Math.round(avg))}
+                    </div>
+                    <span class="reviews-count">(${reviews.length} отзывов)</span>
+                </div>
+            </div>
+        </div>
+        <div class="reviews-grid">
+            ${reviewsHtml}
+        </div>
+    `;
+}
+
 // Управление темами
 let currentTheme = 'auto';
 
@@ -1245,12 +1456,12 @@ function contactForService(serviceName) {
     const currentViewed = parseInt(localStorage.getItem('viewedServices') || '0');
     localStorage.setItem('viewedServices', currentViewed + 1);
     
-    // Сразу отправляем данные в бэкенд без перехода на страницу контактов
+    // Получаем данные пользователя
     const currentUserData = window.userData || userData;
     const userName = currentUserData ? `${currentUserData.firstName} ${currentUserData.lastName}`.trim() : 'Пользователь';
     const message = `Здравствуйте! Меня интересует услуга "${serviceName}". Пожалуйста, свяжитесь со мной для обсуждения деталей проекта.`;
     
-    // Отправляем данные через бэкенд (только один раз)
+    // Отправляем данные через бэкенд
     trackImportantEvent('service_interest', {
         service: serviceName,
         userName: userName,
@@ -1259,6 +1470,33 @@ function contactForService(serviceName) {
     
     // Показываем уведомление об успешной отправке
     showNotification('Ваш запрос отправлен! Мы свяжемся с вами в ближайшее время.', 'success');
+}
+
+// Функция для автозаполнения формы обратной связи
+function fillFeedbackForm(serviceName = null) {
+    const nameField = document.getElementById('feedbackName');
+    const subjectField = document.getElementById('feedbackSubject');
+    const messageField = document.getElementById('feedbackMessage');
+    
+    // Автозаполняем имя пользователя
+    if (nameField) {
+        const currentUserData = window.userData || userData;
+        if (currentUserData && currentUserData.firstName) {
+            const fullName = `${currentUserData.firstName} ${currentUserData.lastName || ''}`.trim();
+            nameField.value = fullName;
+        }
+    }
+    
+    // Автозаполняем тему и сообщение если передана услуга
+    if (serviceName) {
+        if (subjectField) {
+            subjectField.value = `Заказ услуги: ${serviceName}`;
+        }
+        
+        if (messageField) {
+            messageField.value = `Здравствуйте! Меня интересует услуга "${serviceName}". Пожалуйста, свяжитесь со мной для обсуждения деталей проекта.`;
+        }
+    }
 }
 
 // Contact Form Submission
@@ -1316,22 +1554,27 @@ function resetContactForm() {
 
 // Animate contact stats
 function animateContactStats() {
-    const statNumbers = document.querySelectorAll('.contact-stats .stat-number');
+    const statNumbers = document.querySelectorAll('.stats-section .stat-number');
     
     statNumbers.forEach(stat => {
-        const target = parseInt(stat.getAttribute('data-target'));
-        const duration = 2000; // 2 seconds
-        const increment = target / (duration / 16); // 60fps
-        let current = 0;
-        
-        const timer = setInterval(() => {
-            current += increment;
-            if (current >= target) {
-                current = target;
-                clearInterval(timer);
-            }
-            stat.textContent = Math.floor(current);
-        }, 16);
+        const text = stat.textContent;
+        if (text.includes('+') || text.includes('%')) {
+            // For stats with + or %, animate from 0
+            const target = parseInt(text.replace(/[^\d]/g, ''));
+            const suffix = text.replace(/\d/g, '');
+            const duration = 2000;
+            const increment = target / (duration / 16);
+            let current = 0;
+            
+            const timer = setInterval(() => {
+                current += increment;
+                if (current >= target) {
+                    current = target;
+                    clearInterval(timer);
+                }
+                stat.textContent = Math.floor(current) + suffix;
+            }, 16);
+        }
     });
 }
 
@@ -1402,6 +1645,8 @@ function showProjectDetails(projectId) {
 function initProfilePage() {
     if (document.getElementById('about').classList.contains('active')) {
         animateProfileStats();
+        // Загружаем тексты для действий профиля
+        loadProfileActionsTexts();
         // Инициализируем кнопку помощи при загрузке страницы профиля
         setTimeout(() => {
             if (document.getElementById('profileHelpBtn')) {
@@ -2676,7 +2921,8 @@ function trackImportantEvent(eventType, eventData = {}) {
         'error_report',
         'order_submit',
         'payment_request',
-        'support_request'
+        'support_request',
+        'chat_message'
     ];
     
     if (!importantEvents.includes(eventType)) {
@@ -3283,84 +3529,332 @@ function shuffleArray(array) {
   }
   return array;
 }
-function renderAuthorBadges() {
-  const badges = [
-    {cls: 'badge-primary', icon: 'fas fa-project-diagram', text: 'Product Manager', tag: 'product-manager'},
-    {cls: 'badge-secondary', icon: 'fas fa-cogs', text: 'Автоматизация', tag: 'automation'},
-    {cls: 'badge-accent', icon: 'fas fa-users', text: 'UX Аналитик', tag: 'ux-analyst'},
-    {cls: 'badge-success', icon: 'fas fa-robot', text: 'AI Эксперт', tag: 'ai-expert'},
-    {cls: 'badge-info', icon: 'fas fa-mobile-alt', text: 'Mobile Apps', tag: 'mobile-apps'},
-    {cls: 'badge-warning', icon: 'fas fa-chart-line', text: 'Аналитика', tag: 'analytics'},
-    {cls: 'badge-dark', icon: 'fas fa-code', text: 'No-Code', tag: 'no-code'},
-    {cls: 'badge-light', icon: 'fas fa-lightbulb', text: 'Стартапы', tag: 'startups'}
-  ];
-  const shuffled = shuffleArray([...badges]);
-  const container = document.querySelector('.author-badges');
-  if (container) {
-    container.innerHTML = '';
-    shuffled.forEach(badge => {
-      const btn = document.createElement('button');
-      btn.className = `badge ${badge.cls}`;
-      btn.onclick = () => openTagModal(badge.tag);
-      btn.innerHTML = `<i class="${badge.icon}"></i> ${badge.text}`;
-      container.appendChild(btn);
-    });
-  }
-}
-// При открытии страницы 'Автор' вызывать renderAuthorBadges
-const origShowPage = showPage;
-showPage = function(pageId) {
-  origShowPage.apply(this, arguments);
-  if (pageId === 'contact') {
-    renderAuthorBadges();
-    // Показываем стикер-подсказку для тегов
-    setTimeout(() => {
-      showStickyHint();
-    }, 1000);
-  }
+
+
+// Функции перенесены выше для корректной работы
+
+// Общая база отзывов для всех услуг (будет заполняться данными из БД)
+let globalReviews = [];
+
+// Глобальный кэш данных
+window.dataCache = {
+    reviews: {
+        data: [],
+        lastUpdate: 0,
+        updateInterval: 30 * 60 * 1000 // 30 минут
+    },
+    chatMessages: {
+        data: {},
+        lastUpdate: 0,
+        updateInterval: 10 * 1000 // 10 секунд для чата
+    },
+    stats: {
+        data: {},
+        lastUpdate: 0,
+        updateInterval: 5 * 60 * 1000 // 5 минут
+    }
 };
 
-// Функции для стикер-подсказки тегов
-function showStickyHint() {
-    const hint = document.getElementById('stickyHint');
-    if (!hint) return;
+// Функции для получения данных из БД через бэкенд
+async function fetchDataFromDB(dataType, limit = 50, forceUpdate = false) {
+    const cache = window.dataCache[dataType];
+    const now = Date.now();
     
-    // Для тестов показываем каждый раз
-    // const hintShown = localStorage.getItem('stickyHintShown');
-    // if (hintShown) {
-    //     hint.style.display = 'none';
-    //     return;
-    // }
+    // Проверяем, нужно ли обновлять кэш
+    if (!forceUpdate && cache && (now - cache.lastUpdate) < cache.updateInterval) {
+        const minutesSinceUpdate = Math.floor((now - cache.lastUpdate) / (1000 * 60));
+        console.log(`📦 Используем кэшированные данные для ${dataType} (обновлено ${minutesSinceUpdate} мин назад)`);
+        return cache.data;
+    }
     
-    hint.style.display = 'block';
-    hint.style.animation = 'stickyBounce 0.8s ease-out';
-}
-
-function closeStickyHint() {
-    const hint = document.getElementById('stickyHint');
-    if (hint) {
-        hint.style.display = 'none';
-        // Сохраняем, что подсказка была показана
-        localStorage.setItem('stickyHintShown', 'true');
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/frontend/data/${dataType}?limit=${limit}`);
+        if (response.ok) {
+            const result = await response.json();
+            const data = result.success ? result.data : [];
+            
+            // Обновляем кэш
+            if (window.dataCache[dataType]) {
+                window.dataCache[dataType].data = data;
+                window.dataCache[dataType].lastUpdate = now;
+            }
+            
+            console.log(`✅ Обновлены данные ${dataType}: ${data.length} записей`);
+            return data;
+        } else {
+            console.error(`❌ Ошибка получения данных ${dataType}:`, response.status);
+            return cache ? cache.data : [];
+        }
+    } catch (error) {
+        console.error(`❌ Ошибка запроса данных ${dataType}:`, error);
+        return cache ? cache.data : [];
     }
 }
 
-// Общая база отзывов для всех услуг
-const globalReviews = [
-  {user:'@alex',rating:5,comment:'Отличный ассистент, сэкономил кучу времени!',date:'12.11.23'},
-  {user:'@maria',rating:4,comment:'Хорошо, но пришлось пару раз донастроить.',date:'02.12.23'},
-  {user:'@ivan',rating:5,comment:'Вау, реально отвечает за меня ночью 👍',date:'28.12.23'},
-  {user:'@stas',rating:5,comment:'Автопостинг работает как часы!',date:'05.01.24'},
-  {user:'@katya',rating:5,comment:'Быстрая настройка, все работает стабильно',date:'15.01.24'},
-  {user:'@denis',rating:4,comment:'Качественная работа, рекомендую!',date:'22.01.24'}
-];
+async function fetchStatsFromDB(forceUpdate = false) {
+    const cache = window.dataCache.stats;
+    const now = Date.now();
+    
+    // Проверяем, нужно ли обновлять кэш
+    if (!forceUpdate && cache && (now - cache.lastUpdate) < cache.updateInterval) {
+        const minutesSinceUpdate = Math.floor((now - cache.lastUpdate) / (1000 * 60));
+        console.log(`📦 Используем кэшированную статистику (обновлено ${minutesSinceUpdate} мин назад)`);
+        return cache.data;
+    }
+    
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/frontend/stats`);
+        if (response.ok) {
+            const result = await response.json();
+            const stats = result.success ? result.stats : {};
+            
+            // Обновляем кэш
+            window.dataCache.stats.data = stats;
+            window.dataCache.stats.lastUpdate = now;
+            
+            console.log('✅ Обновлена статистика');
+            return stats;
+        } else {
+            console.error('❌ Ошибка получения статистики:', response.status);
+            return cache ? cache.data : {};
+        }
+    } catch (error) {
+        console.error('❌ Ошибка запроса статистики:', error);
+        return cache ? cache.data : {};
+    }
+}
+
+// Функция для загрузки отзывов из БД
+async function loadReviewsFromDB(forceUpdate = false) {
+    try {
+        const reviewsData = await fetchDataFromDB('reviews', 100, forceUpdate);
+        
+        if (reviewsData.length > 0) {
+            // Преобразуем данные из БД в формат для фронтенда
+            globalReviews = reviewsData.map(review => {
+                // Формируем имя пользователя
+                let userName;
+                if (review.username) {
+                    userName = `@${review.username}`;
+                } else if (review.first_name) {
+                    userName = review.first_name;
+                } else {
+                    userName = 'Пользователь';
+                }
+                
+                return {
+                    user: userName,
+                    rating: review.rating,
+                    comment: review.comment,
+                    date: review.review_date || new Date(review.timestamp).toLocaleDateString('ru-RU')
+                };
+            });
+            
+            console.log(`✅ Загружено ${globalReviews.length} отзывов из БД`);
+            
+            // Обновляем кэш отзывов
+            if (window.dataCache.reviews) {
+                window.dataCache.reviews.data = globalReviews;
+                window.dataCache.reviews.lastUpdate = Date.now();
+            }
+            
+            // Обновляем отображение отзывов на всех страницах
+            updateReviewsDisplay();
+        } else {
+            console.log('📭 Отзывов в БД пока нет, используем кэш');
+            // Используем данные из кэша если они есть
+            if (window.dataCache.reviews && window.dataCache.reviews.data.length > 0) {
+                globalReviews = window.dataCache.reviews.data;
+                updateReviewsDisplay();
+            }
+        }
+    } catch (error) {
+        console.error('❌ Ошибка загрузки отзывов из БД:', error);
+        // При ошибке используем кэш если он есть
+        if (window.dataCache.reviews && window.dataCache.reviews.data.length > 0) {
+            console.log('📦 Используем кэшированные отзывы при ошибке');
+            globalReviews = window.dataCache.reviews.data;
+            updateReviewsDisplay();
+        }
+    }
+}
+
+// Функция для загрузки сообщений чата из БД
+async function loadChatMessagesFromDB(forceUpdate = false) {
+    try {
+        const chatData = await fetchDataFromDB('chat_messages', 50, forceUpdate);
+        
+        if (chatData.length > 0) {
+            // Группируем сообщения по заказам
+            const groupedMessages = {};
+            
+            chatData.forEach(msg => {
+                const orderId = msg.order_id;
+                if (!groupedMessages[orderId]) {
+                    groupedMessages[orderId] = [];
+                }
+                
+                groupedMessages[orderId].push({
+                    text: msg.message,
+                    isAdmin: false, // Все сообщения от пользователей
+                    timestamp: msg.timestamp
+                });
+            });
+            
+            // Обновляем глобальные данные чата
+            window.chatData = groupedMessages;
+            
+            // Обновляем кэш чата
+            if (window.dataCache.chatMessages) {
+                window.dataCache.chatMessages.data = groupedMessages;
+                window.dataCache.chatMessages.lastUpdate = Date.now();
+            }
+            
+            console.log(`✅ Загружено ${chatData.length} сообщений чата из БД`);
+            
+            // Обновляем отображение чата если он открыт
+            if (currentChat) {
+                loadChatMessages(currentChat);
+            }
+        } else {
+            console.log('📭 Сообщений чата в БД пока нет, используем кэш');
+            // Используем данные из кэша если они есть
+            if (window.dataCache.chatMessages && Object.keys(window.dataCache.chatMessages.data).length > 0) {
+                window.chatData = window.dataCache.chatMessages.data;
+                if (currentChat) {
+                    loadChatMessages(currentChat);
+                }
+            }
+        }
+    } catch (error) {
+        console.error('❌ Ошибка загрузки сообщений чата из БД:', error);
+        // При ошибке используем кэш если он есть
+        if (window.dataCache.chatMessages && Object.keys(window.dataCache.chatMessages.data).length > 0) {
+            console.log('📦 Используем кэшированные сообщения чата при ошибке');
+            window.chatData = window.dataCache.chatMessages.data;
+            if (currentChat) {
+                loadChatMessages(currentChat);
+            }
+        }
+    }
+}
+
+// Функция для обновления отображения отзывов
+function updateReviewsDisplay() {
+    // Обновляем отзывы на странице отзывов
+    if (document.getElementById('reviews-page') && document.getElementById('reviews-page').classList.contains('active')) {
+        loadReviewsForPage();
+    }
+    
+    // Обновляем отзывы в модальных окнах услуг
+    const activeModal = document.querySelector('.modal.active');
+    if (activeModal && activeModal.querySelector('.reviews-list')) {
+        const reviewsHtml = renderReviews();
+        const reviewsContainer = activeModal.querySelector('.reviews-list').parentElement;
+        if (reviewsContainer) {
+            reviewsContainer.innerHTML = reviewsHtml;
+        }
+    }
+}
+
+// Переменные для интервалов обновления
+let reviewsUpdateInterval;
+let chatUpdateInterval;
+
+// Функция для загрузки всех данных при инициализации
+async function loadAllDataFromDB() {
+    console.log('🔄 Загрузка данных из БД...');
+    
+    await Promise.all([
+        loadReviewsFromDB(),
+        loadChatMessagesFromDB()
+    ]);
+    
+    console.log('✅ Загрузка данных завершена');
+    
+    // Запускаем периодическое обновление
+    startPeriodicUpdates();
+}
+
+// Функция для запуска периодического обновления
+function startPeriodicUpdates() {
+    // Очищаем существующие интервалы
+    if (reviewsUpdateInterval) clearInterval(reviewsUpdateInterval);
+    if (chatUpdateInterval) clearInterval(chatUpdateInterval);
+    
+    // Обновление отзывов каждые 30 минут
+    reviewsUpdateInterval = setInterval(() => {
+        console.log('🔄 Периодическое обновление отзывов...');
+        loadReviewsFromDB(true);
+    }, 30 * 60 * 1000); // 30 минут
+    
+    // Обновление чата каждые 10 секунд
+    chatUpdateInterval = setInterval(() => {
+        console.log('🔄 Периодическое обновление чата...');
+        loadChatMessagesFromDB(true);
+    }, 10 * 1000); // 10 секунд
+    
+    console.log('⏰ Периодическое обновление запущено');
+}
+
+// Функция для остановки периодического обновления
+function stopPeriodicUpdates() {
+    if (reviewsUpdateInterval) {
+        clearInterval(reviewsUpdateInterval);
+        reviewsUpdateInterval = null;
+    }
+    if (chatUpdateInterval) {
+        clearInterval(chatUpdateInterval);
+        chatUpdateInterval = null;
+    }
+    console.log('⏹️ Периодическое обновление остановлено');
+}
+
+// Функция для принудительного обновления всех данных
+async function forceUpdateAllData() {
+    console.log('🔄 Принудительное обновление всех данных...');
+    
+    await Promise.all([
+        loadReviewsFromDB(true),
+        loadChatMessagesFromDB(true)
+    ]);
+    
+    console.log('✅ Принудительное обновление завершено');
+}
+
+// Функция для получения информации о кэше
+function getCacheInfo() {
+    const now = Date.now();
+    const info = {};
+    
+    Object.keys(window.dataCache).forEach(key => {
+        const cache = window.dataCache[key];
+        const timeSinceUpdate = now - cache.lastUpdate;
+        const minutesSinceUpdate = Math.floor(timeSinceUpdate / (1000 * 60));
+        
+        info[key] = {
+            lastUpdate: new Date(cache.lastUpdate).toLocaleString('ru-RU'),
+            minutesSinceUpdate,
+            dataCount: Array.isArray(cache.data) ? cache.data.length : Object.keys(cache.data).length,
+            updateInterval: Math.floor(cache.updateInterval / (1000 * 60)) + ' мин'
+        };
+    });
+    
+    return info;
+}
 
 function renderReviews(){
   // Используем общую базу отзывов для всех услуг
   const reviews = globalReviews;
   const avg=reviews.length?(reviews.reduce((s,r)=>s+r.rating,0)/reviews.length).toFixed(1):"-";
   const starsAvg=Array(5).fill(0).map((_,i)=>`<i class="fas fa-star${reviews.length&&i+1<=Math.round(avg)?'':'-o'}"></i>`).join('');
-  const listHtml=reviews.map(r=>`<div class="review-card"><div class="review-head"><span class="review-user">${r.user}</span><span class="review-date">${r.date}</span></div><div class="review-stars">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</div><p>${r.comment}</p></div>`).join('');
+  const listHtml=reviews.map(r=>{
+    // Определяем, есть ли у пользователя юзернейм
+    const hasUsername = r.user.startsWith('@');
+    const userClass = hasUsername ? 'review-user' : 'review-user no-username';
+    
+    return `<div class="review-card"><div class="review-head"><span class="${userClass}" data-has-username="${hasUsername}">${r.user}</span><span class="review-date">${r.date}</span></div><div class="review-stars">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</div><p>${r.comment}</p></div>`;
+  }).join('');
   const listSection= reviews.length?`<div class="reviews-list scrollable">${listHtml}</div>`:'<p class="no-reviews">Пока нет отзывов</p>';
 
   // star selector html
@@ -3374,4 +3868,402 @@ function renderReviews(){
     <button class="btn btn-primary btn-send" id="sendReviewBtn" disabled>${getText('servicesPage.reviews.form.submitButton', 'Отправить')}</button>
   </div></div>`;
 }
+
+// Carousel functionality
+let currentSlide = 0;
+let carouselInterval;
+const slideDuration = 4000; // 4 seconds per slide
+
+function initCarousel() {
+    const slides = document.querySelectorAll('.carousel-slide');
+    const indicators = document.querySelectorAll('.indicator');
+    
+    if (slides.length === 0) return;
+    
+    // Reset all slides to initial state
+    slides.forEach(slide => {
+        slide.classList.remove('active', 'prev');
+    });
+    
+    // Set first slide as active
+    slides[0].classList.add('active');
+    indicators[0].classList.add('active');
+    currentSlide = 0;
+    
+    // Start auto-rotation
+    startCarousel();
+    
+    // Add click handlers for indicators
+    indicators.forEach((indicator, index) => {
+        indicator.addEventListener('click', () => {
+            goToSlide(index);
+        });
+    });
+}
+
+function startCarousel() {
+    if (carouselInterval) {
+        clearInterval(carouselInterval);
+    }
+    
+    carouselInterval = setInterval(() => {
+        nextSlide();
+    }, slideDuration);
+}
+
+function stopCarousel() {
+    if (carouselInterval) {
+        clearInterval(carouselInterval);
+        carouselInterval = null;
+    }
+}
+
+function nextSlide() {
+    const slides = document.querySelectorAll('.carousel-slide');
+    const indicators = document.querySelectorAll('.indicator');
+    
+    if (slides.length === 0) return;
+    
+    // Mark current slide as previous (going left)
+    slides[currentSlide].classList.remove('active');
+    slides[currentSlide].classList.add('prev');
+    indicators[currentSlide].classList.remove('active');
+    
+    // Move to next slide
+    currentSlide = (currentSlide + 1) % slides.length;
+    
+    // Add active class to new slide and indicator
+    slides[currentSlide].classList.remove('prev');
+    slides[currentSlide].classList.add('active');
+    indicators[currentSlide].classList.add('active');
+}
+
+function goToSlide(slideIndex) {
+    const slides = document.querySelectorAll('.carousel-slide');
+    const indicators = document.querySelectorAll('.indicator');
+    
+    if (slideIndex < 0 || slideIndex >= slides.length) return;
+    
+    // Determine direction for smooth animation
+    const direction = slideIndex > currentSlide ? 'next' : 'prev';
+    
+    // Remove active class from current slide and indicator
+    slides[currentSlide].classList.remove('active');
+    if (direction === 'next') {
+        slides[currentSlide].classList.add('prev');
+    }
+    indicators[currentSlide].classList.remove('active');
+    
+    // Set new current slide
+    currentSlide = slideIndex;
+    
+    // Add active class to new slide and indicator
+    slides[currentSlide].classList.remove('prev');
+    slides[currentSlide].classList.add('active');
+    indicators[currentSlide].classList.add('active');
+    
+    // Restart auto-rotation
+    startCarousel();
+}
+
+// Initialize carousel when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize carousel if we're on home page
+    if (document.getElementById('home').classList.contains('active')) {
+        setTimeout(initCarousel, 500);
+    }
+});
+
+// Re-initialize carousel when switching to home page
+const originalShowPage = showPage;
+showPage = function(pageId) {
+    originalShowPage(pageId);
+    
+    if (pageId === 'home') {
+        setTimeout(initCarousel, 500);
+    } else {
+        stopCarousel();
+    }
+    
+    // Load texts for new pages
+    if (pageId === 'help-page') {
+        setTimeout(loadHelpPageTexts, 100);
+    } else if (pageId === 'feedback-page') {
+        setTimeout(loadFeedbackPageTexts, 100);
+        // Автозаполняем имя пользователя при загрузке страницы
+        setTimeout(() => {
+            fillFeedbackForm();
+        }, 300);
+    } else if (pageId === 'orders-page') {
+        setTimeout(loadOrdersPageTexts, 100);
+    } else if (pageId === 'chat-page') {
+        setTimeout(loadChatPageTexts, 300);
+        // Инициализируем чат
+        setTimeout(() => {
+            loadChatMessages(currentChat);
+        }, 400);
+    } else if (pageId === 'reviews-page') {
+        setTimeout(loadReviewsPageTexts, 100);
+    }
+};
+
+// Profile Actions Functions
+function showProfileAction(action) {
+    switch(action) {
+        case 'help':
+            // Переходим на страницу помощи
+            showPage('help-page');
+            break;
+            
+        case 'feedback':
+            // Переходим на страницу обратной связи
+            showPage('feedback-page');
+            break;
+            
+        case 'orders':
+            // Переходим на страницу заказов
+            showPage('orders-page');
+            break;
+            
+        case 'chat':
+            // Переходим на страницу чата
+            showPage('chat-page');
+            break;
+            
+        case 'reviews':
+            // Переходим на страницу отзывов
+            showPage('reviews-page');
+            break;
+            
+        default:
+            console.log('Unknown profile action:', action);
+    }
+}
+
+// Chat data (будет заполняться данными из БД)
+const chatData = {};
+
+let currentChat = null;
+
+// Chat page functions
+function switchChat(chatId) {
+    currentChat = chatId;
+    
+    // Update active tag
+    document.querySelectorAll('.order-tag').forEach(tag => {
+        tag.classList.remove('active');
+    });
+    const activeTag = document.querySelector(`[data-order="${chatId}"]`);
+    if (activeTag) {
+        activeTag.classList.add('active');
+    }
+    
+    // Load messages
+    loadChatMessages(chatId);
+    
+    // Update input area based on order status (по умолчанию активный)
+    updateChatInputArea(chatId);
+}
+
+function loadChatMessages(chatId) {
+    const chatMessages = document.getElementById('chatMessages');
+    if (!chatMessages) return;
+    
+    // Получаем сообщения из БД для этого чата
+    const dbMessages = window.chatData && window.chatData[chatId] ? window.chatData[chatId] : [];
+    
+    if (dbMessages.length === 0) {
+        chatMessages.innerHTML = '<div class="no-messages">Сообщений пока нет</div>';
+        return;
+    }
+    
+    const messagesHtml = dbMessages.map((dbMsg, index) => {
+        return `
+            <div class="message ${dbMsg.isAdmin ? 'message-admin' : 'message-user'}">
+                <div class="message-content">
+                    <div class="message-text">${dbMsg.text}</div>
+                    <div class="message-time">${new Date(dbMsg.timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    chatMessages.innerHTML = messagesHtml;
+    
+    // Scroll to bottom
+    setTimeout(() => {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }, 100);
+}
+
+function sendMessage() {
+    const messageInput = document.getElementById('chatMessageInput');
+    const message = messageInput.value.trim();
+    
+    if (!message) return;
+    
+    // Отправляем сообщение в бекенд
+    trackImportantEvent('chat_message', {
+        orderId: currentChat,
+        message: message,
+        timestamp: new Date().toISOString()
+    });
+    
+    // Clear input
+    messageInput.value = '';
+    
+    // Обновляем отображение сообщений из кэша
+    loadChatMessages(currentChat);
+    
+    // Simulate admin response after 2 seconds
+    setTimeout(() => {
+        // Отправляем ответ администратора в БД
+        trackImportantEvent('chat_message', {
+            orderId: currentChat,
+            message: 'Получил ваше сообщение! Отвечу в ближайшее время.',
+            timestamp: new Date().toISOString(),
+            isAdmin: true
+        });
+        
+        // Обновляем отображение
+        loadChatMessages(currentChat);
+    }, 2000);
+}
+
+function updateChatInputArea(chatId) {
+    const inputWrapper = document.getElementById('chatInputWrapper');
+    const reviewWrapper = document.getElementById('chatReviewWrapper');
+    const messageInput = document.getElementById('chatMessageInput');
+    
+    if (!inputWrapper || !reviewWrapper || !messageInput) return;
+    
+    // По умолчанию показываем поле ввода для всех заказов
+    inputWrapper.style.display = 'flex';
+    reviewWrapper.style.display = 'none';
+    messageInput.disabled = false;
+}
+
+function loadOrderTags() {
+    console.log('loadOrderTags called');
+    
+    // Wait a bit more to ensure DOM is ready
+    setTimeout(() => {
+        const orderTags = document.getElementById('orderTags');
+        if (!orderTags) {
+            console.error('orderTags element not found');
+            return;
+        }
+        
+        // Используем данные из БД
+        const dbChatData = window.chatData || {};
+        console.log('dbChatData:', dbChatData);
+        console.log('currentChat:', currentChat);
+        
+        if (Object.keys(dbChatData).length === 0) {
+            orderTags.innerHTML = '<div class="no-orders">Заказов пока нет</div>';
+            return;
+        }
+        
+        // Sort orders: active first, then completed
+        const sortedOrders = Object.keys(dbChatData).sort((a, b) => {
+            // По умолчанию считаем все заказы активными
+            return parseInt(a) - parseInt(b);
+        });
+        
+        console.log('sortedOrders:', sortedOrders);
+        
+        const tagsHtml = sortedOrders.map(orderId => {
+            const isActive = orderId === currentChat;
+            // По умолчанию все заказы активные
+            const status = 'active';
+            const statusIcon = {
+                'active': 'fas fa-tag',
+                'completed': 'fas fa-check-circle'
+            };
+            
+            return `
+                <div class="order-tag ${isActive ? 'active' : ''}" data-order="${orderId}" onclick="switchChat('${orderId}')">
+                    <i class="${statusIcon[status]}"></i>
+                    <span>Заказ #${orderId}</span>
+                    <span class="order-status ${status}"></span>
+                </div>
+            `;
+        }).join('');
+        
+        console.log('tagsHtml:', tagsHtml);
+        orderTags.innerHTML = tagsHtml;
+        
+        // Устанавливаем первый заказ как активный если нет текущего
+        if (!currentChat && sortedOrders.length > 0) {
+            currentChat = sortedOrders[0];
+            loadChatMessages(currentChat);
+        }
+    }, 100);
+}
+
+function openTelegramChat() {
+    if (window.Telegram && window.Telegram.WebApp) {
+        window.Telegram.WebApp.openTelegramLink('https://t.me/sukhorukov_nikita');
+    } else {
+        window.open('https://t.me/sukhorukov_nikita', '_blank');
+    }
+}
+
+function copyTelegramLink() {
+    const link = 'https://t.me/sukhorukov_nikita';
+    navigator.clipboard.writeText(link).then(() => {
+        showNotification('Ссылка скопирована в буфер обмена!', 'success');
+    }).catch(() => {
+        showNotification('Не удалось скопировать ссылку', 'error');
+    });
+}
+
+// Feedback form handler
+document.addEventListener('DOMContentLoaded', function() {
+    const feedbackForm = document.getElementById('feedbackForm');
+    if (feedbackForm) {
+        feedbackForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(feedbackForm);
+            const data = {
+                name: formData.get('feedbackName'),
+                subject: formData.get('feedbackSubject'),
+                message: formData.get('feedbackMessage')
+            };
+            
+            // Отправляем данные в бекенд
+            trackImportantEvent('support_request', {
+                formData: data,
+                source: 'feedback_page'
+            });
+            
+            showNotification('Сообщение отправлено! Мы свяжемся с вами в ближайшее время.', 'success');
+            feedbackForm.reset();
+            
+            // Автозаполняем имя снова после сброса формы
+            setTimeout(() => {
+                fillFeedbackForm();
+            }, 100);
+        });
+    }
+    
+    // Chat message input handler
+    const chatMessageInput = document.getElementById('chatMessageInput');
+    if (chatMessageInput) {
+        chatMessageInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+        
+        // Auto-resize textarea
+        chatMessageInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+        });
+    }
+});
+
 

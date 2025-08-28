@@ -27,7 +27,7 @@
                             <i class="fas fa-rocket"></i>
                             <span>Посмотреть услуги</span>
                         </button>
-                        <button class="btn btn-outline" onclick="showPage('contact')">
+                        <button class="btn btn-outline" onclick="showPage('feedback-page')">
                             <i class="fas fa-paper-plane"></i>
                             <span>Связаться</span>
                         </button>
@@ -43,27 +43,36 @@
                     <h2>Мой подход</h2>
                     <p>В своей работе я сочетаю техническую экспертизу с продуктовым мышлением</p>
                 </div>
-                <div class="approach-grid">
-                    <div class="approach-card">
-                        <div class="approach-icon">
-                            <i class="fas fa-cogs"></i>
+                <div class="approach-carousel">
+                    <div class="carousel-container">
+                        <div class="carousel-track">
+                            <div class="approach-card carousel-slide active">
+                                <div class="approach-icon">
+                                    <i class="fas fa-cogs"></i>
+                                </div>
+                                <h3>Техническая экспертиза</h3>
+                                <p>Глубокое понимание технологий и архитектуры решений. Создаю масштабируемые и надежные системы.</p>
+                            </div>
+                            <div class="approach-card carousel-slide">
+                                <div class="approach-icon">
+                                    <i class="fas fa-lightbulb"></i>
+                                </div>
+                                <h3>Продуктовое мышление</h3>
+                                <p>Фокус на пользовательском опыте и бизнес-целях. Каждое решение создается с учетом потребностей клиента.</p>
+                            </div>
+                            <div class="approach-card carousel-slide">
+                                <div class="approach-icon">
+                                    <i class="fas fa-chart-line"></i>
+                                </div>
+                                <h3>Результаты</h3>
+                                <p>Измеряемые результаты и постоянная оптимизация. Помогаю бизнесу расти через автоматизацию процессов.</p>
+                            </div>
                         </div>
-                        <h3>Техническая экспертиза</h3>
-                        <p>Глубокое понимание технологий и архитектуры решений. Создаю масштабируемые и надежные системы.</p>
                     </div>
-                    <div class="approach-card">
-                        <div class="approach-icon">
-                            <i class="fas fa-lightbulb"></i>
-                        </div>
-                        <h3>Продуктовое мышление</h3>
-                        <p>Фокус на пользовательском опыте и бизнес-целях. Каждое решение создается с учетом потребностей клиента.</p>
-                    </div>
-                    <div class="approach-card">
-                        <div class="approach-icon">
-                            <i class="fas fa-chart-line"></i>
-                        </div>
-                        <h3>Результаты</h3>
-                        <p>Измеряемые результаты и постоянная оптимизация. Помогаю бизнесу расти через автоматизацию процессов.</p>
+                    <div class="carousel-indicators">
+                        <div class="indicator active" data-slide="0"></div>
+                        <div class="indicator" data-slide="1"></div>
+                        <div class="indicator" data-slide="2"></div>
                     </div>
                 </div>
             </div>
@@ -133,11 +142,6 @@
                         <p>От стартапов до крупных компаний</p>
                     </div>
                     <div class="why-choose-item">
-                        <div class="why-choose-number">150%</div>
-                        <h4>Средний рост</h4>
-                        <p>Эффективности у клиентов</p>
-                    </div>
-                    <div class="why-choose-item">
                         <div class="why-choose-number">24/7</div>
                         <h4>Поддержка</h4>
                         <p>Техническая поддержка и сопровождение</p>
@@ -159,7 +163,7 @@
                             <i class="fas fa-rocket"></i>
                             <span>Посмотреть услуги</span>
                         </button>
-                        <button class="btn btn-outline" onclick="showPage('contact')">
+                        <button class="btn btn-outline" onclick="showPage('feedback-page')">
                             <i class="fas fa-paper-plane"></i>
                             <span>Связаться</span>
                         </button>
@@ -218,7 +222,7 @@
                             <h3>Нужна консультация?</h3>
                             <p>Обсудим ваш проект и подберем оптимальное решение</p>
                         </div>
-                        <button class="btn btn-primary" onclick="showContactForm()">
+                        <button class="btn btn-primary" onclick="showPage('feedback-page')">
                             <i class="fas fa-paper-plane"></i>
                             <span>Связаться</span>
                         </button>
@@ -271,107 +275,56 @@
             </div>
         </div>
         
-        <!-- Help Card -->
-        <div class="help-card">
+        <!-- Profile Actions Card -->
+        <div class="profile-actions-card">
             <div class="container">
-                <div class="help-section">
-                    <h3 class="help-title">
-                        <i class="fas fa-question-circle"></i>
-                        <span id="helpTitle">Помощь</span>
+                <div class="profile-actions-section">
+                    <h3 class="profile-actions-title">
+                        <i class="fas fa-cogs"></i>
+                        <span id="profileActionsTitle">Действия</span>
                     </h3>
                     
-                    <!-- FAQ Accordion -->
-                    <div class="faq-accordion">
-                        <div class="faq-item">
-                            <div class="faq-question" onclick="toggleFaq(this)">
-                                <span id="faqContactQuestion">Как связаться с поддержкой?</span>
-                                <i class="fas fa-chevron-down"></i>
+                    <div class="profile-actions-grid">
+                        <button class="profile-action-btn" onclick="showProfileAction('help')">
+                            <div class="action-icon">
+                                <i class="fas fa-question-circle"></i>
                             </div>
-                            <div class="faq-answer">
-                                <p id="faqContactAnswer">Вы можете связаться с нами через форму обратной связи ниже или написать напрямую автору на странице "Контакты".</p>
-                            </div>
-                        </div>
+                            <span class="action-text" id="profileActionHelp">Помощь</span>
+                        </button>
                         
-                        <div class="faq-item">
-                            <div class="faq-question" onclick="toggleFaq(this)">
-                                <span id="faqErrorQuestion">Что делать при ошибке в приложении?</span>
-                                <i class="fas fa-chevron-down"></i>
+                        <button class="profile-action-btn" onclick="showProfileAction('feedback')">
+                            <div class="action-icon">
+                                <i class="fas fa-comment-dots"></i>
                             </div>
-                            <div class="faq-answer">
-                                <p id="faqErrorAnswer">Если вы столкнулись с ошибкой, используйте форму "Сообщить об ошибке" ниже. Опишите проблему подробно, и мы её исправим.</p>
-                            </div>
-                        </div>
+                            <span class="action-text" id="profileActionFeedback">Обратная связь</span>
+                        </button>
                         
-                        <div class="faq-item">
-                            <div class="faq-question" onclick="toggleFaq(this)">
-                                <span id="faqOrderQuestion">Как заказать услугу?</span>
-                                <i class="fas fa-chevron-down"></i>
+                        <button class="profile-action-btn" onclick="showProfileAction('orders')">
+                            <div class="action-icon">
+                                <i class="fas fa-shopping-cart"></i>
                             </div>
-                            <div class="faq-answer">
-                                <p id="faqOrderAnswer">Выберите интересующую услугу на главной странице, нажмите "Подробнее" и затем "Связаться". Заполните форму, и мы свяжемся с вами.</p>
-                            </div>
-                        </div>
+                            <span class="action-text" id="profileActionOrders">Заказы</span>
+                        </button>
                         
-                        <div class="faq-item">
-                            <div class="faq-question" onclick="toggleFaq(this)">
-                                <span id="faqTimeQuestion">Сколько времени занимает разработка?</span>
-                                <i class="fas fa-chevron-down"></i>
+                        <button class="profile-action-btn" onclick="showProfileAction('chat')">
+                            <div class="action-icon">
+                                <i class="fas fa-comments"></i>
                             </div>
-                            <div class="faq-answer">
-                                <p id="faqTimeAnswer">Время разработки зависит от сложности проекта. Простые решения - 2-4 недели, сложные системы - 1-3 месяца. Точные сроки обсуждаются индивидуально.</p>
-                            </div>
-                        </div>
+                            <span class="action-text" id="profileActionChat">Чат</span>
+                        </button>
                         
-                        <div class="faq-item">
-                            <div class="faq-question" onclick="toggleFaq(this)">
-                                <span id="faqWarrantyQuestion">Есть ли гарантия на работы?</span>
-                                <i class="fas fa-chevron-down"></i>
+                        <button class="profile-action-btn" onclick="showProfileAction('reviews')">
+                            <div class="action-icon">
+                                <i class="fas fa-star"></i>
                             </div>
-                            <div class="faq-answer">
-                                <p id="faqWarrantyAnswer">Да, мы предоставляем гарантию на все работы. После сдачи проекта вы получаете 30 дней бесплатной поддержки и доработок.</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Report Error Form -->
-                    <div class="error-report-section">
-                        <h4 class="error-report-title">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            <span id="errorReportTitle">Сообщить об ошибке</span>
-                        </h4>
-                        <form class="error-report-form" id="errorReportForm">
-                            <div class="form-group">
-                                <label for="errorType" id="errorTypeLabel">Тип проблемы:</label>
-                                <div class="custom-select">
-                                    <div class="select-trigger" id="selectTrigger">
-                                        <span class="select-value" id="selectValue">Выберите тип</span>
-                                        <i class="fas fa-chevron-down select-arrow"></i>
-                                    </div>
-                                    <div class="select-dropdown" id="selectDropdown">
-                                        <div class="select-option" data-value="" data-text="Выберите тип">Выберите тип</div>
-                                        <div class="select-option" data-value="bug" data-text="Ошибка в работе">Ошибка в работе</div>
-                                        <div class="select-option" data-value="ui" data-text="Проблема с интерфейсом">Проблема с интерфейсом</div>
-                                        <div class="select-option" data-value="performance" data-text="Медленная работа">Медленная работа</div>
-                                        <div class="select-option" data-value="other" data-text="Другое">Другое</div>
-                                    </div>
-                                    <input type="hidden" id="errorType" name="errorType" required>
-                                </div>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="errorDescription" id="errorDescriptionLabel">Описание проблемы:</label>
-                                <textarea id="errorDescription" name="errorDescription" id="errorDescriptionPlaceholder" placeholder="Опишите, что произошло и как воспроизвести ошибку" rows="3" required></textarea>
-                            </div>
-                            
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-paper-plane"></i>
-                                <span id="errorSubmitButton">Отправить</span>
-                            </button>
-                        </form>
+                            <span class="action-text" id="profileActionReviews">Отзывы</span>
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
+        
+        
         
         <!-- Theme Selection Card -->
         <div class="theme-card">
@@ -431,7 +384,311 @@
         </div>
     </section>
 
+    <!-- Help Page -->
+    <section class="page" id="help-page">
+        <div class="help-page">
+            <div class="container">
+                <div class="page-header">
+                    <button class="back-btn" onclick="showPage('about')">
+                        <i class="fas fa-arrow-left"></i>
+                        <span>Назад к профилю</span>
+                    </button>
+                    <h1 class="page-title">
+                        <i class="fas fa-question-circle"></i>
+                        <span id="helpPageTitle">Помощь</span>
+                    </h1>
+                </div>
+                
+                <div class="help-content">
+                    <div class="help-section">
+                        <h3 class="help-title">
+                            <i class="fas fa-question-circle"></i>
+                            <span id="helpTitle">Помощь</span>
+                        </h3>
+                        
+                        <!-- FAQ Accordion -->
+                        <div class="faq-accordion">
+                            <div class="faq-item">
+                                <div class="faq-question" onclick="toggleFaq(this)">
+                                    <span id="faqContactQuestion">Как связаться с поддержкой?</span>
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                                <div class="faq-answer">
+                                    <p id="faqContactAnswer">Вы можете связаться с нами через форму обратной связи в разделе "Обратная связь" или написать напрямую автору на странице "Контакты".</p>
+                                </div>
+                            </div>
+                            
+                            <div class="faq-item">
+                                <div class="faq-question" onclick="toggleFaq(this)">
+                                    <span id="faqErrorQuestion">Что делать при ошибке в приложении?</span>
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                                <div class="faq-answer">
+                                    <p id="faqErrorAnswer">Если вы столкнулись с ошибкой, используйте форму "Сообщить об ошибке" ниже. Опишите проблему подробно, и мы её исправим.</p>
+                                </div>
+                            </div>
+                            
+                            <div class="faq-item">
+                                <div class="faq-question" onclick="toggleFaq(this)">
+                                    <span id="faqOrderQuestion">Как заказать услугу?</span>
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                                <div class="faq-answer">
+                                    <p id="faqOrderAnswer">Выберите интересующую услугу на главной странице, нажмите "Подробнее" и затем "Заказать". Заполните форму обратной связи, и мы свяжемся с вами.</p>
+                                </div>
+                            </div>
+                            
+                            <div class="faq-item">
+                                <div class="faq-question" onclick="toggleFaq(this)">
+                                    <span id="faqTimeQuestion">Сколько времени занимает разработка?</span>
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                                <div class="faq-answer">
+                                    <p id="faqTimeAnswer">Время разработки зависит от сложности проекта. Простые решения - 2-4 недели, сложные системы - 1-3 месяца. Точные сроки обсуждаются индивидуально.</p>
+                                </div>
+                            </div>
+                            
+                            <div class="faq-item">
+                                <div class="faq-question" onclick="toggleFaq(this)">
+                                    <span id="faqWarrantyQuestion">Есть ли гарантия на работы?</span>
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                                <div class="faq-answer">
+                                    <p id="faqWarrantyAnswer">Да, мы предоставляем гарантию на все работы. После сдачи проекта вы получаете 30 дней бесплатной поддержки и доработок.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Report Error Form -->
+                        <div class="error-report-section">
+                            <h4 class="error-report-title">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <span id="errorReportTitle">Сообщить об ошибке</span>
+                            </h4>
+                            <form class="error-report-form" id="errorReportForm">
+                                <div class="form-group">
+                                    <label for="errorType" id="errorTypeLabel">Тип проблемы:</label>
+                                    <div class="custom-select">
+                                        <div class="select-trigger" id="selectTrigger">
+                                            <span class="select-value" id="selectValue">Выберите тип</span>
+                                            <i class="fas fa-chevron-down select-arrow"></i>
+                                        </div>
+                                        <div class="select-dropdown" id="selectDropdown">
+                                            <div class="select-option" data-value="" data-text="Выберите тип">Выберите тип</div>
+                                            <div class="select-option" data-value="bug" data-text="Ошибка в работе">Ошибка в работе</div>
+                                            <div class="select-option" data-value="ui" data-text="Проблема с интерфейсом">Проблема с интерфейсом</div>
+                                            <div class="select-option" data-value="performance" data-text="Медленная работа">Медленная работа</div>
+                                            <div class="select-option" data-value="other" data-text="Другое">Другое</div>
+                                        </div>
+                                        <input type="hidden" id="errorType" name="errorType" required>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="errorDescription" id="errorDescriptionLabel">Описание проблемы:</label>
+                                    <textarea id="errorDescription" name="errorDescription" id="errorDescriptionPlaceholder" placeholder="Опишите, что произошло и как воспроизвести ошибку" rows="3" required></textarea>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-paper-plane"></i>
+                                    <span id="errorSubmitButton">Отправить</span>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
 
+    <!-- Feedback Page -->
+    <section class="page" id="feedback-page">
+        <div class="feedback-page">
+            <div class="container">
+                <div class="page-header">
+                    <button class="back-btn" onclick="showPage('about')">
+                        <i class="fas fa-arrow-left"></i>
+                        <span>Назад к профилю</span>
+                    </button>
+                    <h1 class="page-title">
+                        <i class="fas fa-comment-dots"></i>
+                        <span id="feedbackPageTitle">Обратная связь</span>
+                    </h1>
+                </div>
+                
+                <div class="feedback-content">
+                    <div class="feedback-form-section">
+                        <h3 class="feedback-form-title">
+                            <i class="fas fa-paper-plane"></i>
+                            <span id="feedbackFormTitle">Отправить сообщение</span>
+                        </h3>
+                        
+                        <form class="feedback-form" id="feedbackForm">
+                            <div class="form-group">
+                                <label for="feedbackName" id="feedbackNameLabel">Ваше имя:</label>
+                                <input type="text" id="feedbackName" name="feedbackName" placeholder="Введите ваше имя" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="feedbackSubject" id="feedbackSubjectLabel">Тема:</label>
+                                <input type="text" id="feedbackSubject" name="feedbackSubject" placeholder="Тема сообщения" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="feedbackMessage" id="feedbackMessageLabel">Сообщение:</label>
+                                <textarea id="feedbackMessage" name="feedbackMessage" placeholder="Опишите ваш вопрос или предложение" rows="5" required></textarea>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane"></i>
+                                <span id="feedbackSubmitButton">Отправить</span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Orders Page -->
+    <section class="page" id="orders-page">
+        <div class="orders-page">
+            <div class="container">
+                <div class="page-header">
+                    <button class="back-btn" onclick="showPage('about')">
+                        <i class="fas fa-arrow-left"></i>
+                        <span>Назад к профилю</span>
+                    </button>
+                    <h1 class="page-title">
+                        <i class="fas fa-shopping-cart"></i>
+                        <span id="ordersPageTitle">Мои заказы</span>
+                    </h1>
+                </div>
+                
+                <div class="orders-content">
+                    <div class="orders-section">
+                        <div class="orders-empty-state">
+                            <div class="empty-state-icon">
+                                <i class="fas fa-shopping-cart"></i>
+                            </div>
+                            <h3 id="ordersEmptyTitle">У вас пока нет заказов</h3>
+                            <p id="ordersEmptyDescription">Перейдите в раздел услуг, чтобы сделать первый заказ</p>
+                            <button class="btn btn-primary" onclick="showPage('services')">
+                                <i class="fas fa-rocket"></i>
+                                <span id="ordersEmptyButton">Перейти к услугам</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Chat Page -->
+    <section class="page" id="chat-page">
+        <div class="chat-page">
+            <div class="container">
+                <!-- Chat Back Button (Fixed) -->
+                <button class="chat-back-btn" onclick="showPage('about')">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                
+                <!-- Chat Title (Centered) -->
+                <div class="chat-title-center">
+                    <h1 class="chat-page-title">
+                        <i class="fas fa-comments"></i>
+                        <span id="chatPageTitle">Чат</span>
+                    </h1>
+                </div>
+                
+                <div class="chat-content">
+                    <!-- Chat Header with Order Tags -->
+                    <div class="chat-header">
+                        <!-- Order Tags -->
+                        <div class="order-tags" id="orderTags">
+                            <div class="order-tag active" data-order="123" onclick="switchChat('123')">
+                                <i class="fas fa-tag"></i>
+                                <span>Заказ #123</span>
+                                <span class="order-status active"></span>
+                            </div>
+                            <div class="order-tag" data-order="124" onclick="switchChat('124')">
+                                <i class="fas fa-check-circle"></i>
+                                <span>Заказ #124</span>
+                                <span class="order-status completed"></span>
+                            </div>
+                            <div class="order-tag" data-order="125" onclick="switchChat('125')">
+                                <i class="fas fa-tag"></i>
+                                <span>Заказ #125</span>
+                                <span class="order-status active"></span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Chat Messages Area -->
+                    <div class="chat-messages-area" id="chatMessages">
+                        <!-- Messages will be loaded dynamically -->
+                    </div>
+                    
+                </div>
+            </div>
+        </div>
+        
+        <!-- Chat Input Area (Fixed at bottom) -->
+        <div class="chat-input-area-fixed" id="chatInputArea">
+            <div class="chat-input-wrapper" id="chatInputWrapper">
+                <textarea id="chatMessageInput" placeholder="Введите сообщение..." rows="1"></textarea>
+                <button class="chat-send-btn" onclick="sendMessage()">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+            
+            <!-- Review Button (shown for completed orders) -->
+            <div class="chat-review-wrapper" id="chatReviewWrapper" style="display: none;">
+                <button class="btn btn-primary review-btn" onclick="showPage('reviews-page')">
+                    <i class="fas fa-star"></i>
+                    <span>Оставить отзыв</span>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Reviews Page -->
+    <section class="page" id="reviews-page">
+        <div class="reviews-page">
+            <div class="container">
+                <div class="page-header">
+                    <button class="back-btn" onclick="showPage('about')">
+                        <i class="fas fa-arrow-left"></i>
+                        <span>Назад к профилю</span>
+                    </button>
+                    <h1 class="page-title">
+                        <i class="fas fa-star"></i>
+                        <span id="reviewsPageTitle">Отзывы</span>
+                    </h1>
+                </div>
+                
+                <div class="reviews-content">
+                    <div class="reviews-section">
+                        <div class="reviews-header">
+                            <h3 id="reviewsHeaderTitle">Отзывы клиентов</h3>
+                            <p id="reviewsHeaderDescription">Что говорят о моей работе</p>
+                        </div>
+                        
+                        <div class="reviews-container" id="reviewsContainer">
+                            <!-- Отзывы будут загружены динамически -->
+                        </div>
+                        
+                        <div class="reviews-actions">
+                            <button class="btn btn-primary" onclick="showPage('services')">
+                                <i class="fas fa-plus"></i>
+                                <span id="reviewsAddButton">Оставить отзыв</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
 
     <!-- Contact Page -->
     <section class="page" id="contact">
@@ -444,22 +701,11 @@
                             <h2>Сухоруков Никита</h2>
                             <p class="author-title">AI-bot builder &amp; Product Manager</p>
                         </div>
+                        <div class="author-hint">
+                            <div class="hint-text">Нажмите на любой тег для подробной информации</div>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
                         <div class="author-tags">
-                            <div class="sticky-hint" id="stickyHint">
-                                <div class="sticky-content">
-                                    <div class="sticky-icon">
-                                        <i class="fas fa-lightbulb"></i>
-                                    </div>
-                                    <div class="sticky-text">
-                                        <div class="sticky-title">Подсказка</div>
-                                        <div class="sticky-message">Нажмите на любой тег для подробной информации</div>
-                                    </div>
-                                    <button class="sticky-close" onclick="closeStickyHint()">
-                                        <i class="fas fa-times"></i>
-                                    </button>
-                                </div>
-                                <div class="sticky-arrow"></div>
-                            </div>
                             
                             <div class="tag-item" onclick="openTagModal('product-manager')">
                                 <div class="tag-icon">
@@ -755,5 +1001,6 @@
 
     <!-- Scripts -->
     <script src="script.js"></script>
+
 </body>
 </html> 
