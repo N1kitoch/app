@@ -2821,6 +2821,13 @@ a:focus {
     font-size: 0.9rem;
 }
 
+.last-updated {
+    color: var(--text-light);
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+    opacity: 0.8;
+}
+
 .review-date {
     color: var(--text-secondary);
     font-size: 0.8rem;

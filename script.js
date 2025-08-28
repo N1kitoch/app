@@ -1216,7 +1216,20 @@ function loadReviewsForPage() {
     if (!reviewsContainer) return;
     
     const reviews = globalReviews;
-    const avg = reviews.length ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : "-";
+    
+    // Используем среднюю оценку из БД, если она есть
+    let avg = "-";
+    let totalReviews = reviews.length;
+    let lastUpdated = null;
+    
+    if (window.averageRating && window.averageRating.rating > 0) {
+        avg = window.averageRating.rating.toFixed(1);
+        totalReviews = window.averageRating.totalReviews;
+        lastUpdated = window.averageRating.lastUpdated;
+    } else if (reviews.length > 0) {
+        // Fallback: вычисляем среднюю оценку из отзывов на странице
+        avg = (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1);
+    }
     
     // Создаем HTML для отзывов
     const reviewsHtml = reviews.map(review => {
@@ -1251,7 +1264,7 @@ function loadReviewsForPage() {
                     <div class="avg-stars">
                         ${'<i class="fas fa-star"></i>'.repeat(Math.round(avg))}${'<i class="far fa-star"></i>'.repeat(5 - Math.round(avg))}
                     </div>
-                    <span class="reviews-count">(${reviews.length} отзывов)</span>
+                    <span class="reviews-count">(${totalReviews} отзывов)</span>
                 </div>
             </div>
         </div>
@@ -3552,6 +3565,11 @@ window.dataCache = {
         data: {},
         lastUpdate: 0,
         updateInterval: 5 * 60 * 1000 // 5 минут
+    },
+    averageRating: {
+        data: null,
+        lastUpdate: 0,
+        updateInterval: 30 * 60 * 1000 // 30 минут
     }
 };
 
@@ -3560,11 +3578,11 @@ async function fetchDataFromDB(dataType, limit = 50, forceUpdate = false) {
     const cache = window.dataCache[dataType];
     const now = Date.now();
     
-    // Проверяем, нужно ли обновлять кэш
-    if (!forceUpdate && cache && (now - cache.lastUpdate) < cache.updateInterval) {
-        const minutesSinceUpdate = Math.floor((now - cache.lastUpdate) / (1000 * 60));
-        console.log(`📦 Используем кэшированные данные для ${dataType} (обновлено ${minutesSinceUpdate} мин назад)`);
-        return cache.data;
+    // Всегда очищаем кэш перед получением новых данных
+    if (window.dataCache[dataType]) {
+        window.dataCache[dataType].data = Array.isArray(cache?.data) ? [] : {};
+        window.dataCache[dataType].lastUpdate = 0;
+        console.log(`🧹 Кэш ${dataType} очищен перед получением новых данных`);
     }
     
     try {
@@ -3573,21 +3591,21 @@ async function fetchDataFromDB(dataType, limit = 50, forceUpdate = false) {
             const result = await response.json();
             const data = result.success ? result.data : [];
             
-            // Обновляем кэш
+            // Обновляем кэш свежими данными
             if (window.dataCache[dataType]) {
                 window.dataCache[dataType].data = data;
                 window.dataCache[dataType].lastUpdate = now;
             }
             
-            console.log(`✅ Обновлены данные ${dataType}: ${data.length} записей`);
+            console.log(`✅ Получены свежие данные ${dataType}: ${data.length} записей`);
             return data;
         } else {
             console.error(`❌ Ошибка получения данных ${dataType}:`, response.status);
-            return cache ? cache.data : [];
+            return [];
         }
     } catch (error) {
         console.error(`❌ Ошибка запроса данных ${dataType}:`, error);
-        return cache ? cache.data : [];
+        return [];
     }
 }
 
@@ -3595,11 +3613,11 @@ async function fetchStatsFromDB(forceUpdate = false) {
     const cache = window.dataCache.stats;
     const now = Date.now();
     
-    // Проверяем, нужно ли обновлять кэш
-    if (!forceUpdate && cache && (now - cache.lastUpdate) < cache.updateInterval) {
-        const minutesSinceUpdate = Math.floor((now - cache.lastUpdate) / (1000 * 60));
-        console.log(`📦 Используем кэшированную статистику (обновлено ${minutesSinceUpdate} мин назад)`);
-        return cache.data;
+    // Всегда очищаем кэш статистики перед получением новых данных
+    if (window.dataCache.stats) {
+        window.dataCache.stats.data = {};
+        window.dataCache.stats.lastUpdate = 0;
+        console.log('🧹 Кэш статистики очищен перед получением новых данных');
     }
     
     try {
@@ -3608,19 +3626,19 @@ async function fetchStatsFromDB(forceUpdate = false) {
             const result = await response.json();
             const stats = result.success ? result.stats : {};
             
-            // Обновляем кэш
+            // Обновляем кэш свежими данными
             window.dataCache.stats.data = stats;
             window.dataCache.stats.lastUpdate = now;
             
-            console.log('✅ Обновлена статистика');
+            console.log('✅ Получена свежая статистика');
             return stats;
         } else {
             console.error('❌ Ошибка получения статистики:', response.status);
-            return cache ? cache.data : {};
+            return {};
         }
     } catch (error) {
         console.error('❌ Ошибка запроса статистики:', error);
-        return cache ? cache.data : {};
+        return {};
     }
 }
 
@@ -3658,24 +3676,49 @@ async function loadReviewsFromDB(forceUpdate = false) {
                 window.dataCache.reviews.lastUpdate = Date.now();
             }
             
+            // Загружаем среднюю оценку
+            await loadAverageRating(forceUpdate);
+            
             // Обновляем отображение отзывов на всех страницах
             updateReviewsDisplay();
         } else {
-            console.log('📭 Отзывов в БД пока нет, используем кэш');
-            // Используем данные из кэша если они есть
-            if (window.dataCache.reviews && window.dataCache.reviews.data.length > 0) {
-                globalReviews = window.dataCache.reviews.data;
-                updateReviewsDisplay();
-            }
+            console.log('📭 Отзывов в БД пока нет');
+            globalReviews = [];
+            updateReviewsDisplay();
         }
     } catch (error) {
         console.error('❌ Ошибка загрузки отзывов из БД:', error);
-        // При ошибке используем кэш если он есть
-        if (window.dataCache.reviews && window.dataCache.reviews.data.length > 0) {
-            console.log('📦 Используем кэшированные отзывы при ошибке');
-            globalReviews = window.dataCache.reviews.data;
-            updateReviewsDisplay();
+        globalReviews = [];
+        updateReviewsDisplay();
+    }
+}
+
+// Функция для загрузки средней оценки
+async function loadAverageRating(forceUpdate = false) {
+    try {
+        const averageRatingData = await fetchDataFromDB('average_rating', 1, forceUpdate);
+        
+        if (averageRatingData.length > 0) {
+            const ratingData = averageRatingData[0];
+            window.averageRating = {
+                rating: ratingData.average_rating || 0,
+                totalReviews: ratingData.total_reviews || 0,
+                lastUpdated: ratingData.last_updated || new Date().toISOString()
+            };
+            
+            console.log(`⭐ Средняя оценка: ${window.averageRating.rating}/5 (${window.averageRating.totalReviews} отзывов)`);
+            
+            // Обновляем кэш
+            if (window.dataCache.averageRating) {
+                window.dataCache.averageRating.data = window.averageRating;
+                window.dataCache.averageRating.lastUpdate = Date.now();
+            }
+        } else {
+            window.averageRating = { rating: 0, totalReviews: 0, lastUpdated: new Date().toISOString() };
         }
+    } catch (error) {
+        console.error('❌ Ошибка загрузки средней оценки:', error);
+        window.averageRating = { rating: 0, totalReviews: 0, lastUpdated: new Date().toISOString() };
     }
 }
 
@@ -3766,8 +3809,8 @@ async function loadAllDataFromDB() {
     console.log('🔄 Загрузка данных из БД...');
     
     await Promise.all([
-        loadReviewsFromDB(),
-        loadChatMessagesFromDB()
+        loadReviewsFromDB(true), // Принудительное обновление при первой загрузке
+        loadChatMessagesFromDB(true)
     ]);
     
     console.log('✅ Загрузка данных завершена');
