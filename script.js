@@ -279,8 +279,14 @@ async function loadDataWithFallback(dataType, forceUpdate = false) {
         cachedData = loadFromCache(dataType);
     }
     
-    if (cachedData && !forceUpdate && dataType !== 'reviews') {
+    if (cachedData && !forceUpdate && dataType !== 'reviews' && dataType !== 'requests') {
         console.log(`📦 Показываем кэшированные ${dataType}: ${cachedData.length} записей`);
+        displayData(dataType, cachedData);
+    }
+    
+    // Для заказов загружаем из кэша, если есть данные
+    if (dataType === 'requests' && cachedData && !forceUpdate) {
+        console.log(`📦 Показываем кэшированные заказы: ${cachedData.length} заказов`);
         displayData(dataType, cachedData);
     }
     
@@ -505,6 +511,16 @@ function displayData(dataType, data) {
             
             // Сортируем по дате (новые сверху)
             globalOrders.sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            // Сохраняем заказы в кэш
+            if (window.dataCache && window.dataCache.requests) {
+                window.dataCache.requests.data = globalOrders;
+                window.dataCache.requests.lastUpdate = Date.now();
+                console.log(`💾 Заказы сохранены в кэш: ${globalOrders.length} заказов`);
+            }
+            
+            // Сохраняем заказы в localStorage для персистентности
+            saveToCache('requests', globalOrders);
             
             updateOrdersDisplay();
             break;
