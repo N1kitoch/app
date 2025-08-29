@@ -13,6 +13,7 @@ let pages;
 // Ключи для localStorage
 const CACHE_KEYS = {
     reviews: 'app_cache_reviews_v1',
+    requests: 'app_cache_requests_v1',
     stats: 'app_cache_stats_v1',
     averageRating: 'app_cache_rating_v1'
 };
@@ -22,6 +23,11 @@ const CACHE_CONFIG = {
     reviews: {
         keepInCache: 30, // дней
         loadMoreButton: true,
+        maxItems: 1000
+    },
+    requests: {
+        keepInCache: 30, // дней
+        loadMoreButton: false,
         maxItems: 1000
     },
     chatMessages: {
@@ -51,6 +57,11 @@ window.dataCache = {
         data: [],
         lastUpdate: 0,
         updateInterval: 30 * 60 * 1000 // 30 минут
+    },
+    requests: {
+        data: [],
+        lastUpdate: 0,
+        updateInterval: 30 * 1000 // 30 секунд для заказов
     },
     chatMessages: {
         data: {},
@@ -258,7 +269,7 @@ async function loadDataWithFallback(dataType, forceUpdate = false) {
         cachedData = loadFromCache(dataType);
     }
     
-    if (cachedData && !forceUpdate && dataType !== 'reviews') {
+    if (cachedData && !forceUpdate && dataType !== 'reviews' && dataType !== 'requests') {
         displayData(dataType, cachedData);
     }
     
@@ -277,19 +288,19 @@ async function loadDataWithFallback(dataType, forceUpdate = false) {
 // Полная замена данных (для отзывов, статистики)
 async function updateDataWithFullReplace(dataType) {
     try {
-        // Для отзывов получаем все данные, для остальных - ограниченное количество
-        const limit = dataType === 'reviews' ? 1000 : 100;
+        // Для отзывов и заказов получаем все данные, для остальных - ограниченное количество
+        const limit = (dataType === 'reviews' || dataType === 'requests') ? 1000 : 100;
         const result = await loadDataFromBackend(dataType, limit);
         
         if (result.data.length > 0) {
-            // Для отзывов очищаем кэш перед сохранением новых данных
-            if (dataType === 'reviews') {
-                // Очищаем кэш отзывов
-                localStorage.removeItem(CACHE_KEYS.reviews);
-                if (window.dataCache.reviews) {
-                    window.dataCache.reviews.data = [];
+            // Для отзывов и заказов очищаем кэш перед сохранением новых данных
+            if (dataType === 'reviews' || dataType === 'requests') {
+                // Очищаем кэш
+                localStorage.removeItem(CACHE_KEYS[dataType]);
+                if (window.dataCache[dataType]) {
+                    window.dataCache[dataType].data = [];
                 }
-                console.log('🧹 Кэш отзывов очищен перед обновлением');
+                console.log(`🧹 Кэш ${dataType} очищен перед обновлением`);
             }
             
             // Сохраняем в соответствующий кэш
