@@ -1,12 +1,688 @@
 // DOM Elements
-const serviceModal = document.getElementById('serviceModal');
-const modalContent = document.getElementById('modalContent');
+let serviceModal;
+let modalContent;
 const closeModal = document.querySelector('.close');
 const contactForm = document.getElementById('contactForm');
 
 // Глобальные переменные для страниц и навигации (будут инициализированы после загрузки DOM)
 let mobileNavItems;
 let pages;
+
+// ===== СИСТЕМА УМНОГО КЭШИРОВАНИЯ =====
+
+// Ключи для localStorage
+const CACHE_KEYS = {
+    reviews: 'app_cache_reviews_v1',
+    stats: 'app_cache_stats_v1',
+    averageRating: 'app_cache_rating_v1'
+};
+
+// Настройки кэширования
+const CACHE_CONFIG = {
+    reviews: {
+        keepInCache: 30, // дней
+        loadMoreButton: true,
+        maxItems: 1000
+    },
+    chatMessages: {
+        keepInCache: 7, // дней
+        loadMoreButton: true,
+        maxItems: 1000
+    },
+    stats: {
+        keepInCache: 1, // день
+        loadMoreButton: false,
+        maxItems: 100
+    },
+    averageRating: {
+        keepInCache: 30, // дней
+        loadMoreButton: false,
+        maxItems: 1
+    }
+};
+
+// Глобальные флаги для кнопок "Загрузить еще"
+window.hasMoreReviews = false;
+window.hasMoreChatMessages = false;
+
+// Глобальный кэш данных в памяти
+window.dataCache = {
+    reviews: {
+        data: [],
+        lastUpdate: 0,
+        updateInterval: 30 * 60 * 1000 // 30 минут
+    },
+    chatMessages: {
+        data: {},
+        lastUpdate: 0,
+        updateInterval: 10 * 1000 // 10 секунд для чата
+    },
+    stats: {
+        data: {},
+        lastUpdate: 0,
+        updateInterval: 5 * 60 * 1000 // 5 минут
+    },
+    averageRating: {
+        data: null,
+        lastUpdate: 0,
+        updateInterval: 30 * 60 * 1000 // 30 минут
+    }
+};
+
+// ===== ФУНКЦИИ ДЛЯ LOCALSTORAGE =====
+
+// Сохранение данных в localStorage
+function saveToCache(dataType, data) {
+    try {
+        const config = CACHE_CONFIG[dataType];
+        const now = Date.now();
+        const cutoffDate = now - (config.keepInCache * 24 * 60 * 60 * 1000);
+        
+        // Фильтруем данные по дате
+        let filteredData = data;
+        if (Array.isArray(data)) {
+            filteredData = data.filter(item => {
+                const itemDate = new Date(item.timestamp || item.date || item.review_date).getTime();
+                return itemDate > cutoffDate;
+            });
+        }
+        
+        const cacheData = {
+            data: filteredData,
+            lastUpdate: now,
+            totalCount: Array.isArray(data) ? data.length : 1,
+            hasMoreData: Array.isArray(data) ? data.length > filteredData.length : false
+        };
+        
+        localStorage.setItem(CACHE_KEYS[dataType], JSON.stringify(cacheData));
+        console.log(`💾 Кэш ${dataType} сохранен: ${filteredData.length} из ${data.length} записей`);
+        
+        // Обновляем флаги для кнопок "Загрузить еще"
+        if (dataType === 'reviews') {
+            window.hasMoreReviews = cacheData.hasMoreData;
+        }
+        
+    } catch (error) {
+        console.warn(`⚠️ Ошибка сохранения в localStorage:`, error);
+    }
+}
+
+// Загрузка данных из localStorage
+function loadFromCache(dataType) {
+    try {
+        const cached = localStorage.getItem(CACHE_KEYS[dataType]);
+        if (cached) {
+            const cacheData = JSON.parse(cached);
+            const timeSinceUpdate = Date.now() - cacheData.lastUpdate;
+            const config = CACHE_CONFIG[dataType];
+            
+            // Проверяем актуальность кэша
+            if (timeSinceUpdate < config.keepInCache * 24 * 60 * 60 * 1000) {
+                console.log(`📦 Загружен кэш ${dataType} из localStorage: ${cacheData.data.length} записей`);
+                
+                // Обновляем кэш в памяти
+                window.dataCache[dataType].data = cacheData.data;
+                window.dataCache[dataType].lastUpdate = cacheData.lastUpdate;
+                
+                // Обновляем флаги
+                if (dataType === 'reviews') {
+                    window.hasMoreReviews = cacheData.hasMoreData;
+                }
+                
+                return cacheData.data;
+            } else {
+                console.log(`⏰ Кэш ${dataType} устарел, требуется обновление`);
+            }
+        }
+    } catch (error) {
+        console.warn(`⚠️ Ошибка загрузки из localStorage:`, error);
+    }
+    return null;
+}
+
+// ===== ФУНКЦИИ ДЛЯ INDEXEDDB =====
+
+// Инициализация IndexedDB
+function initIndexedDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open('AppCacheDB', 1);
+        
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve(request.result);
+        
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            
+            // Создаем хранилище для чата
+            if (!db.objectStoreNames.contains('chatMessages')) {
+                const store = db.createObjectStore('chatMessages', { keyPath: 'id' });
+                store.createIndex('timestamp', 'timestamp', { unique: false });
+            }
+        };
+    });
+}
+
+// Сохранение чата в IndexedDB
+async function saveChatToIndexedDB(messages) {
+    try {
+        const db = await initIndexedDB();
+        const transaction = db.transaction(['chatMessages'], 'readwrite');
+        const store = transaction.objectStore('chatMessages');
+        
+        // Очищаем старые данные
+        await store.clear();
+        
+        // Сохраняем новые (ограничиваем количество)
+        const limitedMessages = messages.slice(-CACHE_CONFIG.chatMessages.maxItems);
+        
+        for (const message of limitedMessages) {
+            await store.add({
+                id: message.id || Date.now() + Math.random(),
+                ...message,
+                timestamp: Date.now()
+            });
+        }
+        
+        console.log(`💾 ${limitedMessages.length} сообщений сохранено в IndexedDB`);
+        window.hasMoreChatMessages = messages.length > limitedMessages.length;
+        
+    } catch (error) {
+        console.error('❌ Ошибка сохранения в IndexedDB:', error);
+    }
+}
+
+// Загрузка чата из IndexedDB
+async function loadChatFromIndexedDB() {
+    try {
+        const db = await initIndexedDB();
+        const transaction = db.transaction(['chatMessages'], 'readonly');
+        const store = transaction.objectStore('chatMessages');
+        const request = store.getAll();
+        
+        return new Promise((resolve, reject) => {
+            request.onsuccess = () => {
+                const messages = request.result.sort((a, b) => a.timestamp - b.timestamp);
+                console.log(`📦 Загружено ${messages.length} сообщений из IndexedDB`);
+                resolve(messages);
+            };
+            request.onerror = () => reject(request.error);
+        });
+        
+    } catch (error) {
+        console.error('❌ Ошибка загрузки из IndexedDB:', error);
+        return [];
+    }
+}
+
+// ===== ФУНКЦИИ ЗАГРУЗКИ ДАННЫХ =====
+
+// Загрузка данных (бэкенд возвращает только последние записи)
+async function loadDataFromBackend(dataType, limit = 50) {
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/frontend/data/${dataType}`);
+        
+        if (response.ok) {
+            const result = await response.json();
+            const allData = result.success ? result.data : [];
+            
+            // Для отзывов возвращаем все данные, для остальных - ограниченное количество
+            let paginatedData;
+            if (dataType === 'reviews') {
+                paginatedData = allData; // Все отзывы
+            } else {
+                paginatedData = allData.slice(-limit); // Ограниченное количество
+            }
+            
+            return {
+                data: paginatedData,
+                total: allData.length,
+                hasMore: dataType === 'reviews' ? false : allData.length > limit
+            };
+        }
+    } catch (error) {
+        console.error(`❌ Ошибка загрузки ${dataType}:`, error);
+    }
+    
+    return { data: [], total: 0, hasMore: false };
+}
+
+// Умная загрузка данных с fallback
+async function loadDataWithFallback(dataType, forceUpdate = false) {
+    // 1. Показываем кэшированные данные сразу (кроме отзывов)
+    let cachedData = null;
+    
+    if (dataType === 'chatMessages') {
+        cachedData = await loadChatFromIndexedDB();
+    } else if (dataType !== 'reviews') {
+        // Для отзывов не показываем кэшированные данные, всегда обновляем
+        cachedData = loadFromCache(dataType);
+    }
+    
+    if (cachedData && !forceUpdate && dataType !== 'reviews') {
+        displayData(dataType, cachedData);
+    }
+    
+    // 2. Пытаемся обновить данные
+    try {
+        if (dataType === 'chatMessages') {
+            await updateChatIncrementally();
+        } else {
+            await updateDataWithFullReplace(dataType);
+        }
+    } catch (error) {
+        console.warn(`⚠️ Не удалось обновить ${dataType}, используем кэш`);
+    }
+}
+
+// Полная замена данных (для отзывов, статистики)
+async function updateDataWithFullReplace(dataType) {
+    try {
+        // Для отзывов получаем все данные, для остальных - ограниченное количество
+        const limit = dataType === 'reviews' ? 1000 : 100;
+        const result = await loadDataFromBackend(dataType, limit);
+        
+        if (result.data.length > 0) {
+            // Для отзывов очищаем кэш перед сохранением новых данных
+            if (dataType === 'reviews') {
+                // Очищаем кэш отзывов
+                localStorage.removeItem(CACHE_KEYS.reviews);
+                if (window.dataCache.reviews) {
+                    window.dataCache.reviews.data = [];
+                }
+                console.log('🧹 Кэш отзывов очищен перед обновлением');
+            }
+            
+            // Сохраняем в соответствующий кэш
+            if (dataType === 'chatMessages') {
+                await saveChatToIndexedDB(result.data);
+            } else {
+                saveToCache(dataType, result.data);
+            }
+            
+            // Обновляем кэш в памяти
+            window.dataCache[dataType].data = result.data;
+            window.dataCache[dataType].lastUpdate = Date.now();
+            
+            // Обновляем отображение
+            displayData(dataType, result.data);
+            
+            console.log(`✅ ${dataType} обновлены: ${result.data.length} записей`);
+        }
+        
+    } catch (error) {
+        console.error(`❌ Ошибка обновления ${dataType}:`, error);
+    }
+}
+
+// Инкрементальное обновление чата
+async function updateChatIncrementally() {
+    try {
+        const cachedMessages = await loadChatFromIndexedDB();
+        const lastMessageId = cachedMessages.length > 0 ? 
+            Math.max(...cachedMessages.map(m => m.id)) : 0;
+        
+        // Запрашиваем все сообщения
+        const result = await loadDataFromBackend('chatMessages', 50);
+        
+        if (result.data.length > 0) {
+            // Фильтруем только новые сообщения
+            const newMessages = result.data.filter(msg => msg.id > lastMessageId);
+            
+            if (newMessages.length > 0) {
+                // Добавляем новые сообщения
+                const allMessages = [...cachedMessages, ...newMessages];
+                
+                // Сохраняем обновленный список
+                await saveChatToIndexedDB(allMessages);
+                
+                // Обновляем отображение
+                displayData('chatMessages', allMessages);
+                
+                console.log(`✅ Добавлено ${newMessages.length} новых сообщений`);
+            }
+        }
+        
+    } catch (error) {
+        console.error('❌ Ошибка обновления чата:', error);
+    }
+}
+
+// Отображение данных
+function displayData(dataType, data) {
+    switch (dataType) {
+        case 'reviews':
+            // Обрабатываем данные отзывов из БД в формат для фронтенда
+            globalReviews = data.map(review => {
+                // Формируем имя пользователя
+                let userName;
+                if (review.username) {
+                    userName = `@${review.username}`;
+                } else if (review.first_name) {
+                    userName = review.first_name;
+                } else {
+                    userName = 'Пользователь';
+                }
+                
+                return {
+                    user: userName,
+                    rating: review.rating,
+                    comment: review.comment,
+                    date: review.review_date || new Date(review.timestamp).toLocaleDateString('ru-RU')
+                };
+            });
+            updateReviewsDisplay();
+            break;
+        case 'requests':
+            // Обрабатываем данные заказов из БД в формат для фронтенда
+            // Фильтруем только заказы текущего пользователя
+            const currentUserId = currentUserData?.id;
+            const userOrders = currentUserId ? data.filter(order => String(order.user_id) === String(currentUserId)) : [];
+            
+            // Инициализируем globalOrders если его нет
+            if (!globalOrders) {
+                globalOrders = [];
+            }
+            
+            // Обрабатываем каждый заказ
+            userOrders.forEach(order => {
+                // Формируем имя пользователя
+                let userName;
+                if (order.username) {
+                    userName = `@${order.username}`;
+                } else if (order.first_name) {
+                    userName = order.first_name;
+                } else {
+                    userName = 'Пользователь';
+                }
+                
+                // Преобразуем статус в читаемый вид
+                let statusText, statusClass;
+                switch (order.status) {
+                    case 'pending':
+                        statusText = 'Ожидает';
+                        statusClass = 'status-pending';
+                        break;
+                    case 'active':
+                        statusText = 'Активный';
+                        statusClass = 'status-active';
+                        break;
+                    case 'completed':
+                        statusText = 'Завершен';
+                        statusClass = 'status-completed';
+                        break;
+                    case 'cancelled':
+                        statusText = 'Отменен';
+                        statusClass = 'status-cancelled';
+                        break;
+                    default:
+                        statusText = 'Неизвестно';
+                        statusClass = 'status-unknown';
+                }
+                
+                const processedOrder = {
+                    id: order.id,
+                    user: userName,
+                    service: order.service_name,
+                    message: order.message,
+                    status: statusText,
+                    statusClass: statusClass,
+                    date: new Date(order.timestamp).toLocaleDateString('ru-RU')
+                };
+                
+                // Проверяем, существует ли заказ с таким ID
+                const existingOrderIndex = globalOrders.findIndex(existingOrder => existingOrder.id === order.id);
+                
+                if (existingOrderIndex !== -1) {
+                    // Заказ существует - обновляем его данные
+                    const oldStatus = globalOrders[existingOrderIndex].status;
+                    globalOrders[existingOrderIndex] = processedOrder;
+                    
+                    // Логируем изменение статуса
+                    if (oldStatus !== processedOrder.status) {
+                        console.log(`📦 Обновлен статус заказа #${order.id}: ${oldStatus} → ${processedOrder.status}`);
+                    } else {
+                        console.log(`📦 Обновлен заказ #${order.id}`);
+                    }
+                } else {
+                    // Новый заказ - добавляем его
+                    globalOrders.push(processedOrder);
+                    console.log(`📦 Добавлен новый заказ #${order.id}`);
+                }
+            });
+            
+            // Сортируем по дате (новые сверху)
+            globalOrders.sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            updateOrdersDisplay();
+            break;
+
+        case 'chatMessages':
+            globalChatMessages = data;
+            updateChatDisplay();
+            break;
+        case 'stats':
+            updateStatsDisplay(data);
+            break;
+        case 'averageRating':
+            updateRatingDisplay(data);
+            break;
+    }
+}
+
+// Функции обновления отображения
+function updateReviewsDisplay() {
+    const reviewsContainer = document.querySelector('.reviews-container');
+    if (reviewsContainer) {
+        reviewsContainer.innerHTML = renderReviews();
+        initReviewStars();
+    }
+}
+
+function updateOrdersDisplay() {
+    const ordersContainer = document.querySelector('.orders-container');
+    if (ordersContainer) {
+        ordersContainer.innerHTML = renderOrders();
+    }
+}
+
+function updateChatDisplay() {
+    const chatContainer = document.querySelector('.chat-messages');
+    if (chatContainer) {
+        // Обновляем отображение чата
+        renderChatMessages();
+        // Прокручиваем к последнему сообщению
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+}
+
+function updateStatsDisplay(stats) {
+    // Обновляем отображение статистики
+    const statsElements = document.querySelectorAll('[data-stat]');
+    statsElements.forEach(element => {
+        const statKey = element.getAttribute('data-stat');
+        if (stats[statKey] !== undefined) {
+            element.textContent = stats[statKey];
+        }
+    });
+}
+
+function updateRatingDisplay(ratingData) {
+    // Обновляем отображение средней оценки
+    const ratingElements = document.querySelectorAll('[data-rating]');
+    ratingElements.forEach(element => {
+        const ratingKey = element.getAttribute('data-rating');
+        if (ratingData && ratingData[ratingKey] !== undefined) {
+            element.textContent = ratingData[ratingKey];
+        }
+    });
+}
+
+// Функция для скрытия кнопки "Загрузить еще" в чате
+function hideLoadMoreChatButton() {
+    const button = document.getElementById('loadMoreChatBtn');
+    if (button) {
+        button.style.display = 'none';
+    }
+}
+
+// ===== ФУНКЦИИ "ЗАГРУЗИТЬ ЕЩЕ" =====
+
+// Загрузка старых отзывов
+async function loadMoreReviews() {
+    const button = document.getElementById('loadMoreReviews');
+    if (button) {
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Загрузка...';
+    }
+    
+    try {
+        // Загружаем все отзывы с бэкенда
+        const result = await loadDataFromBackend('reviews', 1000);
+        
+        if (result.data.length > 0) {
+            // Преобразуем отзывы
+            const allReviews = result.data.map(review => {
+                // Формируем имя пользователя
+                let userName;
+                if (review.username) {
+                    userName = `@${review.username}`;
+                } else if (review.first_name) {
+                    userName = review.first_name;
+                } else {
+                    userName = 'Пользователь';
+                }
+                
+                return {
+                    user: userName,
+                    rating: review.rating,
+                    comment: review.comment,
+                    date: review.review_date || new Date(review.timestamp).toLocaleDateString('ru-RU')
+                };
+            });
+            
+            // Заменяем текущие отзывы на все
+            globalReviews = allReviews;
+            
+            // Обновляем отображение
+            updateReviewsDisplay();
+            
+            console.log(`✅ Загружено ${allReviews.length} отзывов`);
+            
+            // Скрываем кнопку, так как загрузили все
+            window.hasMoreReviews = false;
+            updateReviewsDisplay();
+        }
+        
+    } catch (error) {
+        console.error('❌ Ошибка загрузки старых отзывов:', error);
+    } finally {
+        if (button) {
+            button.disabled = false;
+            button.innerHTML = '<i class="fas fa-history"></i> Загрузить более старые отзывы';
+        }
+    }
+}
+
+// Загрузка старых сообщений чата
+async function loadMoreChatMessages() {
+    const button = document.getElementById('loadMoreChatBtn');
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Загрузка...';
+    
+    try {
+        // Загружаем все сообщения с бэкенда
+        const result = await loadDataFromBackend('chatMessages', 1000);
+        
+        if (result.data.length > 0) {
+            // Заменяем текущие сообщения на все
+            globalChatMessages = result.data;
+            
+            // Обновляем отображение
+            updateChatDisplay();
+            
+            console.log(`✅ Загружено ${result.data.length} сообщений`);
+            
+            // Скрываем кнопку, так как загрузили все
+            window.hasMoreChatMessages = false;
+            hideLoadMoreChatButton();
+        }
+        
+    } catch (error) {
+        console.error('❌ Ошибка загрузки старых сообщений:', error);
+    } finally {
+        button.disabled = false;
+        button.innerHTML = '<i class="fas fa-chevron-up"></i> Загрузить старые сообщения';
+    }
+}
+
+// ===== ОЧИСТКА КЭША =====
+
+// Автоматическая очистка старых данных
+function cleanupOldData() {
+    const now = Date.now();
+    
+    // Очистка localStorage
+    Object.keys(CACHE_KEYS).forEach(key => {
+        try {
+            const cached = localStorage.getItem(CACHE_KEYS[key]);
+            if (cached) {
+                const cacheData = JSON.parse(cached);
+                const config = CACHE_CONFIG[key];
+                const maxAge = config.keepInCache * 24 * 60 * 60 * 1000;
+                
+                if (now - cacheData.lastUpdate > maxAge) {
+                    localStorage.removeItem(CACHE_KEYS[key]);
+                    console.log(`🧹 Удален устаревший кэш ${key}`);
+                }
+            }
+        } catch (error) {
+            console.warn(`⚠️ Ошибка очистки кэша ${key}:`, error);
+        }
+    });
+    
+    // Очистка IndexedDB
+    cleanupIndexedDB();
+}
+
+// Очистка IndexedDB от старых сообщений
+async function cleanupIndexedDB() {
+    try {
+        const db = await initIndexedDB();
+        const transaction = db.transaction(['chatMessages'], 'readwrite');
+        const store = transaction.objectStore('chatMessages');
+        const index = store.index('timestamp');
+        
+        const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+        const range = IDBKeyRange.upperBound(weekAgo);
+        
+        await index.delete(range);
+        console.log('🧹 Удалены старые сообщения из IndexedDB');
+    } catch (error) {
+        console.error('❌ Ошибка очистки IndexedDB:', error);
+    }
+}
+
+// ===== ИНИЦИАЛИЗАЦИЯ СИСТЕМЫ КЭШИРОВАНИЯ =====
+
+// Загрузка всех данных при инициализации
+async function loadAllDataWithCache() {
+    console.log('🔄 Загрузка данных с кэшированием...');
+    
+    await Promise.all([
+        loadDataWithFallback('reviews'),
+        loadDataWithFallback('chatMessages'),
+        loadDataWithFallback('stats'),
+        loadDataWithFallback('averageRating')
+    ]);
+    
+    console.log('✅ Загрузка данных завершена');
+    
+    // Запускаем периодическое обновление
+    startPeriodicUpdates();
+    
+    // Запускаем периодическую очистку
+    setInterval(cleanupOldData, 24 * 60 * 60 * 1000); // Раз в день
+}
 
 // Page Navigation
 function showPage(pageId) {
@@ -150,6 +826,15 @@ function showPage(pageId) {
 
 // Initialize first page
 document.addEventListener('DOMContentLoaded', async function() {
+    // Инициализируем элементы модального окна
+    serviceModal = document.getElementById('serviceModal');
+    modalContent = document.getElementById('modalContent');
+    
+    // Делаем функции доступными глобально
+    window.openServiceModal = openServiceModal;
+    window.closeServiceModal = closeServiceModal;
+    window.contactForService = contactForService;
+    
     // Загружаем тексты в первую очередь
     await loadTexts();
     initApp();
@@ -180,10 +865,10 @@ document.addEventListener('DOMContentLoaded', async function() {
         loadServiceCards();
     }, 1000);
     
-    // Загружаем данные из БД
+    // Загружаем данные из БД с новой системой кэширования
     setTimeout(async () => {
-        console.log('Loading data from database...');
-        await loadAllDataFromDB();
+        console.log('Loading data from database with caching...');
+        await loadAllDataWithCache();
     }, 1500);
     
     // Очищаем интервалы при закрытии страницы
@@ -656,13 +1341,19 @@ function openServiceModal(serviceType) {
     
     // Проверяем, что модальное окно существует
     if (!serviceModal) {
-        console.error('serviceModal element not found');
-        return;
+        serviceModal = document.getElementById('serviceModal');
+        if (!serviceModal) {
+            console.error('serviceModal element not found');
+            return;
+        }
     }
     
     if (!modalContent) {
-        console.error('modalContent element not found');
-        return;
+        modalContent = document.getElementById('modalContent');
+        if (!modalContent) {
+            console.error('modalContent element not found');
+            return;
+        }
     }
     
     // Map service IDs to JSON keys
@@ -694,56 +1385,59 @@ function openServiceModal(serviceType) {
     }
     
     if (modalData) {
-        modalContent.innerHTML = `
-          <div class="service-modal">
-            <h2 class="service-title">${modalData.title}</h2>
-            <p class="service-description">${modalData.description}</p>
+        try {
+            modalContent.innerHTML = `
+              <div class="service-modal">
+                <h2 class="service-title">${modalData.title}</h2>
+                <p class="service-description">${modalData.description}</p>
 
-            <div class="service-details">
-              <div class="detail-item">
-                <h4>Технологии:</h4>
-                <div class="tech-tags">
-                  ${modalData.technologies.map(t=>`<span>${t}</span>`).join('')}
+                <div class="service-details">
+                  <div class="detail-item">
+                    <h4>Технологии:</h4>
+                    <div class="tech-tags">
+                      ${modalData.technologies.map(t=>`<span>${t}</span>`).join('')}
+                    </div>
+                  </div>
+
+                  <div class="detail-item">
+                    <h4>Что входит в услугу:</h4>
+                    <ul class="feature-list">
+                      ${modalData.features.map(f=>`<li>${f}</li>`).join('')}
+                    </ul>
+                  </div>
                 </div>
-              </div>
 
-              <div class="detail-item">
-                <h4>Что входит в услугу:</h4>
-                <ul class="feature-list">
-                  ${modalData.features.map(f=>`<li>${f}</li>`).join('')}
-                </ul>
-              </div>
-            </div>
+                <div class="service-pricing">
+                  <div class="info-pill"><i class="fas fa-tag"></i><span>${modalData.price}</span></div>
+                  <div class="info-pill"><i class="fas fa-clock"></i><span>${modalData.duration}</span></div>
+                </div>
 
-            <div class="service-pricing">
-              <div class="info-pill"><i class="fas fa-tag"></i><span>${modalData.price}</span></div>
-              <div class="info-pill"><i class="fas fa-clock"></i><span>${modalData.duration}</span></div>
-            </div>
+                <div class="modal-actions">
+                  <button class="btn btn-primary" onclick="contactForService('${modalData.title}')"><i class="fas fa-paper-plane"></i><span>Заказать</span></button>
+                </div>
 
-            <div class="modal-actions">
-              <button class="btn btn-primary" onclick="contactForService('${modalData.title}')"><i class="fas fa-paper-plane"></i><span>Заказать</span></button>
-            </div>
+                <div class="service-reviews">
+                  ${renderReviews()}
+                </div>
+              </div>`;
 
-            <div class="service-reviews">
-              ${renderReviews()}
-            </div>
-          </div>`;
-
-
-
-        // Инициализация звездочек для оценки
-        initReviewStars();
-        
-        // Подсвечиваем кнопку "Услуги" в модальном окне
-        const serviceNavItem = document.querySelector('#serviceTopNav .mobile-nav-item:nth-child(2)');
-        if (serviceNavItem) {
-            serviceNavItem.classList.add('active');
+            // Инициализация звездочек для оценки
+            initReviewStars();
+            
+            // Подсвечиваем кнопку "Услуги" в модальном окне
+            const serviceNavItem = document.querySelector('#serviceTopNav .mobile-nav-item:nth-child(2)');
+            if (serviceNavItem) {
+                serviceNavItem.classList.add('active');
+            }
+            
+            console.log('Opening modal...');
+            serviceModal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+            console.log('Modal opened successfully');
+        } catch (error) {
+            console.error('Error opening modal:', error);
+            alert('Ошибка при открытии модального окна: ' + error.message);
         }
-        
-        console.log('Opening modal...');
-        serviceModal.style.display = 'block';
-        document.body.style.overflow = 'hidden';
-        console.log('Modal opened successfully');
     } else {
         console.error('modalData is falsy');
     }
@@ -758,17 +1452,20 @@ window.addEventListener('click', (e) => {
 });
 
 function closeServiceModal() {
-    serviceModal.style.display = 'none';
-    document.body.style.overflow = 'auto';
+    if (serviceModal) {
+        serviceModal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
 }
 
 // Инициализация интерактивных звездочек для оценки
 function initReviewStars() {
-    const starSelect = document.getElementById('starSelect');
-    const reviewText = document.getElementById('reviewText');
-    const sendBtn = document.getElementById('sendReviewBtn');
-    
-    if (!starSelect || !reviewText || !sendBtn) return;
+    try {
+        const starSelect = document.getElementById('starSelect');
+        const reviewText = document.getElementById('reviewText');
+        const sendBtn = document.getElementById('sendReviewBtn');
+        
+        if (!starSelect || !reviewText || !sendBtn) return;
     
     const stars = starSelect.querySelectorAll('i');
     let selectedRating = 0;
@@ -838,6 +1535,9 @@ function initReviewStars() {
         // Показываем уведомление
         showNotification(getText('servicesPage.reviews.messages.success', 'Спасибо за отзыв!'), 'success');
     });
+    } catch (error) {
+        console.error('Error in initReviewStars:', error);
+    }
 }
 
 // Инициализация кнопки помощи в профиле
@@ -3573,40 +4273,10 @@ window.dataCache = {
     }
 };
 
-// Функции для получения данных из БД через бэкенд
+// Функции для получения данных из БД через бэкенд (обновленная версия)
 async function fetchDataFromDB(dataType, limit = 50, forceUpdate = false) {
-    const cache = window.dataCache[dataType];
-    const now = Date.now();
-    
-    // Всегда очищаем кэш перед получением новых данных
-    if (window.dataCache[dataType]) {
-        window.dataCache[dataType].data = Array.isArray(cache?.data) ? [] : {};
-        window.dataCache[dataType].lastUpdate = 0;
-        console.log(`🧹 Кэш ${dataType} очищен перед получением новых данных`);
-    }
-    
-    try {
-        const response = await fetch(`${BACKEND_URL}/api/frontend/data/${dataType}?limit=${limit}`);
-        if (response.ok) {
-            const result = await response.json();
-            const data = result.success ? result.data : [];
-            
-            // Обновляем кэш свежими данными
-            if (window.dataCache[dataType]) {
-                window.dataCache[dataType].data = data;
-                window.dataCache[dataType].lastUpdate = now;
-            }
-            
-            console.log(`✅ Получены свежие данные ${dataType}: ${data.length} записей`);
-            return data;
-        } else {
-            console.error(`❌ Ошибка получения данных ${dataType}:`, response.status);
-            return [];
-        }
-    } catch (error) {
-        console.error(`❌ Ошибка запроса данных ${dataType}:`, error);
-        return [];
-    }
+    // Используем новую систему кэширования
+    return await loadDataWithFallback(dataType, forceUpdate);
 }
 
 async function fetchStatsFromDB(forceUpdate = false) {
@@ -3808,15 +4478,8 @@ let chatUpdateInterval;
 async function loadAllDataFromDB() {
     console.log('🔄 Загрузка данных из БД...');
     
-    await Promise.all([
-        loadReviewsFromDB(true), // Принудительное обновление при первой загрузке
-        loadChatMessagesFromDB(true)
-    ]);
-    
-    console.log('✅ Загрузка данных завершена');
-    
-    // Запускаем периодическое обновление
-    startPeriodicUpdates();
+    // Используем новую систему кэширования
+    await loadAllDataWithCache();
 }
 
 // Функция для запуска периодического обновления
@@ -3870,6 +4533,7 @@ function getCacheInfo() {
     const now = Date.now();
     const info = {};
     
+    // Информация о кэше в памяти
     Object.keys(window.dataCache).forEach(key => {
         const cache = window.dataCache[key];
         const timeSinceUpdate = now - cache.lastUpdate;
@@ -3879,37 +4543,180 @@ function getCacheInfo() {
             lastUpdate: new Date(cache.lastUpdate).toLocaleString('ru-RU'),
             minutesSinceUpdate,
             dataCount: Array.isArray(cache.data) ? cache.data.length : Object.keys(cache.data).length,
-            updateInterval: Math.floor(cache.updateInterval / (1000 * 60)) + ' мин'
+            updateInterval: Math.floor(cache.updateInterval / (1000 * 60)) + ' мин',
+            hasMoreData: key === 'reviews' ? window.hasMoreReviews : 
+                        key === 'chatMessages' ? window.hasMoreChatMessages : false
         };
+    });
+    
+    // Информация о localStorage
+    Object.keys(CACHE_KEYS).forEach(key => {
+        try {
+            const cached = localStorage.getItem(CACHE_KEYS[key]);
+            if (cached) {
+                const cacheData = JSON.parse(cached);
+                const timeSinceUpdate = now - cacheData.lastUpdate;
+                const minutesSinceUpdate = Math.floor(timeSinceUpdate / (1000 * 60));
+                
+                info[`${key}_localStorage`] = {
+                    lastUpdate: new Date(cacheData.lastUpdate).toLocaleString('ru-RU'),
+                    minutesSinceUpdate,
+                    dataCount: Array.isArray(cacheData.data) ? cacheData.data.length : 1,
+                    totalCount: cacheData.totalCount,
+                    hasMoreData: cacheData.hasMoreData
+                };
+            }
+        } catch (error) {
+            info[`${key}_localStorage`] = { error: 'Ошибка чтения' };
+        }
     });
     
     return info;
 }
 
 function renderReviews(){
-  // Используем общую базу отзывов для всех услуг
-  const reviews = globalReviews;
-  const avg=reviews.length?(reviews.reduce((s,r)=>s+r.rating,0)/reviews.length).toFixed(1):"-";
-  const starsAvg=Array(5).fill(0).map((_,i)=>`<i class="fas fa-star${reviews.length&&i+1<=Math.round(avg)?'':'-o'}"></i>`).join('');
-  const listHtml=reviews.map(r=>{
-    // Определяем, есть ли у пользователя юзернейм
-    const hasUsername = r.user.startsWith('@');
-    const userClass = hasUsername ? 'review-user' : 'review-user no-username';
+  try {
+    // Используем общую базу отзывов для всех услуг
+    const reviews = globalReviews || [];
+    const avg=reviews.length?(reviews.reduce((s,r)=>s+r.rating,0)/reviews.length).toFixed(1):"-";
+    const starsAvg=Array(5).fill(0).map((_,i)=>`<i class="fas fa-star${reviews.length&&i+1<=Math.round(avg)?'':'-o'}"></i>`).join('');
+    const listHtml=reviews.map(r=>{
+      // Определяем, есть ли у пользователя юзернейм
+      const hasUsername = r.user && r.user.startsWith('@');
+      const userClass = hasUsername ? 'review-user' : 'review-user no-username';
+      
+      return `<div class="review-card"><div class="review-head"><span class="${userClass}" data-has-username="${hasUsername}">${r.user}</span><span class="review-date">${r.date || ''}</span></div><div class="review-stars">${'★'.repeat(r.rating || 0)}${'☆'.repeat(5-(r.rating || 0))}</div><p>${r.comment || ''}</p></div>`;
+    }).join('');
     
-    return `<div class="review-card"><div class="review-head"><span class="${userClass}" data-has-username="${hasUsername}">${r.user}</span><span class="review-date">${r.date}</span></div><div class="review-stars">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</div><p>${r.comment}</p></div>`;
-  }).join('');
-  const listSection= reviews.length?`<div class="reviews-list scrollable">${listHtml}</div>`:'<p class="no-reviews">Пока нет отзывов</p>';
+    // Кнопка "Загрузить еще" (если есть старые данные)
+    const loadMoreButton = window.hasMoreReviews ? `
+      <div class="load-more-container">
+        <button id="loadMoreReviews" class="btn btn-secondary load-more-btn" onclick="loadMoreReviews()">
+          <i class="fas fa-history"></i>
+          Загрузить более старые отзывы
+        </button>
+      </div>
+    ` : '';
+    
+    const listSection= reviews.length?`<div class="reviews-list scrollable">${listHtml}</div>${loadMoreButton}`:'<p class="no-reviews">Пока нет отзывов</p>';
 
-  // star selector html
-  const starSelHtml=Array(5).fill(0).map((_,i)=>`<i data-val="${i+1}" class="fas fa-star"></i>`).join('');
+    // star selector html
+    const starSelHtml=Array(5).fill(0).map((_,i)=>`<i data-val="${i+1}" class="fas fa-star"></i>`).join('');
 
-  return `<div class="review-tile"><div class="reviews-summary"><span class="avg">${avg}</span>${starsAvg}<span class="count">(${reviews.length})</span></div>${listSection}
-  <div class="leave-review-area">
-    <div class="review-invite-text">Оставьте свой отзыв</div>
-    <div class="star-select" id="starSelect">${starSelHtml}</div>
-    <textarea id="reviewText" placeholder="${getText('servicesPage.reviews.form.placeholder', 'Ваш отзыв...')}"></textarea>
-    <button class="btn btn-primary btn-send" id="sendReviewBtn" disabled>${getText('servicesPage.reviews.form.submitButton', 'Отправить')}</button>
-  </div></div>`;
+    return `<div class="review-tile"><div class="reviews-summary"><span class="avg">${avg}</span>${starsAvg}<span class="count">(${reviews.length})</span></div>${listSection}
+    <div class="leave-review-area">
+      <div class="review-invite-text">Оставьте свой отзыв</div>
+      <div class="star-select" id="starSelect">${starSelHtml}</div>
+      <textarea id="reviewText" placeholder="${getText('servicesPage.reviews.form.placeholder', 'Ваш отзыв...')}"></textarea>
+      <button class="btn btn-primary btn-send" id="sendReviewBtn" disabled>${getText('servicesPage.reviews.form.submitButton', 'Отправить')}</button>
+    </div></div>`;
+  } catch (error) {
+    console.error('Error in renderReviews:', error);
+    return '<div class="review-tile"><p class="no-reviews">Ошибка загрузки отзывов</p></div>';
+  }
+}
+
+function renderOrders(){
+  try {
+    const orders = globalOrders || [];
+    
+    if (orders.length === 0) {
+      return '<div class="orders-tile"><p class="no-orders">У вас пока нет заказов</p></div>';
+    }
+    
+    const listHtml = orders.map(order => {
+      return `
+        <div class="order-card" onclick="openOrderDetails(${order.id})">
+          <div class="order-header">
+            <span class="order-id">Заказ #${order.id}</span>
+            <span class="order-date">${order.date}</span>
+          </div>
+          <div class="order-content">
+            <div class="order-service">
+              <strong>Услуга:</strong> ${order.service || 'Не указана'}
+            </div>
+            <div class="order-message">
+              <strong>Сообщение:</strong> ${order.message || 'Нет сообщения'}
+            </div>
+          </div>
+          <div class="order-footer">
+            <span class="order-status ${order.statusClass}">${order.status}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+    
+    return `
+      <div class="orders-tile">
+        <div class="orders-header">
+          <h3>Мои заказы (${orders.length})</h3>
+        </div>
+        <div class="orders-list scrollable">
+          ${listHtml}
+        </div>
+      </div>
+    `;
+  } catch (error) {
+    console.error('Error in renderOrders:', error);
+    return '<div class="orders-tile"><p class="no-orders">Ошибка загрузки заказов</p></div>';
+  }
+}
+
+function openOrderDetails(orderId) {
+  try {
+    const order = globalOrders.find(o => o.id === orderId);
+    if (!order) {
+      console.error('Заказ не найден:', orderId);
+      return;
+    }
+    
+    // Создаем модальное окно с деталями заказа
+    const modalHtml = `
+      <div class="modal-overlay" onclick="closeOrderModal()">
+        <div class="modal-content order-details-modal" onclick="event.stopPropagation()">
+          <div class="modal-header">
+            <h3>Детали заказа #${order.id}</h3>
+            <button class="modal-close" onclick="closeOrderModal()">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="order-detail-item">
+              <strong>Номер заказа:</strong> #${order.id}
+            </div>
+            <div class="order-detail-item">
+              <strong>Услуга:</strong> ${order.service || 'Не указана'}
+            </div>
+            <div class="order-detail-item">
+              <strong>Дата заказа:</strong> ${order.date}
+            </div>
+            <div class="order-detail-item">
+              <strong>Статус:</strong> 
+              <span class="order-status ${order.statusClass}">${order.status}</span>
+            </div>
+            <div class="order-detail-item">
+              <strong>Ваше сообщение:</strong>
+              <div class="order-message-text">${order.message || 'Нет сообщения'}</div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeOrderModal()">Закрыть</button>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // Добавляем модальное окно на страницу
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+  } catch (error) {
+    console.error('Error in openOrderDetails:', error);
+  }
+}
+
+function closeOrderModal() {
+  const modal = document.querySelector('.modal-overlay');
+  if (modal) {
+    modal.remove();
+  }
 }
 
 // Carousel functionality

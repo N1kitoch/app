@@ -132,12 +132,12 @@ p {
 }
 
 #home .hero-title {
-    margin-top: 0;
+    margin-top: 5px;
     margin-bottom: 0.75rem;
 }
 
 #home .hero-subtitle {
-    margin-bottom: 1rem;
+    margin-bottom: 1.5rem;
 }
 
 @supports (height: 100svh) {
@@ -240,7 +240,7 @@ body.page-home ::-webkit-scrollbar {
     gap: 1rem;
     justify-content: center;
     flex-wrap: wrap;
-    margin-top: 2rem;
+    margin-top: 1.5rem;
     margin-bottom: 0;
 }
 
@@ -1397,10 +1397,12 @@ a:focus {
     justify-content: center;
     padding: 0.5rem 0.75rem 0.75rem 0.75rem;
     cursor: pointer;
-    /* Mobile: убираем transition */
     flex: 1;
     text-align: center;
     height: 100%;
+    /* Базовые стили для анимации */
+    position: relative;
+    overflow: hidden;
 }
 
 .mobile-nav-item i {
@@ -2214,81 +2216,9 @@ a:focus {
     margin: 0;
 }
 
-.chat-back-btn {
-    position: fixed;
-    top: calc(120px + var(--safe-area-inset-top));
-    left: calc(16px + var(--safe-area-inset-left));
-    z-index: 10000;
-    width: 48px;
-    height: 48px;
-    background: rgba(255, 255, 255, 0.35);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-    cursor: pointer;
-    font-size: 1.5rem;
-    color: var(--primary-color);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    transition: all 0.3s ease;
-    border: none;
-}
+/* Удалены старые стили .chat-back-btn - теперь используется .page-back-btn */
 
-@media (max-width: 768px) {
-    .chat-back-btn {
-        top: calc(100px + var(--safe-area-inset-top));
-        left: 12px;
-        width: 44px;
-        height: 44px;
-        font-size: 1.25rem;
-    }
-    
-    .chat-back-btn:active {
-        transform: scale(0.9);
-        background: rgba(255, 255, 255, 0.6);
-    }
-    
-    .chat-title-center {
-        padding: calc(100px + var(--safe-area-inset-top) - 0.5rem) 0 0.2rem 0;
-    }
-}
-
-.chat-back-btn:hover {
-    background: rgba(255, 255, 255, 0.45);
-    transform: scale(1.05);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
-}
-
-.chat-back-btn:active {
-    transform: scale(0.95);
-    background: rgba(255, 255, 255, 0.55);
-}
-
-.chat-title-center {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: calc(120px + var(--safe-area-inset-top) - 0.5rem) 0 0.2rem 0;
-    margin-bottom: 0.1rem;
-}
-
-.chat-page-title {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    font-size: 1.75rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin: 0;
-}
-
-.chat-page-title i {
-    color: var(--primary-color);
-    font-size: 1.5rem;
-}
+/* Удалены старые стили .chat-title-center и .chat-page-title - теперь используется .page-title-center */
 
 .back-btn {
     display: flex;
@@ -5038,6 +4968,21 @@ body, .page, .modal-content {
     border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
+/* Более тёмные элементы кнопок назад на страницах в тёмной теме */
+[data-theme="dark"] .page-back-btn {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="dark"] .page-back-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+[data-theme="dark"] .page-back-btn:active {
+    background: rgba(255, 255, 255, 0.35);
+}
+
 /* Более тёмные элементы отзывов в тёмной теме */
 [data-theme="dark"] .star-select .active {
     color: #fbbf24;
@@ -5619,4 +5564,447 @@ body, .page, .modal-content {
     }
     
 
+}
+
+/* ===== СТИЛИ ДЛЯ КНОПОК "ЗАГРУЗИТЬ ЕЩЕ" ===== */
+
+.load-more-btn {
+    width: 100%;
+    padding: 12px 16px;
+    margin: 15px 0;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    color: #6c757d;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.load-more-btn:hover {
+    background: #e9ecef;
+    color: #495057;
+    border-color: #adb5bd;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.load-more-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.load-more-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.load-more-btn i {
+    font-size: 12px;
+}
+
+.load-more-container {
+    padding: 10px 0;
+    border-top: 1px solid #f0f0f0;
+    margin-top: 10px;
+}
+
+.load-more-chat-btn {
+    position: sticky;
+    top: 0;
+    width: 100%;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    z-index: 10;
+    font-size: 12px;
+    color: #6c757d;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.load-more-chat-btn:hover {
+    background: rgba(255, 255, 255, 1);
+    color: #495057;
+    border-color: #adb5bd;
+}
+
+.load-more-chat-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Анимация для кнопок загрузки */
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+.load-more-btn:disabled,
+.load-more-chat-btn:disabled {
+    animation: pulse 1.5s infinite;
+}
+
+/* Адаптивность для мобильных устройств */
+@media (max-width: 768px) {
+    .load-more-btn {
+        padding: 10px 14px;
+        font-size: 13px;
+    }
+    
+    .load-more-chat-btn {
+        padding: 6px 10px;
+        font-size: 11px;
+    }
+}
+
+/* ===== АНИМАЦИЯ ДЛЯ МОБИЛЬНОГО МЕНЮ ===== */
+
+/* Анимация нажатия для мобильных устройств */
+@media (max-width: 768px) {
+    .mobile-nav-item {
+        transition: transform 0.1s ease, background-color 0.1s ease;
+        border-radius: 8px;
+        margin: 0 2px;
+    }
+    
+    .mobile-nav-item:active {
+        transform: scale(0.95);
+        background-color: var(--bg-accent);
+    }
+    
+    /* Анимация иконки при нажатии */
+    .mobile-nav-item:active i {
+        transform: translateY(-2px) scale(0.9);
+        transition: transform 0.1s ease;
+    }
+    
+    /* Анимация текста при нажатии */
+    .mobile-nav-item:active span {
+        transform: scale(0.95);
+        transition: transform 0.1s ease;
+    }
+    
+    /* Эффект пульсации для активного элемента */
+    .mobile-nav-item.active {
+        animation: navPulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes navPulse {
+        0%, 100% {
+            transform: scale(1);
+        }
+        50% {
+            transform: scale(1.05);
+        }
+    }
+    
+    /* Анимация при переходе между страницами */
+    .mobile-nav-item {
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .mobile-nav-item::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        background: rgba(99, 102, 241, 0.2);
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        transition: width 0.3s ease, height 0.3s ease;
+    }
+    
+    .mobile-nav-item:active::before {
+        width: 60px;
+        height: 60px;
+    }
+}
+
+/* Анимация для десктопной версии (отключена) */
+@media (min-width: 769px) {
+    .mobile-nav-item {
+        transition: none;
+    }
+    
+    .mobile-nav-item:active {
+        transform: none;
+        background-color: transparent;
+    }
+    
+    .mobile-nav-item:active i,
+    .mobile-nav-item:active span {
+        transform: none;
+    }
+}
+
+/* ===== СТИЛИ ДЛЯ КНОПОК НАЗАД НА СТРАНИЦАХ ===== */
+
+/* Кнопка назад для всех страниц (как в модальном окне) */
+.page-back-btn {
+    position: fixed;
+    top: calc(120px + var(--safe-area-inset-top));
+    left: calc(16px + var(--safe-area-inset-left));
+    z-index: 10000;
+    width: 48px;
+    height: 48px;
+    background: rgba(255, 255, 255, 0.35);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    cursor: pointer;
+    font-size: 1.5rem;
+    color: var(--primary-color);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    transition: all 0.3s ease;
+}
+
+.page-back-btn:hover {
+    background: rgba(255, 255, 255, 0.45);
+    transform: scale(1.05);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+}
+
+.page-back-btn:active {
+    transform: scale(0.95);
+    background: rgba(255, 255, 255, 0.55);
+}
+
+/* Центрированный заголовок страницы */
+.page-title-center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: calc(120px + var(--safe-area-inset-top)) 0 0.2rem 0;
+    margin-bottom: 0.1rem;
+}
+
+.page-title-center .page-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.page-title-center .page-title i {
+    color: var(--primary-color);
+    font-size: 1.5rem;
+}
+
+/* Мобильная адаптация */
+@media (max-width: 768px) {
+    .page-back-btn {
+        top: calc(100px + var(--safe-area-inset-top));
+        left: 12px;
+        width: 44px;
+        height: 44px;
+        font-size: 1.25rem;
+    }
+    
+    .page-back-btn:active {
+        transform: scale(0.9);
+        background: rgba(255, 255, 255, 0.6);
+    }
+    
+    .page-title-center {
+        padding: calc(100px + var(--safe-area-inset-top)) 0 0.2rem 0;
+    }
+    
+    .page-title-center .page-title {
+        font-size: 1.5rem;
+    }
+    
+    .page-title-center .page-title i {
+        font-size: 1.25rem;
+    }
+}
+
+/* ===== СТИЛИ ДЛЯ ЗАКАЗОВ ===== */
+
+/* Orders Styles */
+.orders-tile {
+    background: var(--bg-primary);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin: 1rem 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.orders-header h3 {
+    margin: 0 0 1rem 0;
+    color: var(--text-primary);
+    font-size: 1.2rem;
+}
+
+.orders-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.order-card {
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-left: 4px solid var(--accent-color);
+}
+
+.order-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.order-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.order-id {
+    font-weight: bold;
+    color: var(--accent-color);
+    font-size: 0.9rem;
+}
+
+.order-date {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.order-content {
+    margin-bottom: 0.5rem;
+}
+
+.order-service, .order-user, .order-message {
+    margin-bottom: 0.25rem;
+    font-size: 0.9rem;
+}
+
+.order-message {
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+.order-footer {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.order-status {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.status-pending {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.status-active {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-completed {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+.status-cancelled {
+    background: #e2e3e5;
+    color: #383d41;
+}
+
+.status-unknown {
+    background: #e2e3e5;
+    color: #383d41;
+}
+
+/* Order Details Modal */
+.order-details-modal {
+    max-width: 500px;
+    width: 90%;
+}
+
+.order-detail-item {
+    margin-bottom: 1rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.order-detail-item:last-child {
+    border-bottom: none;
+}
+
+.order-message-text {
+    background: var(--bg-secondary);
+    padding: 0.75rem;
+    border-radius: 6px;
+    margin-top: 0.5rem;
+    font-style: italic;
+    color: var(--text-secondary);
+}
+
+.no-orders {
+    text-align: center;
+    color: var(--text-secondary);
+    font-style: italic;
+    padding: 2rem;
+}
+
+/* Мобильная адаптация для заказов */
+@media (max-width: 768px) {
+    .orders-tile {
+        padding: 1rem;
+        margin: 0.5rem 0;
+    }
+    
+    .order-card {
+        padding: 0.75rem;
+    }
+    
+    .order-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+    }
+    
+    .order-content {
+        font-size: 0.85rem;
+    }
+    
+    .order-details-modal {
+        width: 95%;
+        margin: 1rem;
+    }
 }
