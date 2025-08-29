@@ -799,6 +799,14 @@ function showPage(pageId) {
             }, 500);
         }
         
+        // При переходе на страницу заказов обновляем отображение
+        if (pageId === 'orders-page') {
+            // Обновляем отображение заказов из кэша
+            setTimeout(() => {
+                updateOrdersDisplay();
+            }, 500);
+        }
+        
         if (pageId === 'chat-page') {
             // Обновляем отображение чата из кэша
             setTimeout(() => {
