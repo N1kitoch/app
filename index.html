@@ -573,7 +573,8 @@
                 
                 <div class="orders-content">
                     <div class="orders-section">
-                        <div class="orders-empty-state">
+                        <!-- Empty State (shown when no orders) -->
+                        <div class="orders-empty-state" id="ordersEmptyState">
                             <div class="empty-state-icon">
                                 <i class="fas fa-shopping-cart"></i>
                             </div>
@@ -583,6 +584,11 @@
                                 <i class="fas fa-rocket"></i>
                                 <span id="ordersEmptyButton">Перейти к услугам</span>
                             </button>
+                        </div>
+                        
+                        <!-- Orders Container (shown when orders exist) -->
+                        <div class="orders-container" id="ordersContainer" style="display: none;">
+                            <!-- Orders will be loaded here dynamically -->
                         </div>
                     </div>
                 </div>

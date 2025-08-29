@@ -479,8 +479,24 @@ function updateReviewsDisplay() {
 }
 
 function updateOrdersDisplay() {
-    const ordersContainer = document.querySelector('.orders-container');
-    if (ordersContainer) {
+    const ordersContainer = document.getElementById('ordersContainer');
+    const ordersEmptyState = document.getElementById('ordersEmptyState');
+    
+    if (!ordersContainer || !ordersEmptyState) {
+        console.error('Не найдены элементы для отображения заказов');
+        return;
+    }
+    
+    const orders = globalOrders || [];
+    
+    if (orders.length === 0) {
+        // Показываем пустое состояние
+        ordersEmptyState.style.display = 'block';
+        ordersContainer.style.display = 'none';
+    } else {
+        // Показываем заказы
+        ordersEmptyState.style.display = 'none';
+        ordersContainer.style.display = 'block';
         ordersContainer.innerHTML = renderOrders();
     }
 }
@@ -670,6 +686,7 @@ async function loadAllDataWithCache() {
     
     await Promise.all([
         loadDataWithFallback('reviews'),
+        loadDataWithFallback('requests'),
         loadDataWithFallback('chatMessages'),
         loadDataWithFallback('stats'),
         loadDataWithFallback('averageRating')
@@ -4500,6 +4517,12 @@ function startPeriodicUpdates() {
         loadChatMessagesFromDB(true);
     }, 10 * 1000); // 10 секунд
     
+    // Обновление заказов каждые 30 секунд
+    ordersUpdateInterval = setInterval(() => {
+        console.log('🔄 Периодическое обновление заказов...');
+        loadDataWithFallback('requests', true);
+    }, 30 * 1000); // 30 секунд
+    
     console.log('⏰ Периодическое обновление запущено');
 }
 
@@ -4513,6 +4536,10 @@ function stopPeriodicUpdates() {
         clearInterval(chatUpdateInterval);
         chatUpdateInterval = null;
     }
+    if (ordersUpdateInterval) {
+        clearInterval(ordersUpdateInterval);
+        ordersUpdateInterval = null;
+    }
     console.log('⏹️ Периодическое обновление остановлено');
 }
 
@@ -4522,6 +4549,7 @@ async function forceUpdateAllData() {
     
     await Promise.all([
         loadReviewsFromDB(true),
+        loadDataWithFallback('requests', true),
         loadChatMessagesFromDB(true)
     ]);
     
@@ -4621,7 +4649,7 @@ function renderOrders(){
     const orders = globalOrders || [];
     
     if (orders.length === 0) {
-      return '<div class="orders-tile"><p class="no-orders">У вас пока нет заказов</p></div>';
+      return '';
     }
     
     const listHtml = orders.map(order => {
@@ -4730,9 +4758,22 @@ function initCarousel() {
     
     if (slides.length === 0) return;
     
-    // Reset all slides to initial state
-    slides.forEach(slide => {
-        slide.classList.remove('active', 'prev');
+    // Stop any existing carousel
+    stopCarousel();
+    
+    // Reset all slides to initial state and position them correctly
+    slides.forEach((slide, index) => {
+        slide.classList.remove('active', 'prev', 'next');
+        if (index === 0) {
+            slide.classList.add('active');
+        } else {
+            slide.classList.add('next');
+        }
+    });
+    
+    // Reset all indicators
+    indicators.forEach(indicator => {
+        indicator.classList.remove('active');
     });
     
     // Set first slide as active
@@ -4740,15 +4781,17 @@ function initCarousel() {
     indicators[0].classList.add('active');
     currentSlide = 0;
     
-    // Start auto-rotation
-    startCarousel();
+    // Start auto-rotation with a small delay
+    setTimeout(() => {
+        startCarousel();
+    }, 1000);
     
-    // Add click handlers for indicators
-    indicators.forEach((indicator, index) => {
-        indicator.addEventListener('click', () => {
-            goToSlide(index);
-        });
-    });
+    // Indicators are now just visual - no click functionality
+    // indicators.forEach((indicator, index) => {
+    //     indicator.addEventListener('click', () => {
+    //         goToSlide(index);
+    //     });
+    // });
 }
 
 function startCarousel() {
@@ -4774,18 +4817,26 @@ function nextSlide() {
     
     if (slides.length === 0) return;
     
-    // Mark current slide as previous (going left)
+    const nextSlideIndex = (currentSlide + 1) % slides.length;
+    
+    // Remove active class from current slide and indicator
     slides[currentSlide].classList.remove('active');
-    slides[currentSlide].classList.add('prev');
     indicators[currentSlide].classList.remove('active');
     
+    // Add prev class to current slide (it will animate to the left)
+    slides[currentSlide].classList.add('prev');
+    
     // Move to next slide
-    currentSlide = (currentSlide + 1) % slides.length;
+    currentSlide = nextSlideIndex;
     
     // Add active class to new slide and indicator
-    slides[currentSlide].classList.remove('prev');
+    slides[currentSlide].classList.remove('prev', 'next');
     slides[currentSlide].classList.add('active');
     indicators[currentSlide].classList.add('active');
+    
+    // Prepare the next slide in the sequence to come from the right
+    const nextNextIndex = (currentSlide + 1) % slides.length;
+    slides[nextNextIndex].classList.add('next');
 }
 
 function goToSlide(slideIndex) {
@@ -4794,21 +4845,30 @@ function goToSlide(slideIndex) {
     
     if (slideIndex < 0 || slideIndex >= slides.length) return;
     
-    // Determine direction for smooth animation
-    const direction = slideIndex > currentSlide ? 'next' : 'prev';
+    // Don't do anything if clicking on the same slide
+    if (slideIndex === currentSlide) return;
+    
+    // Determine direction for proper animation
+    const isNext = slideIndex > currentSlide || (currentSlide === slides.length - 1 && slideIndex === 0);
+    
+    if (isNext) {
+        // Prepare next slide to come from the right
+        slides[slideIndex].classList.add('next');
+        slides[slideIndex].offsetHeight; // Force reflow
+    }
     
     // Remove active class from current slide and indicator
     slides[currentSlide].classList.remove('active');
-    if (direction === 'next') {
-        slides[currentSlide].classList.add('prev');
-    }
     indicators[currentSlide].classList.remove('active');
+    
+    // Add prev class to current slide (it will animate to the left)
+    slides[currentSlide].classList.add('prev');
     
     // Set new current slide
     currentSlide = slideIndex;
     
     // Add active class to new slide and indicator
-    slides[currentSlide].classList.remove('prev');
+    slides[currentSlide].classList.remove('prev', 'next');
     slides[currentSlide].classList.add('active');
     indicators[currentSlide].classList.add('active');
     

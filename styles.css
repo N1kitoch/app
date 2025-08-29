@@ -5144,12 +5144,13 @@ body, .page, .modal-content {
     flex: 0 0 100%;
     opacity: 0;
     transform: translateX(100%);
-    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     z-index: 1;
+    pointer-events: none;
 }
 
 .carousel-slide.active {
@@ -5157,12 +5158,22 @@ body, .page, .modal-content {
     transform: translateX(0);
     position: relative;
     z-index: 2;
+    pointer-events: auto;
 }
 
 .carousel-slide.prev {
     transform: translateX(-100%);
     opacity: 0;
     z-index: 1;
+    pointer-events: none;
+}
+
+/* Слайды, которые должны появляться справа */
+.carousel-slide.next {
+    transform: translateX(100%);
+    opacity: 0;
+    z-index: 1;
+    pointer-events: none;
 }
 
 .carousel-indicators {
@@ -5177,18 +5188,13 @@ body, .page, .modal-content {
     height: 12px;
     border-radius: 50%;
     background: var(--border-color);
-    cursor: pointer;
     transition: all 0.3s ease;
+    pointer-events: none;
 }
 
 .indicator.active {
     background: var(--primary-color);
     transform: scale(1.2);
-}
-
-.indicator:hover {
-    background: var(--primary-color);
-    transform: scale(1.1);
 }
 
 /* Mobile optimizations for carousel */
@@ -5225,10 +5231,18 @@ body, .page, .modal-content {
 /* Smooth animations for better UX */
 .carousel-slide {
     will-change: transform, opacity;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
 }
 
 .carousel-track {
     will-change: transform;
+}
+
+/* Ensure smooth transitions between slides */
+.carousel-container {
+    perspective: 1000px;
+    transform-style: preserve-3d;
 }
 
 /* Directions Section */
