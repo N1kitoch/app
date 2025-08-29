@@ -51,6 +51,10 @@ const CACHE_CONFIG = {
 window.hasMoreReviews = false;
 window.hasMoreChatMessages = false;
 
+// Глобальные переменные для данных
+let globalOrders = [];
+let globalChatMessages = [];
+
 // Глобальный кэш данных в памяти
 window.dataCache = {
     reviews: {
@@ -132,8 +136,10 @@ function loadFromCache(dataType) {
                 console.log(`📦 Загружен кэш ${dataType} из localStorage: ${cacheData.data.length} записей`);
                 
                 // Обновляем кэш в памяти
-                window.dataCache[dataType].data = cacheData.data;
-                window.dataCache[dataType].lastUpdate = cacheData.lastUpdate;
+                if (window.dataCache && window.dataCache[dataType]) {
+                    window.dataCache[dataType].data = cacheData.data;
+                    window.dataCache[dataType].lastUpdate = cacheData.lastUpdate;
+                }
                 
                 // Обновляем флаги
                 if (dataType === 'reviews') {
@@ -229,17 +235,19 @@ async function loadChatFromIndexedDB() {
 
 // Загрузка данных (бэкенд возвращает только последние записи)
 async function loadDataFromBackend(dataType, limit = 50) {
+    console.log(`🔍 loadDataFromBackend: ${dataType}, limit: ${limit}`);
     try {
         const response = await fetch(`${BACKEND_URL}/api/frontend/data/${dataType}`);
         
         if (response.ok) {
             const result = await response.json();
             const allData = result.success ? result.data : [];
+            console.log(`📦 Получены данные ${dataType}: ${allData.length} записей`);
             
-            // Для отзывов возвращаем все данные, для остальных - ограниченное количество
+            // Для отзывов и заказов возвращаем все данные, для остальных - ограниченное количество
             let paginatedData;
-            if (dataType === 'reviews') {
-                paginatedData = allData; // Все отзывы
+            if (dataType === 'reviews' || dataType === 'requests') {
+                paginatedData = allData; // Все отзывы и заказы
             } else {
                 paginatedData = allData.slice(-limit); // Ограниченное количество
             }
@@ -259,6 +267,8 @@ async function loadDataFromBackend(dataType, limit = 50) {
 
 // Умная загрузка данных с fallback
 async function loadDataWithFallback(dataType, forceUpdate = false) {
+    console.log(`🔍 loadDataWithFallback: ${dataType}, forceUpdate: ${forceUpdate}`);
+    
     // 1. Показываем кэшированные данные сразу (кроме отзывов)
     let cachedData = null;
     
@@ -270,6 +280,7 @@ async function loadDataWithFallback(dataType, forceUpdate = false) {
     }
     
     if (cachedData && !forceUpdate && dataType !== 'reviews') {
+        console.log(`📦 Показываем кэшированные ${dataType}: ${cachedData.length} записей`);
         displayData(dataType, cachedData);
     }
     
@@ -297,7 +308,7 @@ async function updateDataWithFullReplace(dataType) {
             if (dataType === 'reviews' || dataType === 'requests') {
                 // Очищаем кэш
                 localStorage.removeItem(CACHE_KEYS[dataType]);
-                if (window.dataCache[dataType]) {
+                if (window.dataCache && window.dataCache[dataType]) {
                     window.dataCache[dataType].data = [];
                 }
                 console.log(`🧹 Кэш ${dataType} очищен перед обновлением`);
@@ -311,8 +322,10 @@ async function updateDataWithFullReplace(dataType) {
             }
             
             // Обновляем кэш в памяти
-            window.dataCache[dataType].data = result.data;
-            window.dataCache[dataType].lastUpdate = Date.now();
+            if (window.dataCache && window.dataCache[dataType]) {
+                window.dataCache[dataType].data = result.data;
+                window.dataCache[dataType].lastUpdate = Date.now();
+            }
             
             // Обновляем отображение
             displayData(dataType, result.data);
@@ -386,25 +399,42 @@ function displayData(dataType, data) {
         case 'requests':
             // Обрабатываем данные заказов из БД в формат для фронтенда
             // Фильтруем только заказы текущего пользователя
+            const currentUserData = window.userData || userData;
             const currentUserId = currentUserData?.id;
             
-            // В standalone режиме показываем все заказы для тестирования
+
+            
+            console.log('🔍 Обработка заказов:', {
+                totalOrders: data.length,
+                currentUserData: currentUserData,
+                currentUserId: currentUserId,
+                currentUserIdType: typeof currentUserId,
+                windowUserData: window.userData,
+                localUserData: userData,
+                firstOrder: data[0] ? { id: data[0].id, user_id: data[0].user_id, user_id_type: typeof data[0].user_id } : null
+            });
+            
+            // Фильтрация заказов по пользователю
             let userOrders;
-            if (currentUserId === 'standalone') {
-                userOrders = data; // Показываем все заказы в standalone режиме
-            } else {
-                // Более надежная фильтрация с учетом разных типов данных
-                userOrders = currentUserId ? data.filter(order => {
+            if (currentUserId && currentUserId !== 'unknown' && currentUserId !== 'standalone') {
+                // Фильтруем заказы для конкретного пользователя
+                userOrders = data.filter(order => {
                     const orderUserId = String(order.user_id || '');
                     const currentUserIdStr = String(currentUserId || '');
-                    return orderUserId === currentUserIdStr;
-                }) : [];
+                    const matches = orderUserId === currentUserIdStr;
+                    if (matches) {
+                        console.log(`🔍 Найден заказ для пользователя ${currentUserId}:`, order);
+                    }
+                    return matches;
+                });
+                console.log(`🔍 Фильтрация заказов: найдено ${userOrders.length} заказов для пользователя ${currentUserId}`);
+            } else {
+                // Пользователь не определен - не показываем заказы
+                userOrders = [];
+                console.log(`🔍 Пользователь не определен (${currentUserId}), заказы не отображаются`);
             }
             
-            // Инициализируем globalOrders если его нет
-            if (!globalOrders) {
-                globalOrders = [];
-            }
+
             
             // Обрабатываем каждый заказ
             userOrders.forEach(order => {
@@ -511,6 +541,12 @@ function updateOrdersDisplay() {
     }
     
     const orders = globalOrders || [];
+    console.log('🔍 updateOrdersDisplay:', {
+        ordersLength: orders.length,
+        globalOrders: globalOrders,
+        ordersContainer: !!ordersContainer,
+        ordersEmptyState: !!ordersEmptyState
+    });
     
     if (orders.length === 0) {
         // Показываем пустое состояние
@@ -789,7 +825,7 @@ function showPage(pageId) {
             stopTagPulsing();
         } else {
         // Clear auto-switch interval when leaving home page
-        if (autoSwitchInterval) {
+        if (typeof autoSwitchInterval !== 'undefined' && autoSwitchInterval) {
             clearInterval(autoSwitchInterval);
         }
         
@@ -824,9 +860,8 @@ function showPage(pageId) {
         
         // При переходе на страницу заказов обновляем отображение
         if (pageId === 'orders-page') {
-            // Принудительно обновляем заказы и отображаем их
-            setTimeout(async () => {
-                await loadDataWithFallback('requests', true);
+            // Обновляем отображение заказов
+            setTimeout(() => {
                 updateOrdersDisplay();
             }, 500);
         }
@@ -875,6 +910,13 @@ function showPage(pageId) {
 
 // Initialize first page
 document.addEventListener('DOMContentLoaded', async function() {
+    // Инициализируем userData для standalone режима в самом начале
+    if (!window.userData && !window.tg) {
+        // В standalone режиме не устанавливаем конкретного пользователя
+        // Пользователь должен быть определен через Telegram Web App
+        console.log('🔧 DOMContentLoaded: standalone режим, пользователь не определен');
+    }
+    
     // Инициализируем элементы модального окна
     serviceModal = document.getElementById('serviceModal');
     modalContent = document.getElementById('modalContent');
@@ -996,6 +1038,11 @@ async function initApp() {
     // Инициализируем глобальные переменные для страниц и навигации
     pages = document.querySelectorAll('.page');
     mobileNavItems = document.querySelectorAll('.mobile-nav-item');
+    
+    // Инициализируем userData для standalone режима
+    if (!window.userData && !window.tg) {
+        console.log('🔧 initApp: standalone режим, пользователь не определен');
+    }
     
     // Обработка страницы контактов перенесена в основную функцию showPage
     
@@ -2929,16 +2976,8 @@ function initTelegramWebApp() {
         document.documentElement.style.setProperty('--safe-area-inset-right', '0px');
         console.log('Available global objects:', Object.keys(window).filter(key => key.toLowerCase().includes('telegram')));
         
-        // Create fallback user data for standalone mode
-        window.userData = {
-            id: 'standalone',
-            firstName: 'Гость',
-            lastName: '',
-            username: '',
-            languageCode: 'ru',
-            isPremium: false,
-            photoUrl: null
-        };
+        // В standalone режиме не устанавливаем конкретного пользователя
+        console.log('🔧 Standalone режим: пользователь не определен');
         
         // Update profile display for standalone mode
         setTimeout(async () => {
