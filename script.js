@@ -2982,6 +2982,7 @@ function initTelegramWebApp() {
         // Update profile display for standalone mode
         setTimeout(async () => {
             await updateProfileDisplay();
+            initDebugButton(); // Инициализируем отладочную кнопку
         }, 100);
     }
 }
@@ -3331,6 +3332,9 @@ async function loadUserProfile() {
         await updateProfileDisplay();
         ensureLogsButtonInProfile();
         connectWebSocketIfPossible();
+        
+        // Инициализируем отладочную кнопку
+        initDebugButton();
         
         // Просто логируем загрузку профиля, не отправляем в бэкенд
         console.log('Profile loaded successfully');
@@ -5246,5 +5250,320 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// ===== ФУНКЦИИ ДЛЯ ОТЛАДОЧНОЙ СТРАНИЦЫ =====
+
+// Показывать кнопку отладки только для администратора
+function checkAdminAndShowDebugButton() {
+    const adminIds = ['585028258']; // ID администраторов
+    const currentUserId = window.userData?.id;
+    
+    if (adminIds.includes(String(currentUserId))) {
+        const debugBtn = document.getElementById('adminDebugBtn');
+        if (debugBtn) {
+            debugBtn.style.display = 'flex';
+            console.log('🔧 Кнопка отладки показана для администратора:', currentUserId);
+        }
+    }
+}
+
+// Показать страницу отладки
+function showAdminDebug() {
+    showPage('admin-debug-page');
+    refreshDebugInfo();
+}
+
+// Обновить отладочную информацию
+async function refreshDebugInfo() {
+    console.log('🔧 Обновление отладочной информации...');
+    
+    // Информация о пользователе
+    updateUserDebugInfo();
+    
+    // Системная информация
+    updateSystemDebugInfo();
+    
+    // Информация о кэше
+    updateCacheDebugInfo();
+    
+    // Информация о заказах
+    updateOrdersDebugInfo();
+    
+    // Информация о бэкенде
+    await updateBackendDebugInfo();
+}
+
+// Обновить информацию о пользователе
+function updateUserDebugInfo() {
+    const userInfo = document.getElementById('debugUserInfo');
+    if (!userInfo) return;
+    
+    const userData = window.userData || {};
+    const tg = window.tg;
+    
+    const info = {
+        'ID пользователя': userData.id || 'Не определен',
+        'Имя': userData.firstName || 'Не определено',
+        'Фамилия': userData.lastName || 'Не определена',
+        'Username': userData.username || 'Не определен',
+        'Язык': userData.languageCode || 'Не определен',
+        'Premium': userData.isPremium ? 'Да' : 'Нет',
+        'Telegram Web App': tg ? 'Доступен' : 'Недоступен',
+        'Режим запуска': getLaunchMode?.() || 'Неизвестен',
+        'Backend URL': getBackendUrl?.() || 'Не настроен'
+    };
+    
+    userInfo.innerHTML = formatDebugInfo(info);
+}
+
+// Обновить системную информацию
+function updateSystemDebugInfo() {
+    const systemInfo = document.getElementById('debugSystemInfo');
+    if (!systemInfo) return;
+    
+    const info = {
+        'User Agent': navigator.userAgent,
+        'Платформа': navigator.platform,
+        'Язык браузера': navigator.language,
+        'Cookies включены': navigator.cookieEnabled ? 'Да' : 'Нет',
+        'LocalStorage доступен': typeof(Storage) !== 'undefined' ? 'Да' : 'Нет',
+        'IndexedDB доступен': 'indexedDB' in window ? 'Да' : 'Нет',
+        'Время загрузки': new Date().toLocaleString('ru-RU'),
+        'Размер экрана': `${screen.width}x${screen.height}`,
+        'Размер окна': `${window.innerWidth}x${window.innerHeight}`,
+        'Тема': document.body.classList.contains('tg-dark-theme') ? 'Темная' : 'Светлая'
+    };
+    
+    systemInfo.innerHTML = formatDebugInfo(info);
+}
+
+// Обновить информацию о кэше
+function updateCacheDebugInfo() {
+    const cacheInfo = document.getElementById('debugCacheInfo');
+    if (!cacheInfo) return;
+    
+    const cacheData = {};
+    
+    // Информация о кэше в памяти
+    if (window.dataCache) {
+        Object.keys(window.dataCache).forEach(key => {
+            const cache = window.dataCache[key];
+            cacheData[`Кэш ${key}`] = {
+                'Количество записей': Array.isArray(cache.data) ? cache.data.length : 'N/A',
+                'Последнее обновление': cache.lastUpdate ? new Date(cache.lastUpdate).toLocaleString('ru-RU') : 'Никогда',
+                'Интервал обновления': cache.updateInterval ? `${cache.updateInterval / 1000} сек` : 'N/A'
+            };
+        });
+    }
+    
+    // Информация о localStorage
+    const localStorageInfo = {};
+    Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('cache_')) {
+            try {
+                const data = JSON.parse(localStorage.getItem(key));
+                localStorageInfo[key] = {
+                    'Размер': `${JSON.stringify(data).length} байт`,
+                    'Записей': Array.isArray(data.data) ? data.data.length : 'N/A',
+                    'Обновлен': data.lastUpdate ? new Date(data.lastUpdate).toLocaleString('ru-RU') : 'Никогда'
+                };
+            } catch (e) {
+                localStorageInfo[key] = 'Ошибка парсинга';
+            }
+        }
+    });
+    
+    if (Object.keys(localStorageInfo).length > 0) {
+        cacheData['localStorage'] = localStorageInfo;
+    }
+    
+    cacheInfo.innerHTML = formatDebugInfo(cacheData);
+}
+
+// Обновить информацию о заказах
+function updateOrdersDebugInfo() {
+    const ordersInfo = document.getElementById('debugOrdersInfo');
+    if (!ordersInfo) return;
+    
+    const info = {
+        'Всего заказов в памяти': globalOrders ? globalOrders.length : 0,
+        'Заказы в кэше': window.dataCache?.requests?.data?.length || 0,
+        'Пользователь определен': window.userData?.id ? 'Да' : 'Нет',
+        'ID пользователя': window.userData?.id || 'Не определен',
+        'Фильтрация активна': window.userData?.id && window.userData.id !== 'unknown' ? 'Да' : 'Нет'
+    };
+    
+    // Добавляем информацию о первых 3 заказах
+    if (globalOrders && globalOrders.length > 0) {
+        const sampleOrders = globalOrders.slice(0, 3).map(order => ({
+            'ID': order.id,
+            'Услуга': order.service,
+            'Статус': order.status,
+            'Дата': order.date
+        }));
+        info['Примеры заказов'] = sampleOrders;
+    }
+    
+    ordersInfo.innerHTML = formatDebugInfo(info);
+}
+
+// Обновить информацию о бэкенде
+async function updateBackendDebugInfo() {
+    const backendInfo = document.getElementById('debugBackendInfo');
+    if (!backendInfo) return;
+    
+    const info = {
+        'Backend URL': getBackendUrl?.() || 'Не настроен',
+        'Статус подключения': 'Проверяется...'
+    };
+    
+    backendInfo.innerHTML = formatDebugInfo(info);
+    
+    // Проверяем доступность бэкенда
+    try {
+        const backendUrl = getBackendUrl?.();
+        if (backendUrl) {
+            const response = await fetch(`${backendUrl}/health`, { 
+                method: 'GET', 
+                mode: 'cors', 
+                cache: 'no-store',
+                timeout: 5000
+            });
+            
+            if (response.ok) {
+                const healthData = await response.json().catch(() => ({}));
+                info['Статус подключения'] = 'Онлайн';
+                info['Время ответа'] = `${response.headers.get('x-response-time') || 'N/A'}`;
+                info['Версия API'] = healthData.version || 'N/A';
+            } else {
+                info['Статус подключения'] = `Ошибка ${response.status}`;
+            }
+        } else {
+            info['Статус подключения'] = 'URL не настроен';
+        }
+    } catch (error) {
+        info['Статус подключения'] = `Ошибка: ${error.message}`;
+    }
+    
+    backendInfo.innerHTML = formatDebugInfo(info);
+}
+
+// Форматировать отладочную информацию
+function formatDebugInfo(data, level = 0) {
+    let html = '';
+    
+    Object.keys(data).forEach(key => {
+        const value = data[key];
+        
+        if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+            html += `<div class="debug-item" style="margin-left: ${level * 20}px;">`;
+            html += `<div class="debug-label">${key}:</div>`;
+            html += formatDebugInfo(value, level + 1);
+            html += '</div>';
+        } else {
+            html += `<div class="debug-item" style="margin-left: ${level * 20}px;">`;
+            html += `<div class="debug-label">${key}:</div>`;
+            html += `<div class="debug-value">${formatValue(value)}</div>`;
+            html += '</div>';
+        }
+    });
+    
+    return html;
+}
+
+// Форматировать значение для отображения
+function formatValue(value) {
+    if (value === null || value === undefined) {
+        return '<em>null</em>';
+    }
+    
+    if (typeof value === 'boolean') {
+        return value ? '✅ Да' : '❌ Нет';
+    }
+    
+    if (typeof value === 'number') {
+        return value.toString();
+    }
+    
+    if (Array.isArray(value)) {
+        return value.length === 0 ? '<em>Пустой массив</em>' : `[${value.length} элементов]`;
+    }
+    
+    return String(value);
+}
+
+// Экспорт отладочных данных
+function exportDebugData() {
+    const debugData = {
+        timestamp: new Date().toISOString(),
+        userData: window.userData,
+        systemInfo: {
+            userAgent: navigator.userAgent,
+            platform: navigator.platform,
+            language: navigator.language,
+            screenSize: `${screen.width}x${screen.height}`,
+            windowSize: `${window.innerWidth}x${window.innerHeight}`
+        },
+        cacheInfo: window.dataCache,
+        ordersInfo: {
+            globalOrders: globalOrders,
+            ordersCount: globalOrders ? globalOrders.length : 0
+        },
+        backendInfo: {
+            url: getBackendUrl?.(),
+            mode: getLaunchMode?.()
+        }
+    };
+    
+    const dataStr = JSON.stringify(debugData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `debug-data-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    showNotification('Отладочные данные экспортированы!', 'success');
+}
+
+// Очистить весь кэш
+function clearAllCache() {
+    if (confirm('Вы уверены, что хотите очистить весь кэш? Это может повлиять на работу приложения.')) {
+        // Очищаем localStorage
+        Object.keys(localStorage).forEach(key => {
+            if (key.startsWith('cache_')) {
+                localStorage.removeItem(key);
+            }
+        });
+        
+        // Очищаем кэш в памяти
+        if (window.dataCache) {
+            Object.keys(window.dataCache).forEach(key => {
+                if (window.dataCache[key] && window.dataCache[key].data) {
+                    window.dataCache[key].data = Array.isArray(window.dataCache[key].data) ? [] : {};
+                    window.dataCache[key].lastUpdate = 0;
+                }
+            });
+        }
+        
+        // Очищаем глобальные переменные
+        globalOrders = [];
+        globalChatMessages = [];
+        
+        showNotification('Кэш очищен!', 'success');
+        refreshDebugInfo();
+    }
+}
+
+// Инициализация отладочной кнопки при загрузке профиля
+function initDebugButton() {
+    setTimeout(() => {
+        checkAdminAndShowDebugButton();
+    }, 1000);
+}
 
 
