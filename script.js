@@ -269,7 +269,7 @@ async function loadDataWithFallback(dataType, forceUpdate = false) {
         cachedData = loadFromCache(dataType);
     }
     
-    if (cachedData && !forceUpdate && dataType !== 'reviews' && dataType !== 'requests') {
+    if (cachedData && !forceUpdate && dataType !== 'reviews') {
         displayData(dataType, cachedData);
     }
     
@@ -387,7 +387,19 @@ function displayData(dataType, data) {
             // Обрабатываем данные заказов из БД в формат для фронтенда
             // Фильтруем только заказы текущего пользователя
             const currentUserId = currentUserData?.id;
-            const userOrders = currentUserId ? data.filter(order => String(order.user_id) === String(currentUserId)) : [];
+            
+            // В standalone режиме показываем все заказы для тестирования
+            let userOrders;
+            if (currentUserId === 'standalone') {
+                userOrders = data; // Показываем все заказы в standalone режиме
+            } else {
+                // Более надежная фильтрация с учетом разных типов данных
+                userOrders = currentUserId ? data.filter(order => {
+                    const orderUserId = String(order.user_id || '');
+                    const currentUserIdStr = String(currentUserId || '');
+                    return orderUserId === currentUserIdStr;
+                }) : [];
+            }
             
             // Инициализируем globalOrders если его нет
             if (!globalOrders) {
@@ -812,8 +824,9 @@ function showPage(pageId) {
         
         // При переходе на страницу заказов обновляем отображение
         if (pageId === 'orders-page') {
-            // Обновляем отображение заказов из кэша
-            setTimeout(() => {
+            // Принудительно обновляем заказы и отображаем их
+            setTimeout(async () => {
+                await loadDataWithFallback('requests', true);
                 updateOrdersDisplay();
             }, 500);
         }
