@@ -596,7 +596,12 @@
                         
                         <!-- Orders Container (shown when orders exist) -->
                         <div class="orders-container" id="ordersContainer" style="display: none;">
-                            <!-- Orders will be loaded here dynamically -->
+                            <div class="orders-header">
+                                <h3 id="ordersHeaderTitle">Мои заказы</h3>
+                            </div>
+                            <div class="orders-list scrollable" id="ordersList">
+                                <!-- Orders will be loaded here dynamically -->
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -689,24 +694,57 @@
                     </h1>
                 </div>
                 
-                <div class="reviews-content">
-                    <div class="reviews-section">
-                        <div class="reviews-header">
-                            <h3 id="reviewsHeaderTitle">Отзывы клиентов</h3>
-                            <p id="reviewsHeaderDescription">Что говорят о моей работе</p>
+                <!-- Combined Reviews Summary and Add Review -->
+                <div class="reviews-combined-card">
+                    <!-- Reviews Summary -->
+                    <div class="reviews-summary">
+                        <span class="avg" id="averageRating">5.0</span>
+                        <div class="avg-stars" id="avgStars">
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
                         </div>
-                        
-                        <div class="reviews-container" id="reviewsContainer">
-                            <!-- Отзывы будут загружены динамически -->
-                        </div>
-                        
-                        <div class="reviews-actions">
-                            <button class="btn btn-primary" onclick="showPage('services')">
-                                <i class="fas fa-plus"></i>
-                                <span id="reviewsAddButton">Оставить отзыв</span>
-                            </button>
+                        <span class="count" id="totalReviews">(0)</span>
+                    </div>
+                    
+                    <!-- Review Invite Text -->
+                    <p>Оставьте свой отзыв</p>
+                    
+                    <!-- Add Review Section -->
+                    <div class="add-review-section">
+                        <div class="add-review-card">
+                            <div class="star-select" id="starSelect">
+                                <i data-val="1" class="fas fa-star"></i>
+                                <i data-val="2" class="fas fa-star"></i>
+                                <i data-val="3" class="fas fa-star"></i>
+                                <i data-val="4" class="fas fa-star"></i>
+                                <i data-val="5" class="fas fa-star"></i>
+                            </div>
+                            <textarea id="reviewText" placeholder="Ваш отзыв..." style="display: none;"></textarea>
+                            <button class="btn btn-primary btn-send" id="sendReviewBtn" disabled style="display: none;">Отправить</button>
                         </div>
                     </div>
+                </div>
+                
+                <!-- Reviews Grid -->
+                <div class="reviews-grid" id="reviewsContainer">
+                    <!-- Отзывы будут загружены динамически -->
+                </div>
+                
+                <!-- Load More Button -->
+                <div class="load-more-section" id="loadMoreSection" style="display: none;">
+                    <button class="btn btn-secondary load-more-btn" onclick="loadMoreReviews()">
+                        <i class="fas fa-chevron-down"></i>
+                        <span>Загрузить еще</span>
+                    </button>
+                </div>
+                
+                <!-- Loading Indicator -->
+                <div class="loading-indicator" id="reviewsLoading" style="display: none;">
+                    <div class="loading-spinner"></div>
+                    <span>Загрузка отзывов...</span>
                 </div>
             </div>
         </div>
@@ -1018,6 +1056,29 @@
             </nav>
             <span class="modal-back" onclick="closeServiceModal()"><i class="fas fa-arrow-left"></i></span>
             <div id="modalContent"></div>
+        </div>
+    </div>
+
+    <!-- Order Modal -->
+    <div id="orderModal" class="modal full-screen-modal">
+        <div class="modal-content">
+            <!-- Global Top Navigation inside modal for consistency -->
+            <nav class="mobile-nav top-mobile-nav" id="orderTopNav">
+                <div class="mobile-nav-item" onclick="showPage('home'); closeOrderModal();">
+                    <i class="fas fa-home"></i>
+                </div>
+                <div class="mobile-nav-item" onclick="showPage('services'); closeOrderModal();">
+                    <i class="fas fa-chart-bar"></i>
+                </div>
+                <div class="mobile-nav-item" onclick="showPage('contact'); closeOrderModal();">
+                    <i class="fas fa-address-card"></i>
+                </div>
+                <div class="mobile-nav-item" onclick="showPage('about'); closeOrderModal();">
+                    <i class="fas fa-user"></i>
+                </div>
+            </nav>
+            <span class="modal-back" onclick="closeOrderModal()"><i class="fas fa-arrow-left"></i></span>
+            <div id="orderModalContent"></div>
         </div>
     </div>
 
