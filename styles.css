@@ -6545,3 +6545,89 @@ body, .page, .modal-content {
         min-width: auto;
     }
 }
+
+/* ===== ИНДИКАТОРЫ МГНОВЕННЫХ ОБНОВЛЕНИЙ ===== */
+
+/* Анимация пульсации для индикаторов */
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.2);
+        opacity: 0.7;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Точка уведомления */
+.notification-dot {
+    position: absolute !important;
+    top: 5px !important;
+    right: 5px !important;
+    width: 8px !important;
+    height: 8px !important;
+    border-radius: 50% !important;
+    animation: pulse 2s infinite !important;
+    z-index: 10 !important;
+}
+
+/* Индикатор новых заказов */
+.notification-dot.orders {
+    background: #ff4444 !important;
+}
+
+/* Индикатор новых сообщений */
+.notification-dot.messages {
+    background: #00ff88 !important;
+}
+
+/* Индикатор изменения статуса */
+.notification-dot.status {
+    background: #ffaa00 !important;
+}
+
+/* Уведомление о мгновенном обновлении */
+.realtime-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    padding: 12px 16px;
+    border-radius: var(--border-radius);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    opacity: 0;
+    transform: translateX(100%);
+    transition: all 0.3s ease;
+    border-left: 4px solid var(--primary-color);
+    font-size: 14px;
+    max-width: 300px;
+}
+
+.realtime-notification.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.realtime-notification .notification-icon {
+    display: inline-block;
+    margin-right: 8px;
+    font-size: 16px;
+}
+
+.realtime-notification .notification-text {
+    font-weight: 500;
+}
+
+/* Темная тема для уведомлений */
+[data-theme="dark"] .realtime-notification {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}

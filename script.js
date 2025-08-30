@@ -14,9 +14,17 @@ let pages;
 const CACHE_KEYS = {
     reviews: 'app_cache_reviews_v1',
     requests: 'app_cache_requests_v1',
+    chat_orders: 'app_cache_chat_orders_v1',
+    chat_messages: 'app_cache_chat_messages_v1',
     stats: 'app_cache_stats_v1',
-    averageRating: 'app_cache_rating_v1'
+    averageRating: 'app_cache_rating_v1',
+    user_data: 'app_cache_user_data_v1'
 };
+
+// Система адаптивной синхронизации
+let userRegistrationInterval = null;
+let heartbeatInterval = null;
+let isUserRegistered = false;
 
 // Настройки кэширования
 const CACHE_CONFIG = {
@@ -30,7 +38,12 @@ const CACHE_CONFIG = {
         loadMoreButton: false,
         maxItems: 1000
     },
-    chatMessages: {
+    chat_orders: {
+        keepInCache: 30, // дней
+        loadMoreButton: false,
+        maxItems: 1000
+    },
+    chat_messages: {
         keepInCache: 7, // дней
         loadMoreButton: true,
         maxItems: 1000
@@ -73,7 +86,12 @@ window.dataCache = {
         lastUpdate: 0,
         updateInterval: 30 * 1000 // 30 секунд для заказов
     },
-    chatMessages: {
+    chat_orders: {
+        data: {},
+        lastUpdate: 0,
+        updateInterval: 30 * 1000 // 30 секунд для заказов чата
+    },
+    chat_messages: {
         data: {},
         lastUpdate: 0,
         updateInterval: 10 * 1000 // 10 секунд для чата
@@ -89,6 +107,115 @@ window.dataCache = {
         updateInterval: 30 * 60 * 1000 // 30 минут
     }
 };
+
+// ===== ФУНКЦИИ АДАПТИВНОЙ СИНХРОНИЗАЦИИ =====
+
+// Регистрация пользователя как активного
+async function registerActiveUser(userId) {
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/frontend/register-user`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ user_id: userId })
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`👤 Пользователь ${userId} зарегистрирован как активный`);
+            isUserRegistered = true;
+            return true;
+        } else {
+            console.error(`❌ Ошибка регистрации пользователя ${userId}: ${response.status}`);
+            return false;
+        }
+    } catch (error) {
+        console.error(`❌ Ошибка регистрации пользователя ${userId}:`, error);
+        return false;
+    }
+}
+
+// Heartbeat для подтверждения активности
+async function sendHeartbeat(userId) {
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/frontend/heartbeat`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ user_id: userId })
+        });
+        
+        if (response.ok) {
+            console.log(`💓 Heartbeat отправлен для пользователя ${userId}`);
+            return true;
+        } else {
+            console.error(`❌ Ошибка heartbeat для пользователя ${userId}: ${response.status}`);
+            return false;
+        }
+    } catch (error) {
+        console.error(`❌ Ошибка heartbeat для пользователя ${userId}:`, error);
+        return false;
+    }
+}
+
+// Получение данных пользователя
+async function getUserData(userId) {
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/frontend/user-data/${userId}`);
+        
+        if (response.ok) {
+            const result = await response.json();
+            if (result.success) {
+                console.log(`📥 Получены данные пользователя ${userId} (кэш: ${result.fromCache ? 'да' : 'нет'})`);
+                return result.data;
+            } else {
+                console.log(`📭 Данные пользователя ${userId} не найдены`);
+                return null;
+            }
+        } else {
+            console.error(`❌ Ошибка получения данных пользователя ${userId}: ${response.status}`);
+            return null;
+        }
+    } catch (error) {
+        console.error(`❌ Ошибка получения данных пользователя ${userId}:`, error);
+        return null;
+    }
+}
+
+// Запуск адаптивной синхронизации
+function startAdaptiveSync(userId) {
+    if (!userId || userId === 'unknown') {
+        console.log('⚠️ Адаптивная синхронизация не запущена: неопределенный пользователь');
+        return;
+    }
+    
+    // Регистрируем пользователя
+    registerActiveUser(userId);
+    
+    // Запускаем мгновенные обновления
+    startRealTimeUpdates(userId);
+    
+    // Запускаем heartbeat каждые 15 минут
+    heartbeatInterval = setInterval(() => {
+        sendHeartbeat(userId);
+    }, 15 * 60 * 1000); // 15 минут
+    
+    console.log(`🚀 Адаптивная синхронизация с мгновенными обновлениями запущена для пользователя ${userId}`);
+}
+
+// Остановка адаптивной синхронизации
+function stopAdaptiveSync() {
+    if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+        heartbeatInterval = null;
+    }
+    
+    stopRealTimeUpdates();
+    isUserRegistered = false;
+    console.log('🛑 Адаптивная синхронизация остановлена');
+}
 
 // ===== ФУНКЦИИ ДЛЯ LOCALSTORAGE =====
 
@@ -250,10 +377,10 @@ async function loadDataFromBackend(dataType, limit = 50) {
             const allData = result.success ? result.data : [];
             console.log(`📦 Получены данные ${dataType}: ${allData.length} записей`);
             
-            // Для отзывов и заказов возвращаем все данные, для остальных - ограниченное количество
+            // Для отзывов, заказов и заказов чата возвращаем все данные, для остальных - ограниченное количество
             let paginatedData;
-            if (dataType === 'reviews' || dataType === 'requests') {
-                paginatedData = allData; // Все отзывы и заказы
+            if (dataType === 'reviews' || dataType === 'requests' || dataType === 'chat_orders') {
+                paginatedData = allData; // Все отзывы, заказы и заказы чата
             } else {
                 paginatedData = allData.slice(-limit); // Ограниченное количество
             }
@@ -285,14 +412,14 @@ async function loadDataWithFallback(dataType, forceUpdate = false) {
         cachedData = loadFromCache(dataType);
     }
     
-    if (cachedData && !forceUpdate && dataType !== 'reviews' && dataType !== 'requests') {
+    if (cachedData && !forceUpdate && dataType !== 'reviews' && dataType !== 'requests' && dataType !== 'chat_orders') {
         console.log(`📦 Показываем кэшированные ${dataType}: ${cachedData.length} записей`);
         displayData(dataType, cachedData);
     }
     
-    // Для заказов загружаем из кэша, если есть данные
-    if (dataType === 'requests' && cachedData && !forceUpdate) {
-        console.log(`📦 Показываем кэшированные заказы: ${cachedData.length} заказов`);
+    // Для заказов и заказов чата загружаем из кэша, если есть данные
+    if ((dataType === 'requests' || dataType === 'chat_orders') && cachedData && !forceUpdate) {
+        console.log(`📦 Показываем кэшированные ${dataType}: ${cachedData.length} записей`);
         displayData(dataType, cachedData);
     }
     
@@ -311,13 +438,13 @@ async function loadDataWithFallback(dataType, forceUpdate = false) {
 // Полная замена данных (для отзывов, статистики)
 async function updateDataWithFullReplace(dataType) {
     try {
-        // Для отзывов и заказов получаем все данные, для остальных - ограниченное количество
-        const limit = (dataType === 'reviews' || dataType === 'requests') ? 1000 : 100;
+        // Для отзывов, заказов и заказов чата получаем все данные, для остальных - ограниченное количество
+        const limit = (dataType === 'reviews' || dataType === 'requests' || dataType === 'chat_orders') ? 1000 : 100;
         const result = await loadDataFromBackend(dataType, limit);
         
         if (result.data.length > 0) {
-            // Для отзывов и заказов очищаем кэш перед сохранением новых данных
-            if (dataType === 'reviews' || dataType === 'requests') {
+            // Для отзывов, заказов и заказов чата очищаем кэш перед сохранением новых данных
+            if (dataType === 'reviews' || dataType === 'requests' || dataType === 'chat_orders') {
                 // Очищаем кэш
                 localStorage.removeItem(CACHE_KEYS[dataType]);
                 if (window.dataCache && window.dataCache[dataType]) {
@@ -408,6 +535,108 @@ function displayData(dataType, data) {
             });
             updateReviewsDisplay();
             break;
+        case 'chat_orders':
+            // Обрабатываем данные заказов для чата
+            console.log(`🔍 Обработка заказов для чата: ${data.length} записей`);
+            
+            // Фильтруем заказы по текущему пользователю
+            const chatCurrentUserData = window.userData || userData;
+            const chatCurrentUserId = chatCurrentUserData?.id;
+            
+            console.log('🔍 Фильтрация заказов чата:', {
+                totalOrders: data.length,
+                currentUserData: chatCurrentUserData,
+                currentUserId: chatCurrentUserId,
+                currentUserIdType: typeof chatCurrentUserId
+            });
+            
+            // Фильтруем заказы по пользователю
+            let userChatOrders = [];
+            let chatTargetUserId = chatCurrentUserId;
+            
+            // Если ID пользователя не определен или равен 'unknown', показываем только заказы с user_id: 'unknown'
+            if (!chatTargetUserId || chatTargetUserId === 'undefined' || chatTargetUserId === 'null' || chatTargetUserId === '' || chatTargetUserId === 'unknown') {
+                console.log(`🔍 ID пользователя не определен или равен 'unknown', показываем только заказы с user_id: 'unknown'`);
+                userChatOrders = data.filter(order => {
+                    const orderUserId = String(order.user_id || '');
+                    return orderUserId === 'unknown';
+                });
+            } else {
+                // Фильтруем только заказы текущего пользователя
+                userChatOrders = data.filter(order => {
+                    const orderUserId = String(order.user_id || '');
+                    const targetUserIdStr = String(chatTargetUserId || '');
+                    return orderUserId === targetUserIdStr;
+                });
+            }
+            
+            console.log(`🔍 Фильтрация заказов чата: найдено ${userChatOrders.length} заказов (всего: ${data.length})`);
+            
+            // Создаем объект с заказами для чата
+            const chatOrders = {};
+            
+            userChatOrders.forEach(order => {
+                chatOrders[order.id] = {
+                    id: order.id,
+                    service: order.service_name,
+                    status: order.status,
+                    date: new Date(order.timestamp).toLocaleDateString('ru-RU'),
+                    message: order.message
+                };
+            });
+            
+            // Обновляем глобальные данные заказов для чата
+            window.chatOrders = chatOrders;
+            
+            // Обновляем кэш заказов для чата
+            if (window.dataCache.chatOrders) {
+                window.dataCache.chatOrders.data = chatOrders;
+                window.dataCache.chatOrders.lastUpdate = Date.now();
+            }
+            
+            console.log(`✅ Обработано ${Object.keys(chatOrders).length} заказов для чата`);
+            
+            // Обновляем отображение тегов заказов если чат открыт
+            if (document.getElementById('chat-page') && document.getElementById('chat-page').classList.contains('active')) {
+                updateChatOrderTags();
+            }
+            break;
+        case 'chat_messages':
+            // Обрабатываем данные сообщений чата
+            console.log(`🔍 Обработка сообщений чата: ${data.length} записей`);
+            
+            // Группируем сообщения по заказам
+            const groupedMessages = {};
+            
+            data.forEach(msg => {
+                const orderId = msg.order_id;
+                if (!groupedMessages[orderId]) {
+                    groupedMessages[orderId] = [];
+                }
+                
+                groupedMessages[orderId].push({
+                    text: msg.message,
+                    isAdmin: false, // Все сообщения от пользователей
+                    timestamp: msg.timestamp
+                });
+            });
+            
+            // Обновляем глобальные данные чата
+            window.chatData = groupedMessages;
+            
+            // Обновляем кэш чата
+            if (window.dataCache.chatMessages) {
+                window.dataCache.chatMessages.data = groupedMessages;
+                window.dataCache.chatMessages.lastUpdate = Date.now();
+            }
+            
+            console.log(`✅ Обработано ${data.length} сообщений чата для ${Object.keys(groupedMessages).length} заказов`);
+            
+            // Обновляем отображение сообщений если чат открыт
+            if (currentChat) {
+                loadChatMessages(currentChat);
+            }
+            break;
         case 'requests':
             // Обрабатываем данные заказов из БД в формат для фронтенда
             // Фильтруем только заказы текущего пользователя
@@ -431,18 +660,22 @@ function displayData(dataType, data) {
             let userOrders = [];
             let targetUserId = currentUserId;
             
-            // Если ID пользователя не определен, используем 'unknown'
-            if (!targetUserId || targetUserId === 'undefined' || targetUserId === 'null' || targetUserId === '') {
-                targetUserId = 'unknown';
-                console.log(`🔍 ID пользователя не определен, используем 'unknown'`);
+            // Если ID пользователя не определен или равен 'unknown', показываем только заказы с user_id: 'unknown'
+            if (!targetUserId || targetUserId === 'undefined' || targetUserId === 'null' || targetUserId === '' || targetUserId === 'unknown') {
+                console.log(`🔍 ID пользователя не определен или равен 'unknown', показываем только заказы с user_id: 'unknown'`);
+                userOrders = data.filter(order => {
+                    const orderUserId = String(order.user_id || '');
+                    return orderUserId === 'unknown';
+                });
+            } else {
+                // Фильтруем только заказы текущего пользователя
+                userOrders = data.filter(order => {
+                    const orderUserId = String(order.user_id || '');
+                    const targetUserIdStr = String(targetUserId || '');
+                    return orderUserId === targetUserIdStr;
+                });
             }
-            
-            userOrders = data.filter(order => {
-                const orderUserId = String(order.user_id || '');
-                const targetUserIdStr = String(targetUserId || '');
-                return orderUserId === targetUserIdStr;
-            });
-            console.log(`🔍 Фильтрация заказов: найдено ${userOrders.length} заказов для пользователя ${targetUserId}`);
+            console.log(`🔍 Фильтрация заказов: найдено ${userOrders.length} заказов (всего: ${data.length})`);
             
 
             
@@ -588,12 +821,12 @@ function updateOrdersDisplay() {
 }
 
 function updateChatDisplay() {
-    const chatContainer = document.querySelector('.chat-messages');
-    if (chatContainer) {
-        // Обновляем отображение чата
-        renderChatMessages();
-        // Прокручиваем к последнему сообщению
-        chatContainer.scrollTop = chatContainer.scrollHeight;
+    // Обновляем теги заказов
+    updateChatOrderTags();
+    
+    // Обновляем сообщения если есть активный чат
+    if (currentChat) {
+        loadChatMessages(currentChat);
     }
 }
 
@@ -888,20 +1121,38 @@ function showPage(pageId) {
         
         // При переходе на страницу заказов обновляем отображение
         if (pageId === 'orders-page') {
+            // Очищаем индикатор новых заказов
+            const ordersTab = document.querySelector('[data-page="orders-page"]');
+            if (ordersTab) {
+                const dot = ordersTab.querySelector('.notification-dot');
+                if (dot) {
+                    dot.remove();
+                }
+            }
+            
             // Обновляем отображение заказов
             setTimeout(() => {
                 updateOrdersDisplay();
-            }, 500);
+            }, 100);
         }
         
+        // При переходе на страницу чата обновляем отображение
         if (pageId === 'chat-page') {
-            // Загружаем данные чата и обновляем отображение
-            setTimeout(() => {
-                loadChatOrdersFromDB(true);
-                if (currentChat) {
-                    loadChatMessages(currentChat);
+            // Очищаем индикатор новых сообщений
+            const chatTab = document.querySelector('[data-page="chat-page"]');
+            if (chatTab) {
+                const dot = chatTab.querySelector('.notification-dot');
+                if (dot) {
+                    dot.remove();
                 }
-            }, 500);
+            }
+            
+            // Агрессивная загрузка данных чата
+            setTimeout(async () => {
+                await loadChatOrdersFromDB(true);
+                await loadChatMessagesFromDB(true);
+                updateChatDisplay();
+            }, 100);
         }
         
         // Initialize services page
@@ -3363,6 +3614,11 @@ async function loadUserProfile() {
         window.userData = userData;
         console.log('Final user data:', userData);
         
+        // Запускаем адаптивную синхронизацию для пользователя
+        if (userData && userData.id && userData.id !== 'unknown') {
+            startAdaptiveSync(userData.id);
+        }
+        
         // Update profile display
         console.log('Updating profile display...');
         await updateProfileDisplay();
@@ -4582,46 +4838,101 @@ async function loadChatMessagesFromDB(forceUpdate = false) {
 
 // Функция для загрузки заказов для чата
 async function loadChatOrdersFromDB(forceUpdate = false) {
+    console.log(`🔍 loadChatOrdersFromDB: forceUpdate = ${forceUpdate}`);
+    
     try {
-        const chatOrdersData = await fetchDataFromDB('chat_orders', 100, forceUpdate);
+        // Получаем ID текущего пользователя
+        const currentUserData = window.userData || userData;
+        const currentUserId = currentUserData?.id;
         
-        if (chatOrdersData.length > 0) {
-            // Создаем объект с заказами для чата
-            const chatOrders = {};
+        if (!currentUserId || currentUserId === 'unknown') {
+            console.log('⚠️ ID пользователя не определен, используем обычную загрузку');
             
-            chatOrdersData.forEach(order => {
-                chatOrders[order.id] = {
-                    id: order.id,
-                    service: order.service_name,
-                    status: order.status,
-                    date: new Date(order.timestamp).toLocaleDateString('ru-RU'),
-                    message: order.message
-                };
-            });
+            // Обычная загрузка для неопределенных пользователей
+            const chatOrdersData = await fetchDataFromDB('chat_orders', 100, forceUpdate);
+            console.log(`🔍 loadChatOrdersFromDB: получено ${chatOrdersData.length} заказов`);
             
-            // Обновляем глобальные данные заказов для чата
-            window.chatOrders = chatOrders;
-            
-            // Обновляем кэш заказов для чата
-            if (window.dataCache.chatOrders) {
-                window.dataCache.chatOrders.data = chatOrders;
-                window.dataCache.chatOrders.lastUpdate = Date.now();
-            }
-            
-            console.log(`✅ Загружено ${chatOrdersData.length} заказов для чата из БД`);
-            
-            // Обновляем отображение тегов заказов если чат открыт
-            if (document.getElementById('chat-page') && document.getElementById('chat-page').classList.contains('active')) {
-                updateChatOrderTags();
-            }
-        } else {
-            console.log('📭 Заказов для чата в БД пока нет, используем кэш');
-            // Используем данные из кэша если они есть
-            if (window.dataCache.chatOrders && Object.keys(window.dataCache.chatOrders.data).length > 0) {
-                window.chatOrders = window.dataCache.chatOrders.data;
+            if (chatOrdersData.length > 0) {
+                // Создаем объект с заказами для чата
+                const chatOrders = {};
+                
+                chatOrdersData.forEach(order => {
+                    chatOrders[order.id] = {
+                        id: order.id,
+                        service: order.service_name,
+                        status: order.status,
+                        date: new Date(order.timestamp).toLocaleDateString('ru-RU'),
+                        message: order.message
+                    };
+                });
+                
+                // Обновляем глобальные данные заказов для чата
+                window.chatOrders = chatOrders;
+                
+                // Обновляем кэш заказов для чата
+                if (window.dataCache.chatOrders) {
+                    window.dataCache.chatOrders.data = chatOrders;
+                    window.dataCache.chatOrders.lastUpdate = Date.now();
+                }
+                
+                console.log(`✅ Загружено ${chatOrdersData.length} заказов для чата из БД`);
+                
+                // Обновляем отображение тегов заказов если чат открыт
                 if (document.getElementById('chat-page') && document.getElementById('chat-page').classList.contains('active')) {
                     updateChatOrderTags();
                 }
+            } else {
+                console.log('📭 Заказов для чата в БД пока нет, используем кэш');
+                // Используем данные из кэша если они есть
+                if (window.dataCache.chatOrders && Object.keys(window.dataCache.chatOrders.data).length > 0) {
+                    console.log('📦 Используем кэшированные заказы для чата');
+                    window.chatOrders = window.dataCache.chatOrders.data;
+                    if (document.getElementById('chat-page') && document.getElementById('chat-page').classList.contains('active')) {
+                        updateChatOrderTags();
+                    }
+                } else {
+                    console.log('❌ Нет кэшированных заказов для чата');
+                }
+            }
+        } else {
+            // Используем адаптивную синхронизацию для определенных пользователей
+            console.log(`🔍 Загружаем данные для пользователя ${currentUserId}`);
+            
+            const userData = await getUserData(currentUserId);
+            
+            if (userData && userData.orders) {
+                console.log(`📥 Получено ${userData.orders.length} заказов для пользователя ${currentUserId}`);
+                
+                // Преобразуем данные в формат для чата
+                const chatOrders = {};
+                userData.orders.forEach(order => {
+                    chatOrders[order.id] = {
+                        id: order.id,
+                        service: order.service_name,
+                        status: order.status,
+                        date: new Date(order.timestamp).toLocaleDateString('ru-RU'),
+                        message: order.message
+                    };
+                });
+                
+                // Обновляем глобальные данные
+                window.chatOrders = chatOrders;
+                
+                // Обновляем кэш
+                if (window.dataCache.chatOrders) {
+                    window.dataCache.chatOrders.data = chatOrders;
+                    window.dataCache.chatOrders.lastUpdate = Date.now();
+                }
+                
+                console.log(`✅ Загружено ${userData.orders.length} заказов для пользователя ${currentUserId}`);
+                
+                // Обновляем отображение
+                if (document.getElementById('chat-page') && document.getElementById('chat-page').classList.contains('active')) {
+                    updateChatOrderTags();
+                }
+            } else {
+                console.log(`📭 Нет данных для пользователя ${currentUserId}`);
+                window.chatOrders = {};
             }
         }
     } catch (error) {
@@ -4658,12 +4969,21 @@ function updateReviewsDisplay() {
 // Функция для обновления тегов заказов в чате
 function updateChatOrderTags() {
     const orderTags = document.getElementById('orderTags');
-    if (!orderTags) return;
+    if (!orderTags) {
+        console.log('orderTags element not found');
+        return;
+    }
     
     const chatOrders = window.chatOrders || {};
     const orderIds = Object.keys(chatOrders);
     
+    console.log('updateChatOrderTags: chatOrders', chatOrders);
+    console.log('updateChatOrderTags: orderIds', orderIds);
+    console.log('updateChatOrderTags: orderTags element', orderTags);
+    console.log('updateChatOrderTags: currentChat', currentChat);
+    
     if (orderIds.length === 0) {
+        console.log('❌ updateChatOrderTags: нет заказов для отображения');
         orderTags.innerHTML = '<div class="no-orders">Заказов пока нет</div>';
         return;
     }
@@ -4780,6 +5100,9 @@ function updateReviewsPage() {
 // Переменные для интервалов обновления
 let reviewsUpdateInterval;
 let chatUpdateInterval;
+let ordersUpdateInterval;
+let adaptiveUpdateInterval;
+let sseConnection = null; // SSE соединение для мгновенных обновлений
 
 // Функция для загрузки всех данных при инициализации
 async function loadAllDataFromDB() {
@@ -4806,12 +5129,22 @@ function startPeriodicUpdates() {
         console.log('🔄 Периодическое обновление чата...');
         loadChatMessagesFromDB(true);
         loadChatOrdersFromDB(true);
+        
+        // Обновляем отображение если страница чата активна
+        if (document.getElementById('chat-page') && document.getElementById('chat-page').classList.contains('active')) {
+            updateChatDisplay();
+        }
     }, 10 * 1000); // 10 секунд
     
     // Обновление заказов каждые 30 секунд
     ordersUpdateInterval = setInterval(() => {
         console.log('🔄 Периодическое обновление заказов...');
         loadDataWithFallback('requests', true);
+        
+        // Обновляем отображение если страница заказов активна
+        if (document.getElementById('orders-page') && document.getElementById('orders-page').classList.contains('active')) {
+            updateOrdersDisplay();
+        }
     }, 30 * 1000); // 30 секунд
     
     console.log('⏰ Периодическое обновление запущено');
@@ -5458,10 +5791,18 @@ function switchChat(chatId) {
 
 function loadChatMessages(chatId) {
     const chatMessages = document.getElementById('chatMessages');
-    if (!chatMessages) return;
+    if (!chatMessages) {
+        console.log('chatMessages element not found');
+        return;
+    }
+    
+    console.log('loadChatMessages: chatId', chatId);
+    console.log('loadChatMessages: window.chatData', window.chatData);
     
     // Получаем сообщения из БД для этого чата
     const dbMessages = window.chatData && window.chatData[chatId] ? window.chatData[chatId] : [];
+    
+    console.log('loadChatMessages: dbMessages', dbMessages);
     
     if (dbMessages.length === 0) {
         chatMessages.innerHTML = '<div class="no-messages">Сообщений пока нет</div>';
@@ -5537,59 +5878,8 @@ function updateChatInputArea(chatId) {
 function loadOrderTags() {
     console.log('loadOrderTags called');
     
-    // Wait a bit more to ensure DOM is ready
-    setTimeout(() => {
-        const orderTags = document.getElementById('orderTags');
-        if (!orderTags) {
-            console.error('orderTags element not found');
-            return;
-        }
-        
-        // Используем данные из БД
-        const dbChatData = window.chatData || {};
-        console.log('dbChatData:', dbChatData);
-        console.log('currentChat:', currentChat);
-        
-        if (Object.keys(dbChatData).length === 0) {
-            orderTags.innerHTML = '<div class="no-orders">Заказов пока нет</div>';
-            return;
-        }
-        
-        // Sort orders: active first, then completed
-        const sortedOrders = Object.keys(dbChatData).sort((a, b) => {
-            // По умолчанию считаем все заказы активными
-            return parseInt(a) - parseInt(b);
-        });
-        
-        console.log('sortedOrders:', sortedOrders);
-        
-        const tagsHtml = sortedOrders.map(orderId => {
-            const isActive = orderId === currentChat;
-            // По умолчанию все заказы активные
-            const status = 'active';
-            const statusIcon = {
-                'active': 'fas fa-tag',
-                'completed': 'fas fa-check-circle'
-            };
-            
-            return `
-                <div class="order-tag ${isActive ? 'active' : ''}" data-order="${orderId}" onclick="switchChat('${orderId}')">
-                    <i class="${statusIcon[status]}"></i>
-                    <span>Заказ #${orderId}</span>
-                    <span class="order-status ${status}"></span>
-                </div>
-            `;
-        }).join('');
-        
-        console.log('tagsHtml:', tagsHtml);
-        orderTags.innerHTML = tagsHtml;
-        
-        // Устанавливаем первый заказ как активный если нет текущего
-        if (!currentChat && sortedOrders.length > 0) {
-            currentChat = sortedOrders[0];
-            loadChatMessages(currentChat);
-        }
-    }, 100);
+    // Используем новую функцию updateChatOrderTags
+    updateChatOrderTags();
 }
 
 function openTelegramChat() {
@@ -6066,6 +6356,327 @@ function initReviewsPageStars() {
     } catch (error) {
         console.error('Error in initReviewsPageStars:', error);
     }
+}
+
+// ===== СИСТЕМА МГНОВЕННЫХ ОБНОВЛЕНИЙ (SSE) =====
+
+// Запуск мгновенных обновлений
+function startRealTimeUpdates(userId) {
+    if (!userId || userId === 'unknown') {
+        console.log('⚠️ SSE не запущен: неопределенный пользователь');
+        return;
+    }
+    
+    // Закрываем старое соединение если есть
+    if (sseConnection) {
+        sseConnection.close();
+    }
+    
+    // Создаем SSE соединение
+    console.log(`📡 Устанавливаем SSE соединение для пользователя ${userId}`);
+    sseConnection = new EventSource(`${BACKEND_URL}/api/frontend/events/${userId}`);
+    
+    sseConnection.onopen = () => {
+        console.log(`📡 SSE подключение установлено для пользователя ${userId}`);
+    };
+    
+    sseConnection.onmessage = (event) => {
+        try {
+            const data = JSON.parse(event.data);
+            console.log(`⚡ Получено мгновенное обновление:`, data);
+            
+            switch (data.type) {
+                case 'connected':
+                    console.log('✅ SSE соединение подтверждено');
+                    // Запрашиваем немедленную загрузку данных
+                    requestImmediateDataLoad(userId);
+                    break;
+                    
+                case 'data_ready':
+                    console.log(`🎉 Данные пользователя готовы: ${data.data.orders_count} заказов, ${data.data.messages_count} сообщений`);
+                    showDataReadyNotification(data.data);
+                    break;
+                    
+                case 'new_orders':
+                    console.log(`🆕 Новых заказов: ${data.data.count}`);
+                    updateOrdersFromSSE(data.data.orders);
+                    showNewOrdersNotification(data.data.count);
+                    break;
+                    
+                case 'new_messages':
+                    console.log(`🆕 Новых сообщений: ${data.data.count}`);
+                    updateChatFromSSE(data.data.messages);
+                    showNewMessagesNotification(data.data.count);
+                    break;
+                    
+                case 'status_changes':
+                    console.log(`🔄 Изменений статуса: ${data.data.count}`);
+                    updateOrderStatusFromSSE(data.data.changes);
+                    showStatusChangeNotification(data.data.changes);
+                    break;
+            }
+        } catch (error) {
+            console.error('❌ Ошибка обработки SSE сообщения:', error);
+        }
+    };
+    
+    sseConnection.onerror = (error) => {
+        console.error('❌ Ошибка SSE соединения:', error);
+        // Переподключение через 5 секунд
+        setTimeout(() => {
+            console.log('🔄 Переподключение SSE...');
+            startRealTimeUpdates(userId);
+        }, 5000);
+    };
+    
+    console.log(`🚀 Мгновенные обновления запущены для пользователя ${userId}`);
+}
+
+// Остановка мгновенных обновлений
+function stopRealTimeUpdates() {
+    if (sseConnection) {
+        sseConnection.close();
+        sseConnection = null;
+        console.log('🛑 Мгновенные обновления остановлены');
+    }
+}
+
+// Запрос немедленной загрузки данных
+async function requestImmediateDataLoad(userId) {
+    try {
+        const response = await fetch(`${BACKEND_URL}/api/frontend/request-immediate-load`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ user_id: userId })
+        });
+        
+        if (response.ok) {
+            console.log(`⚡ Запрос немедленной загрузки отправлен для пользователя ${userId}`);
+            return true;
+        } else {
+            console.error(`❌ Ошибка запроса немедленной загрузки для пользователя ${userId}: ${response.status}`);
+            return false;
+        }
+    } catch (error) {
+        console.error(`❌ Ошибка запроса немедленной загрузки для пользователя ${userId}:`, error);
+        return false;
+    }
+}
+
+// Мгновенное обновление заказов
+function updateOrdersFromSSE(orders) {
+    if (!orders || !Array.isArray(orders)) return;
+    
+    console.log(`⚡ Мгновенное обновление заказов: ${orders.length} заказов`);
+    
+    // Преобразуем данные для чата
+    const chatOrders = {};
+    orders.forEach(order => {
+        chatOrders[order.id] = {
+            id: order.id,
+            service: order.service_name,
+            status: order.status,
+            date: new Date(order.timestamp).toLocaleDateString('ru-RU'),
+            message: order.message
+        };
+    });
+    
+    // Обновляем глобальные данные
+    window.chatOrders = chatOrders;
+    globalOrders = orders;
+    
+    // Обновляем кэш
+    if (window.dataCache.chatOrders) {
+        window.dataCache.chatOrders.data = chatOrders;
+        window.dataCache.chatOrders.lastUpdate = Date.now();
+    }
+    
+    // Мгновенно обновляем интерфейс
+    if (document.getElementById('orders-page')?.classList.contains('active')) {
+        updateOrdersDisplay();
+        console.log('⚡ Страница заказов мгновенно обновлена');
+    }
+    
+    if (document.getElementById('chat-page')?.classList.contains('active')) {
+        updateChatOrderTags();
+        console.log('⚡ Теги заказов в чате мгновенно обновлены');
+    }
+}
+
+// Мгновенное обновление чата
+function updateChatFromSSE(messages) {
+    if (!messages || !Array.isArray(messages)) return;
+    
+    console.log(`⚡ Мгновенное обновление чата: ${messages.length} сообщений`);
+    
+    // Преобразуем данные
+    const chatMessages = {};
+    messages.forEach(msg => {
+        chatMessages[msg.id] = {
+            id: msg.id,
+            order_id: msg.order_id,
+            user_id: msg.user_id,
+            message: msg.message,
+            timestamp: msg.timestamp,
+            is_bot: msg.is_bot
+        };
+    });
+    
+    // Обновляем глобальные данные
+    window.chatMessages = chatMessages;
+    globalChatMessages = messages;
+    
+    // Обновляем кэш
+    if (window.dataCache.chatMessages) {
+        window.dataCache.chatMessages.data = chatMessages;
+        window.dataCache.chatMessages.lastUpdate = Date.now();
+    }
+    
+    // Мгновенно обновляем интерфейс
+    if (document.getElementById('chat-page')?.classList.contains('active')) {
+        updateChatDisplay();
+        console.log('⚡ Чат мгновенно обновлен');
+    }
+}
+
+// Мгновенное обновление статуса заказов
+function updateOrderStatusFromSSE(statusChanges) {
+    if (!statusChanges || !Array.isArray(statusChanges)) return;
+    
+    console.log(`⚡ Мгновенное обновление статуса: ${statusChanges.length} изменений`);
+    
+    // Обновляем статусы в глобальных данных
+    statusChanges.forEach(change => {
+        // Обновляем в chatOrders
+        if (window.chatOrders && window.chatOrders[change.order_id]) {
+            window.chatOrders[change.order_id].status = change.new_status;
+        }
+        
+        // Обновляем в globalOrders
+        if (globalOrders) {
+            const orderIndex = globalOrders.findIndex(o => o.id === change.order_id);
+            if (orderIndex !== -1) {
+                globalOrders[orderIndex].status = change.new_status;
+            }
+        }
+    });
+    
+    // Мгновенно обновляем интерфейс
+    if (document.getElementById('orders-page')?.classList.contains('active')) {
+        updateOrdersDisplay();
+        console.log('⚡ Статусы заказов мгновенно обновлены');
+    }
+    
+    if (document.getElementById('chat-page')?.classList.contains('active')) {
+        updateChatOrderTags();
+        console.log('⚡ Статусы в чате мгновенно обновлены');
+    }
+}
+
+// ===== УВЕДОМЛЕНИЯ О МГНОВЕННЫХ ОБНОВЛЕНИЯХ =====
+
+// Показ всплывающего уведомления
+function showRealtimeNotification(icon, text, duration = 3000) {
+    // Создаем элемент уведомления
+    const notification = document.createElement('div');
+    notification.className = 'realtime-notification';
+    notification.innerHTML = `
+        <span class="notification-icon">${icon}</span>
+        <span class="notification-text">${text}</span>
+    `;
+    
+    // Добавляем в DOM
+    document.body.appendChild(notification);
+    
+    // Показываем уведомление
+    setTimeout(() => {
+        notification.classList.add('show');
+    }, 100);
+    
+    // Скрываем и удаляем уведомление
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => notification.remove(), 300);
+    }, duration);
+}
+
+// Удаление индикаторов уведомлений
+function clearNotificationDots() {
+    const dots = document.querySelectorAll('.notification-dot');
+    dots.forEach(dot => {
+        if (dot.parentNode) {
+            dot.parentNode.removeChild(dot);
+        }
+    });
+}
+
+// Уведомление о готовности данных
+function showDataReadyNotification(data) {
+    console.log('🎉 Данные загружены и готовы к использованию');
+    showRealtimeNotification('🎉', 'Данные загружены и готовы!', 2000);
+}
+
+// Уведомление о новых заказах
+function showNewOrdersNotification(count) {
+    console.log(`🆕 Получено ${count} новых заказов`);
+    
+    // Показываем всплывающее уведомление
+    showRealtimeNotification('📋', `Получено ${count} новых заказов`, 4000);
+    
+    // Показываем ненавязчивое уведомление на вкладке
+    if (count > 0) {
+        const ordersTab = document.querySelector('[data-page="orders-page"]');
+        if (ordersTab && !document.getElementById('orders-page')?.classList.contains('active')) {
+            // Добавляем индикатор новых данных
+            if (!ordersTab.querySelector('.notification-dot')) {
+                const dot = document.createElement('span');
+                dot.className = 'notification-dot orders';
+                ordersTab.style.position = 'relative';
+                ordersTab.appendChild(dot);
+            }
+        }
+    }
+}
+
+// Уведомление о новых сообщениях
+function showNewMessagesNotification(count) {
+    console.log(`🆕 Получено ${count} новых сообщений`);
+    
+    // Показываем всплывающее уведомление
+    showRealtimeNotification('💬', `Получено ${count} новых сообщений`, 4000);
+    
+    // Показываем ненавязчивое уведомление на вкладке
+    if (count > 0) {
+        const chatTab = document.querySelector('[data-page="chat-page"]');
+        if (chatTab && !document.getElementById('chat-page')?.classList.contains('active')) {
+            // Добавляем индикатор новых сообщений
+            if (!chatTab.querySelector('.notification-dot')) {
+                const dot = document.createElement('span');
+                dot.className = 'notification-dot messages';
+                chatTab.style.position = 'relative';
+                chatTab.appendChild(dot);
+            }
+        }
+    }
+}
+
+// Уведомление об изменении статуса
+function showStatusChangeNotification(changes) {
+    console.log(`🔄 Изменился статус ${changes.length} заказов`);
+    
+    // Показываем всплывающее уведомление
+    const changeText = changes.length === 1 
+        ? `Статус заказа изменен: ${changes[0].new_status}`
+        : `Изменился статус ${changes.length} заказов`;
+    
+    showRealtimeNotification('🔄', changeText, 4000);
+    
+    // Показываем уведомление об изменении статуса
+    changes.forEach(change => {
+        console.log(`   📋 Заказ "${change.service}": ${change.old_status} → ${change.new_status}`);
+    });
 }
 
 
