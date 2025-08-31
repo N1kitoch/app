@@ -1508,55 +1508,61 @@ function loadServiceCards() {
         'aiTelegram': {
             title: 'AI-ассистенты для Telegram',
             description: 'Интеллектуальные помощники для автоматизации коммуникации',
-            price: 'от 50,000₽',
+            price: getServicePrice('aiTelegram', 'от 50,000₽'),
             button: 'Подробнее'
         },
         'channelAutomation': {
             title: 'Автоматизация каналов',
             description: 'Системы для автоматического ведения Telegram-каналов',
-            price: 'от 75,000₽',
+            price: getServicePrice('channelAutomation', 'от 75,000₽'),
             button: 'Подробнее'
         },
         'onboardingSystems': {
             title: 'Системы онбординга',
             description: 'Автоматизированные системы адаптации новых пользователей',
-            price: 'от 60,000₽',
+            price: getServicePrice('onboardingSystems', 'от 60,000₽'),
             button: 'Подробнее'
         },
         'socialManagement': {
             title: 'Ведение социальных каналов',
             description: 'Организация работы в соцсетях с фокусом на процессах',
-            price: 'от 60,000₽/мес',
+            price: getServicePrice('socialManagement', 'от 60,000₽/мес'),
             button: 'Подробнее'
         },
         'productSupport': {
             title: 'Продуктовое сопровождение',
             description: 'Ведение продукта "под ключ" от идеи до реализации',
-            price: 'от 150,000₽/мес',
+            price: getServicePrice('productSupport', 'от 180,000₽/мес'),
             button: 'Подробнее'
         },
         'noCodeWebsites': {
             title: 'Сайты и веб-приложения',
             description: 'No-code разработка с vibe-coding подходом',
-            price: 'от 40,000₽',
+            price: getServicePrice('noCodeWebsites', 'от 40,000₽'),
             button: 'Подробнее'
         },
         'customDevelopment': {
             title: 'Индивидуальная разработка',
             description: 'Уникальные решения под специфические задачи',
-            price: 'Договорная',
+            price: getServicePrice('customDevelopment', 'Договорная'),
             button: 'Подробнее'
         },
         'telegramBots': {
             title: 'Создание Telegram ботов',
             description: 'Разработка функциональных ботов для бизнеса и личного использования',
-            price: 'от 35,000₽',
+            price: getServicePrice('telegramBots', 'от 35,000₽'),
             button: 'Подробнее'
         },
         'projectManager': {
             title: 'Проектный менеджер',
             description: 'Управление проектами от старта до финиша с фокусом на сроках, бюджете и качестве',
-            price: 'от 150,000₽/мес',
+            price: getServicePrice('projectManager', 'от 180,000₽/мес'),
+            button: 'Подробнее'
+        },
+        'businessDevelopmentManager': {
+            title: 'Менеджер по развитию бизнеса',
+            description: 'Поиск узких мест, улучшение процессов, анализ метрик и решение проблем',
+            price: getServicePrice('businessDevelopmentManager', 'от 180,000₽/мес'),
             button: 'Подробнее'
         }
     };
@@ -1568,6 +1574,7 @@ function loadServiceCards() {
         { id: 'social-management', category: 'social', icon: 'fas fa-users', dataKey: 'socialManagement' },
         { id: 'product-support', category: 'professions', icon: 'fas fa-project-diagram', dataKey: 'productSupport' },
         { id: 'project-manager', category: 'professions', icon: 'fas fa-tasks', dataKey: 'projectManager' },
+        { id: 'business-development-manager', category: 'professions', icon: 'fas fa-chart-line', dataKey: 'businessDevelopmentManager' },
         { id: 'no-code-websites', category: 'development', icon: 'fas fa-code', dataKey: 'noCodeWebsites' },
         { id: 'telegram-bots', category: 'development', icon: 'fas fa-paper-plane', dataKey: 'telegramBots' },
         { id: 'custom-development', category: 'development', icon: 'fas fa-cogs', dataKey: 'customDevelopment' }
@@ -1635,7 +1642,7 @@ function getModalData(serviceKey) {
                 '24/7 доступность'
             ],
             technologies: ['OpenAI GPT', 'Telegram Bot API', 'Python', 'Node.js'],
-            price: 'от 50,000₽',
+            price: getServicePrice('aiTelegram', 'от 50,000₽'),
             duration: '2-3 недели'
         },
         'channelAutomation': {
@@ -1650,7 +1657,7 @@ function getModalData(serviceKey) {
                 'Отчеты по эффективности'
             ],
             technologies: ['Telegram API', 'Python', 'Базы данных', 'Аналитика'],
-            price: 'от 75,000₽',
+            price: getServicePrice('channelAutomation', 'от 75,000₽'),
             duration: '3-4 недели'
         },
         'onboardingSystems': {
@@ -1665,7 +1672,7 @@ function getModalData(serviceKey) {
                 'Интеграция с HR-системами'
             ],
             technologies: ['LMS', 'API интеграции', 'Аналитика', 'Базы данных'],
-            price: 'от 60,000₽',
+            price: getServicePrice('onboardingSystems', 'от 60,000₽'),
             duration: '4-6 недель'
         },
         'socialManagement': {
@@ -1680,7 +1687,7 @@ function getModalData(serviceKey) {
                 'A/B тестирование'
             ],
             technologies: ['Социальные API', 'Аналитика', 'Автоматизация', 'CRM'],
-            price: 'от 60,000₽/мес',
+            price: getServicePrice('socialManagement', 'от 60,000₽/мес'),
             duration: 'Постоянно'
         },
         'productSupport': {
@@ -1695,7 +1702,7 @@ function getModalData(serviceKey) {
                 'Поддержка после запуска'
             ],
             technologies: ['Agile', 'Scrum', 'Jira', 'Figma', 'Аналитика'],
-            price: 'от 150,000₽/мес',
+            price: getServicePrice('productSupport', 'от 180,000₽/мес'),
             duration: 'По проекту'
         },
         'projectManager': {
@@ -1710,8 +1717,23 @@ function getModalData(serviceKey) {
                 'Отчетность и коммуникация с заказчиком'
             ],
             technologies: ['Agile', 'Scrum', 'Kanban', 'Jira', 'Trello', 'Notion'],
-            price: 'от 150,000₽/мес',
+            price: getServicePrice('projectManager', 'от 180,000₽/мес'),
             duration: 'По проекту'
+        },
+        'businessDevelopmentManager': {
+            title: 'Менеджер по развитию бизнеса',
+            description: 'Профессиональный анализ и оптимизация бизнес-процессов для повышения эффективности и роста компании.',
+            features: [
+                'Анализ текущих бизнес-процессов и выявление узких мест',
+                'Разработка стратегий оптимизации и улучшения',
+                'Анализ ключевых метрик и KPI',
+                'Внедрение новых процессов и технологий',
+                'Координация межфункциональных проектов',
+                'Отчетность по результатам оптимизации'
+            ],
+            technologies: ['Аналитика данных', 'BPMN', 'Lean Six Sigma', 'Tableau', 'Power BI', 'Jira'],
+            price: getServicePrice('businessDevelopmentManager', 'от 180,000₽/мес'),
+            duration: 'Постоянно'
         },
         'noCodeWebsites': {
             title: 'Сайты и веб-приложения',
@@ -1725,7 +1747,7 @@ function getModalData(serviceKey) {
                 'Техническая поддержка'
             ],
             technologies: ['Webflow', 'Bubble', 'Zapier', 'Airtable', 'API'],
-            price: 'от 40,000₽',
+            price: getServicePrice('noCodeWebsites', 'от 40,000₽'),
             duration: '1-2 недели'
         },
         'telegramBots': {
@@ -1740,7 +1762,7 @@ function getModalData(serviceKey) {
                 'Техническая поддержка и доработки'
             ],
             technologies: ['Telegram Bot API', 'Python', 'Базы данных'],
-            price: 'от 35,000₽',
+            price: getServicePrice('telegramBots', 'от 35,000₽'),
             duration: '2-4 недели'
         },
         'customDevelopment': {
@@ -1755,7 +1777,7 @@ function getModalData(serviceKey) {
                 'Поддержка и развитие'
             ],
             technologies: ['Python', 'JavaScript', 'API', 'Базы данных', 'Облачные сервисы'],
-            price: 'Договорная',
+            price: getServicePrice('customDevelopment', 'Договорная'),
             duration: 'По проекту'
         }
     };
@@ -1791,6 +1813,7 @@ function openServiceModal(serviceType) {
         'social-management': 'socialManagement',
         'product-support': 'productSupport',
         'project-manager': 'projectManager',
+        'business-development-manager': 'businessDevelopmentManager',
         'custom-development': 'customDevelopment',
         'no-code-websites': 'noCodeWebsites',
         'onboarding-systems': 'onboardingSystems',
@@ -2249,8 +2272,6 @@ function loadFeedbackPageTexts() {
         'feedbackFormTitle': 'feedbackPage.form.title',
         'feedbackNameLabel': 'feedbackPage.form.nameLabel',
         'feedbackNamePlaceholder': 'feedbackPage.form.namePlaceholder',
-        'feedbackSubjectLabel': 'feedbackPage.form.subjectLabel',
-        'feedbackSubjectPlaceholder': 'feedbackPage.form.subjectPlaceholder',
         'feedbackMessageLabel': 'feedbackPage.form.messageLabel',
         'feedbackMessagePlaceholder': 'feedbackPage.form.messagePlaceholder',
         'feedbackSubmitButton': 'feedbackPage.form.submitButton'
@@ -2616,7 +2637,6 @@ function contactForService(serviceName) {
 // Функция для автозаполнения формы обратной связи
 function fillFeedbackForm(serviceName = null) {
     const nameField = document.getElementById('feedbackName');
-    const subjectField = document.getElementById('feedbackSubject');
     const messageField = document.getElementById('feedbackMessage');
     
     // Автозаполняем имя пользователя
@@ -2628,15 +2648,9 @@ function fillFeedbackForm(serviceName = null) {
         }
     }
     
-    // Автозаполняем тему и сообщение если передана услуга
-    if (serviceName) {
-        if (subjectField) {
-            subjectField.value = `Заказ услуги: ${serviceName}`;
-        }
-        
-        if (messageField) {
-            messageField.value = `Здравствуйте! Меня интересует услуга "${serviceName}". Пожалуйста, свяжитесь со мной для обсуждения деталей проекта.`;
-        }
+    // Автозаполняем сообщение если передана услуга
+    if (serviceName && messageField) {
+        messageField.value = `Здравствуйте! Меня интересует услуга "${serviceName}". Пожалуйста, свяжитесь со мной для обсуждения деталей проекта.`;
     }
 }
 
@@ -2971,6 +2985,22 @@ function getText(path, defaultText = '') {
     console.log(`getText(${path}) returned:`, current);
     // Возвращаем объект или строку в зависимости от типа
     return current;
+}
+
+// Функция для получения цены услуги из JSON файла
+function getServicePrice(serviceKey, defaultPrice = 'Договорная') {
+    if (!appTexts || !appTexts.prices) {
+        console.error('appTexts or prices not loaded');
+        return defaultPrice;
+    }
+    
+    const price = appTexts.prices[serviceKey];
+    if (price) {
+        return price;
+    }
+    
+    console.error(`Price not found for service: ${serviceKey}`);
+    return defaultPrice;
 }
 
 function getBackendUrl() {
@@ -5897,7 +5927,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const formData = new FormData(feedbackForm);
             const data = {
                 name: formData.get('feedbackName'),
-                subject: formData.get('feedbackSubject'),
                 message: formData.get('feedbackMessage')
             };
             

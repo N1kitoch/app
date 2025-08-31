@@ -126,6 +126,22 @@
     }
   },
   
+  "prices": {
+    "_description": "Цены на все услуги - легко редактировать",
+    "_note": "Измените цены здесь, и они автоматически обновятся во всем приложении",
+    
+    "aiTelegram": "от 50,000₽",
+    "channelAutomation": "от 75,000₽",
+    "onboardingSystems": "от 60,000₽",
+    "socialManagement": "от 60,000₽/мес",
+    "productSupport": "от 180,000₽/мес",
+    "projectManager": "от 180,000₽/мес",
+    "businessDevelopmentManager": "от 180,000₽/мес",
+    "noCodeWebsites": "от 40,000₽",
+    "telegramBots": "от 35,000₽",
+    "customDevelopment": "Договорная"
+  },
+  
   "servicesPage": {
     "_description": "СТРАНИЦА УСЛУГ - модальные окна с подробной информацией",
     
