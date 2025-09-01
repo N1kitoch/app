@@ -146,6 +146,11 @@
                         <h4>Поддержка</h4>
                         <p>Техническая поддержка и сопровождение</p>
                     </div>
+                    <div class="why-choose-item">
+                        <div class="why-choose-number" id="avgRatingDisplay">4.9</div>
+                        <h4>Средний рейтинг</h4>
+                        <p>По отзывам клиентов</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -677,16 +682,14 @@
                     <i class="fas fa-arrow-left"></i>
                 </button>
                 
-                <!-- Page Title (Centered) -->
-                <div class="page-title-center">
+                <!-- Header Card with Title and Summary -->
+                <div class="reviews-header-card">
+                    <!-- Page Title -->
                     <h1 class="page-title">
                         <i class="fas fa-star"></i>
                         <span id="reviewsPageTitle">Отзывы</span>
                     </h1>
-                </div>
-                
-                <!-- Combined Reviews Summary and Add Review -->
-                <div class="reviews-combined-card">
+                    
                     <!-- Reviews Summary -->
                     <div class="reviews-summary">
                         <span class="avg" id="averageRating">5.0</span>
@@ -699,9 +702,18 @@
                         </div>
                         <span class="count" id="totalReviews">(0)</span>
                     </div>
-                    
+                </div>
+                
+                <!-- Combined Reviews Summary and Add Review -->
+                <div class="reviews-combined-card">
                     <!-- Review Invite Text -->
                     <p>Оставьте свой отзыв</p>
+                    
+                    <!-- User Hint -->
+                    <div class="review-hint">
+                        <i class="fas fa-lightbulb"></i>
+                        <span>Ваш отзыв поможет другим сделать правильный выбор</span>
+                    </div>
                     
                     <!-- Add Review Section -->
                     <div class="add-review-section">
@@ -713,8 +725,8 @@
                                 <i data-val="4" class="fas fa-star"></i>
                                 <i data-val="5" class="fas fa-star"></i>
                             </div>
-                            <textarea id="reviewText" placeholder="Ваш отзыв..." style="display: none;"></textarea>
-                            <button class="btn btn-primary btn-send" id="sendReviewBtn" disabled style="display: none;">Отправить</button>
+                            <textarea id="reviewText" placeholder="Ваш отзыв..."></textarea>
+                            <button class="btn btn-primary btn-send" id="sendReviewBtn" disabled>Отправить</button>
                         </div>
                     </div>
                 </div>

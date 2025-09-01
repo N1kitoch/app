@@ -474,6 +474,18 @@ async function loadDataWithFallback(dataType, forceUpdate = false) {
         } else {
             await updateDataWithFullReplace(dataType);
         }
+        
+        // Специальная обработка для averageRating
+        if (dataType === 'averageRating') {
+            console.log('🔍 Специальная обработка averageRating...');
+            console.log('🔍 window.dataCache.averageRating:', window.dataCache?.averageRating);
+            console.log('🔍 window.dataCache.averageRating.data:', window.dataCache?.averageRating?.data);
+            
+            // Принудительно обновляем отображение
+            setTimeout(() => {
+                updateAverageRatingDisplay();
+            }, 100);
+        }
     } catch (error) {
         console.warn(`⚠️ Не удалось обновить ${dataType}, используем кэш`);
     }
@@ -508,10 +520,47 @@ async function updateDataWithFullReplace(dataType) {
             if (window.dataCache && window.dataCache[dataType]) {
                 window.dataCache[dataType].data = result.data;
                 window.dataCache[dataType].lastUpdate = Date.now();
+                
+                // Специальная обработка для averageRating
+                if (dataType === 'averageRating') {
+                    console.log('🔍 Обновляем кэш averageRating...');
+                    console.log('🔍 result.data:', result.data);
+                    console.log('🔍 window.dataCache.averageRating.data после обновления:', window.dataCache[dataType].data);
+                }
             }
             
             // Обновляем отображение
             displayData(dataType, result.data);
+            
+            // Специальная обработка для averageRating
+            if (dataType === 'averageRating') {
+                console.log('🔍 Принудительно обновляем отображение averageRating...');
+                console.log('🔍 Данные averageRating:', result.data);
+                
+                // Если данные пришли, но в неправильном формате, вычисляем из отзывов
+                if (result.data.length === 0 && globalReviews && globalReviews.length > 0) {
+                    console.log('🔍 Вычисляем рейтинг из отзывов...');
+                    const totalRating = globalReviews.reduce((sum, review) => sum + review.rating, 0);
+                    const averageRating = totalRating / globalReviews.length;
+                    
+                    // Сохраняем в кэш
+                    if (window.dataCache.averageRating) {
+                        window.dataCache.averageRating.data = {
+                            average_rating: averageRating.toFixed(1),
+                            total_reviews: globalReviews.length,
+                            last_updated: new Date().toISOString()
+                        };
+                        window.dataCache.averageRating.lastUpdate = Date.now();
+                    }
+                }
+                
+                setTimeout(() => {
+                    updateAverageRatingDisplay();
+                    if (window.dataCache.averageRating?.data) {
+                        updateRatingDisplay(window.dataCache.averageRating.data);
+                    }
+                }, 200);
+            }
             
             console.log(`✅ ${dataType} обновлены: ${result.data.length} записей`);
         }
@@ -578,6 +627,28 @@ function displayData(dataType, data) {
                 };
             });
             updateReviewsDisplay();
+            
+            // Вычисляем средний рейтинг из отзывов
+            if (globalReviews.length > 0) {
+                const totalRating = globalReviews.reduce((sum, review) => sum + review.rating, 0);
+                const averageRating = totalRating / globalReviews.length;
+                
+                // Сохраняем в кэш
+                if (window.dataCache.averageRating) {
+                    window.dataCache.averageRating.data = {
+                        average_rating: averageRating.toFixed(1),
+                        total_reviews: globalReviews.length,
+                        last_updated: new Date().toISOString()
+                    };
+                    window.dataCache.averageRating.lastUpdate = Date.now();
+                }
+                
+                // Обновляем отображение
+                setTimeout(() => {
+                    updateAverageRatingDisplay();
+                    updateRatingDisplay(window.dataCache.averageRating.data);
+                }, 100);
+            }
             break;
         case 'chat_orders':
             // Обрабатываем данные заказов для чата
@@ -660,7 +731,7 @@ function displayData(dataType, data) {
                 
                 groupedMessages[orderId].push({
                     text: msg.message,
-                    isAdmin: false, // Все сообщения от пользователей
+                    isAdmin: msg.is_admin === true || msg.is_admin === 1, // Используем поле из БД
                     timestamp: msg.timestamp
                 });
             });
@@ -886,14 +957,43 @@ function updateStatsDisplay(stats) {
 }
 
 function updateRatingDisplay(ratingData) {
+    console.log('🔍 updateRatingDisplay вызвана с данными:', ratingData);
+    
+    // Обрабатываем случай, когда данные приходят в виде массива
+    let actualRatingData = ratingData;
+    if (Array.isArray(ratingData) && ratingData.length > 0) {
+        actualRatingData = ratingData[0];
+        console.log('🔍 Данные пришли в виде массива, берем первый элемент:', actualRatingData);
+    }
+    
     // Обновляем отображение средней оценки
     const ratingElements = document.querySelectorAll('[data-rating]');
     ratingElements.forEach(element => {
         const ratingKey = element.getAttribute('data-rating');
-        if (ratingData && ratingData[ratingKey] !== undefined) {
-            element.textContent = ratingData[ratingKey];
+        if (actualRatingData && actualRatingData[ratingKey] !== undefined) {
+            element.textContent = actualRatingData[ratingKey];
         }
     });
+    
+    // Обновляем наш новый элемент avgRatingDisplay
+    const avgRatingDisplay = document.getElementById('avgRatingDisplay');
+    if (avgRatingDisplay && actualRatingData) {
+        console.log('🔍 Обновляем avgRatingDisplay...');
+        
+        // Пробуем разные варианты получения рейтинга
+        let ratingValue = actualRatingData.average_rating || actualRatingData.rating || '4.9';
+        console.log('🔍 Значение рейтинга для avgRatingDisplay:', ratingValue);
+        
+        // Добавляем анимацию
+        avgRatingDisplay.style.transform = 'scale(1.1)';
+        avgRatingDisplay.style.transition = 'transform 0.2s ease';
+        
+        setTimeout(() => {
+            avgRatingDisplay.textContent = ratingValue;
+            avgRatingDisplay.style.transform = 'scale(1)';
+            console.log('✅ avgRatingDisplay обновлен значением:', ratingValue);
+        }, 100);
+    }
 }
 
 // Функция для скрытия кнопки "Загрузить еще" в чате
@@ -1058,6 +1158,38 @@ async function loadAllDataWithCache() {
     
     console.log('✅ Загрузка данных завершена');
     
+    // Обновляем отображение рейтинга
+    updateAverageRatingDisplay();
+    
+    // Дополнительно обновляем через updateRatingDisplay если есть данные в кэше
+    if (window.dataCache?.averageRating?.data) {
+        console.log('🔍 Дополнительное обновление через updateRatingDisplay...');
+        updateRatingDisplay(window.dataCache.averageRating.data);
+    }
+    
+    // Если данных рейтинга нет, но есть отзывы, вычисляем рейтинг
+    if (!window.dataCache?.averageRating?.data && globalReviews && globalReviews.length > 0) {
+        console.log('🔍 Вычисляем рейтинг из отзывов при загрузке...');
+        const totalRating = globalReviews.reduce((sum, review) => sum + review.rating, 0);
+        const averageRating = totalRating / globalReviews.length;
+        
+        // Сохраняем в кэш
+        if (window.dataCache.averageRating) {
+            window.dataCache.averageRating.data = {
+                average_rating: averageRating.toFixed(1),
+                total_reviews: globalReviews.length,
+                last_updated: new Date().toISOString()
+            };
+            window.dataCache.averageRating.lastUpdate = Date.now();
+        }
+        
+        // Обновляем отображение
+        setTimeout(() => {
+            updateAverageRatingDisplay();
+            updateRatingDisplay(window.dataCache.averageRating.data);
+        }, 100);
+    }
+    
     // Запускаем периодическое обновление
     startPeriodicUpdates();
     
@@ -1071,6 +1203,18 @@ function showPage(pageId) {
     if (!pages || !mobileNavItems) {
         pages = document.querySelectorAll('.page');
         mobileNavItems = document.querySelectorAll('.mobile-nav-item');
+    }
+
+    // Автоматически закрываем модальное окно услуги при переходе на другую страницу
+    // Это предотвращает зависание открытого модального окна при навигации
+    const activeServiceModal = (typeof serviceModal !== 'undefined' && serviceModal) ? serviceModal : document.getElementById('serviceModal');
+    if (activeServiceModal && activeServiceModal.style && activeServiceModal.style.display === 'block') {
+        if (typeof closeServiceModal === 'function') {
+            closeServiceModal();
+        } else {
+            activeServiceModal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
     }
     
     // Скрываем все страницы
@@ -1282,6 +1426,42 @@ document.addEventListener('DOMContentLoaded', async function() {
         console.log('Testing service cards loading...');
         loadServiceCards();
     }, 1000);
+    
+    // Принудительное обновление рейтинга через 3 секунды
+    setTimeout(() => {
+        console.log('🔍 Принудительное обновление рейтинга...');
+        updateAverageRatingDisplay();
+        if (window.dataCache?.averageRating?.data) {
+            updateRatingDisplay(window.dataCache.averageRating.data);
+        }
+    }, 3000);
+    
+    // Дополнительное обновление рейтинга через 5 секунд
+    setTimeout(() => {
+        console.log('🔍 Дополнительное обновление рейтинга...');
+        
+        // Если данных рейтинга нет, но есть отзывы, вычисляем рейтинг
+        if (!window.dataCache?.averageRating?.data && globalReviews && globalReviews.length > 0) {
+            console.log('🔍 Вычисляем рейтинг из отзывов в дополнительном обновлении...');
+            const totalRating = globalReviews.reduce((sum, review) => sum + review.rating, 0);
+            const averageRating = totalRating / globalReviews.length;
+            
+            // Сохраняем в кэш
+            if (window.dataCache.averageRating) {
+                window.dataCache.averageRating.data = {
+                    average_rating: averageRating.toFixed(1),
+                    total_reviews: globalReviews.length,
+                    last_updated: new Date().toISOString()
+                };
+                window.dataCache.averageRating.lastUpdate = Date.now();
+            }
+        }
+        
+        updateAverageRatingDisplay();
+        if (window.dataCache?.averageRating?.data) {
+            updateRatingDisplay(window.dataCache.averageRating.data);
+        }
+    }, 5000);
     
     // Загружаем данные из БД с новой системой кэширования
     setTimeout(async () => {
@@ -1872,8 +2052,7 @@ function openServiceModal(serviceType) {
             </div>
           </div>`;
 
-        // Инициализация звездочек для оценки
-        initReviewStars();
+        // Убрана инициализация рейтинга в модальном окне услуг
         
         // Подсвечиваем кнопку "Услуги" в модальном окне
         const serviceNavItem = document.querySelector('#serviceTopNav .mobile-nav-item:nth-child(2)');
@@ -1912,84 +2091,120 @@ function closeServiceModal() {
 // Инициализация интерактивных звездочек для оценки
 function initReviewStars() {
     try {
-    const starSelect = document.getElementById('starSelect');
-    const reviewText = document.getElementById('reviewText');
-    const sendBtn = document.getElementById('sendReviewBtn');
-    
-    if (!starSelect || !reviewText || !sendBtn) return;
-    
-    const stars = starSelect.querySelectorAll('i');
-    let selectedRating = 0;
-    
-    // Скрываем поле ввода по умолчанию, кнопка видна но неактивна
-    reviewText.style.display = 'none';
-    sendBtn.disabled = true;
-    
-    // Добавляем обработчики для звездочек
-    stars.forEach((star, index) => {
-        star.addEventListener('click', () => {
-            selectedRating = index + 1;
+        const starSelect = document.getElementById('starSelect');
+        const reviewText = document.getElementById('reviewText');
+        const sendBtn = document.getElementById('sendReviewBtn');
+        
+        if (!starSelect || !reviewText || !sendBtn) return;
+        
+        const stars = starSelect.querySelectorAll('i');
+        let selectedRating = 0;
+        
+        // Скрываем поле ввода по умолчанию, кнопка видна но неактивна
+        reviewText.style.display = 'none';
+        sendBtn.style.display = 'none';
+        sendBtn.disabled = true;
+        
+        // Удаляем старые обработчики
+        stars.forEach(star => {
+            star.classList.remove('active', 'rating-1', 'rating-2', 'rating-3', 'rating-4', 'rating-5');
+            star.replaceWith(star.cloneNode(true));
+        });
+        
+        // Получаем новые элементы звезд
+        const newStars = starSelect.querySelectorAll('i');
+        
+        // Добавляем обработчики для звездочек
+        newStars.forEach((star, index) => {
+            star.addEventListener('click', () => {
+                selectedRating = index + 1;
+                
+                // Убираем все классы рейтинга
+                newStars.forEach(s => {
+                    s.classList.remove('active', 'rating-1', 'rating-2', 'rating-3', 'rating-4', 'rating-5');
+                });
+                
+                // Подсвечиваем выбранные звезды с соответствующими классами
+                newStars.forEach((s, i) => {
+                    if (i < selectedRating) {
+                        s.classList.add('active');
+                        // Добавляем класс в зависимости от общего рейтинга
+                        if (selectedRating === 1) {
+                            s.classList.add('rating-1');
+                        } else if (selectedRating === 2) {
+                            s.classList.add('rating-2');
+                        } else if (selectedRating === 3) {
+                            s.classList.add('rating-3');
+                        } else if (selectedRating === 4) {
+                            s.classList.add('rating-4');
+                        } else if (selectedRating === 5) {
+                            s.classList.add('rating-5');
+                        }
+                    } else {
+                        s.classList.remove('active');
+                    }
+                });
+                
+                // Показываем поле ввода и кнопку
+                reviewText.style.display = 'block';
+                sendBtn.style.display = 'block';
+                reviewText.focus();
+                
+                // Активируем кнопку после выбора звезды
+                sendBtn.disabled = false;
+            });
+        });
+        
+        // Обработчик отправки отзыва
+        sendBtn.addEventListener('click', () => {
+            const currentUserData = window.userData || userData;
             
-            // Подсвечиваем выбранные звезды
-            stars.forEach((s, i) => {
-                if (i < selectedRating) {
-                    s.classList.add('active');
-                } else {
-                    s.classList.remove('active');
-                }
+            const reviewData = {
+                rating: selectedRating,
+                comment: reviewText.value.trim() || getText('servicesPage.reviews.messages.noComment', 'Без комментария'),
+                user: currentUserData ? `@${currentUserData.username || currentUserData.firstName}` : '@гость',
+                date: new Date().toLocaleDateString('ru-RU').split('/').reverse().join('.')
+            };
+            
+            // Отправляем отзыв в бэкенд
+            trackImportantEvent('review_submit', {
+                rating: selectedRating,
+                comment: reviewData.comment,
+                user: reviewData.user,
+                date: reviewData.date
             });
             
-            // Показываем поле ввода и активируем кнопку
-            reviewText.style.display = 'block';
-            reviewText.focus();
+            // Добавляем отзыв в общую базу
+            globalReviews.unshift(reviewData);
             
-            // Активируем кнопку после выбора звезды
-            sendBtn.disabled = false;
-        });
-    });
-    
-    // Убираем проверку текста - кнопка активна после выбора звезды
-    
-    // Обработчик отправки отзыва
-    sendBtn.addEventListener('click', () => {
-        const currentUserData = window.userData || userData;
-        console.log('📝 Отправка отзыва, userData:', currentUserData);
-        
-        const reviewData = {
-            rating: selectedRating,
-            comment: reviewText.value.trim() || getText('servicesPage.reviews.messages.noComment', 'Без комментария'),
-            user: currentUserData ? `@${currentUserData.username || currentUserData.firstName}` : '@гость',
-            date: new Date().toLocaleDateString('ru-RU').split('/').reverse().join('.')
-        };
-        
-        console.log('📝 Данные отзыва:', reviewData);
-        
-        // Отправляем отзыв в бэкенд
-        trackImportantEvent('review_submit', {
-            rating: selectedRating,
-            comment: reviewData.comment,
-            user: reviewData.user,
-            date: reviewData.date
+            // Обновляем отображение отзывов
+            const reviewsContainer = document.querySelector('.service-reviews');
+            if (reviewsContainer) {
+                reviewsContainer.innerHTML = renderReviews();
+                // Реинициализируем звездочки для нового HTML
+                setTimeout(() => initReviewStars(), 100);
+            }
+            
+            // Очищаем форму
+            reviewText.value = '';
+            reviewText.style.display = 'none';
+            sendBtn.style.display = 'none';
+            sendBtn.disabled = true;
+            selectedRating = 0;
+            
+            // Сбрасываем звезды
+            newStars.forEach(star => star.classList.remove('active', 'rating-1', 'rating-2', 'rating-3', 'rating-4', 'rating-5'));
+            
+            // Показываем уведомление
+            showNotification(getText('servicesPage.reviews.messages.success', 'Спасибо за отзыв!'), 'success');
         });
         
-        // Добавляем отзыв в общую базу
-        globalReviews.unshift(reviewData);
-        
-        // Обновляем отображение отзывов
-        const reviewsContainer = document.querySelector('.service-reviews');
-        if (reviewsContainer) {
-            reviewsContainer.innerHTML = renderReviews();
-            // Реинициализируем звездочки для нового HTML
-            setTimeout(() => initReviewStars(), 100);
-        }
-        
-        // Показываем уведомление
-        showNotification(getText('servicesPage.reviews.messages.success', 'Спасибо за отзыв!'), 'success');
-    });
     } catch (error) {
         console.error('Error in initReviewStars:', error);
     }
 }
+
+
 
 // Инициализация кнопки помощи в профиле
 function initProfileHelp() {
@@ -4863,7 +5078,7 @@ async function loadChatMessagesFromDB(forceUpdate = false) {
                 
                 groupedMessages[orderId].push({
                     text: msg.message,
-                    isAdmin: false, // Все сообщения от пользователей
+                    isAdmin: msg.is_admin === true || msg.is_admin === 1, // Используем поле из БД
                     timestamp: msg.timestamp
                 });
             });
@@ -5140,6 +5355,10 @@ function startPeriodicUpdates() {
     reviewsUpdateInterval = setInterval(() => {
         console.log('🔄 Периодическое обновление отзывов...');
         loadReviewsFromDB(true);
+        // Обновляем рейтинг после обновления отзывов
+        loadDataWithFallback('averageRating', true).then(() => {
+            updateAverageRatingDisplay();
+        });
     }, 30 * 60 * 1000); // 30 минут
     
     // Обновление чата каждые 10 секунд
@@ -5251,12 +5470,33 @@ function renderReviews(){
     const reviews = globalReviews || [];
   const avg=reviews.length?(reviews.reduce((s,r)=>s+r.rating,0)/reviews.length).toFixed(1):"-";
   const starsAvg=Array(5).fill(0).map((_,i)=>`<i class="fas fa-star${reviews.length&&i+1<=Math.round(avg)?'':'-o'}"></i>`).join('');
-  const listHtml=reviews.map(r=>{
+  const listHtml = reviews.map((r) => {
     // Определяем, есть ли у пользователя юзернейм
-      const hasUsername = r.user && r.user.startsWith('@');
-    const userClass = hasUsername ? 'review-user' : 'review-user no-username';
-    
-      return `<div class="review-card"><div class="review-head"><span class="${userClass}" data-has-username="${hasUsername}">${r.user}</span><span class="review-date">${r.date || ''}</span></div><div class="review-stars">${'★'.repeat(r.rating || 0)}${'☆'.repeat(5-(r.rating || 0))}</div><p>${r.comment || ''}</p></div>`;
+    const hasUsername = r.user && r.user.startsWith('@');
+    const userName = r.user || 'Анонимный пользователь';
+    const userInitial = hasUsername
+      ? userName.charAt(1).toUpperCase()
+      : userName.charAt(0).toUpperCase();
+
+    // Используем ту же разметку, что и на странице Отзывы
+    return `
+      <div class="review-card">
+        <div class="review-header">
+          <div class="review-avatar">${userInitial}</div>
+          <div class="review-info">
+            <h4 data-has-username="${hasUsername}">${userName}</h4>
+            <div class="review-stars">
+              ${Array(5)
+                .fill(0)
+                .map((_, i) => `<i class="fas fa-star${i < (r.rating || 0) ? '' : '-o'}"></i>`)
+                .join('')}
+            </div>
+          </div>
+          <p class="review-date">${r.date || ''}</p>
+        </div>
+        <p class="review-text">${r.comment || ''}</p>
+      </div>
+    `;
   }).join('');
     
     // Кнопка "Загрузить еще" (если есть старые данные)
@@ -5275,11 +5515,8 @@ function renderReviews(){
   const starSelHtml=Array(5).fill(0).map((_,i)=>`<i data-val="${i+1}" class="fas fa-star"></i>`).join('');
 
   return `<div class="review-tile"><div class="reviews-summary"><span class="avg">${avg}</span>${starsAvg}<span class="count">(${reviews.length})</span></div>${listSection}
-  <div class="leave-review-area">
-    <div class="review-invite-text">Оставьте свой отзыв</div>
-    <div class="star-select" id="starSelect">${starSelHtml}</div>
-    <textarea id="reviewText" placeholder="${getText('servicesPage.reviews.form.placeholder', 'Ваш отзыв...')}"></textarea>
-    <button class="btn btn-primary btn-send" id="sendReviewBtn" disabled>${getText('servicesPage.reviews.form.submitButton', 'Отправить')}</button>
+  <div class="modal-review-actions">
+    <button class="btn btn-primary" onclick="showPage('reviews-page')"><i class="fas fa-star"></i><span>Оставить отзыв</span></button>
   </div></div>`;
   } catch (error) {
     console.error('Error in renderReviews:', error);
@@ -5318,7 +5555,7 @@ function renderReviewsPage() {
     const reviewsHtml = currentReviews.map(review => {
       const hasUsername = review.user && review.user.startsWith('@');
       const userName = review.user || 'Анонимный пользователь';
-      const userInitial = userName.charAt(0).toUpperCase();
+      const userInitial = hasUsername ? userName.charAt(1).toUpperCase() : userName.charAt(0).toUpperCase();
       
       return `
         <div class="review-card">
@@ -5328,11 +5565,13 @@ function renderReviewsPage() {
             </div>
             <div class="review-info">
               <h4 data-has-username="${hasUsername}">${userName}</h4>
-              <p class="review-date">${review.date || ''}</p>
+              <div class="review-stars">
+                ${Array(5).fill(0).map((_, i) => 
+                  `<i class="fas fa-star${i < (review.rating || 0) ? '' : '-o'}"></i>`
+                ).join('')}
+              </div>
             </div>
-          </div>
-          <div class="review-stars">
-            ${'★'.repeat(review.rating || 0)}${'☆'.repeat(5 - (review.rating || 0))}
+            <p class="review-date">${review.date || ''}</p>
           </div>
           <p class="review-text">${review.comment || ''}</p>
         </div>
@@ -5379,7 +5618,7 @@ function loadMoreReviews() {
     const newReviewsHtml = newReviews.map(review => {
       const hasUsername = review.user && review.user.startsWith('@');
       const userName = review.user || 'Анонимный пользователь';
-      const userInitial = userName.charAt(0).toUpperCase();
+      const userInitial = hasUsername ? userName.charAt(1).toUpperCase() : userName.charAt(0).toUpperCase();
       
       return `
         <div class="review-card">
@@ -5389,11 +5628,13 @@ function loadMoreReviews() {
             </div>
             <div class="review-info">
               <h4 data-has-username="${hasUsername}">${userName}</h4>
-              <p class="review-date">${review.date || ''}</p>
+              <div class="review-stars">
+                ${Array(5).fill(0).map((_, i) => 
+                  `<i class="fas fa-star${i < (review.rating || 0) ? '' : '-o'}"></i>`
+                ).join('')}
+              </div>
             </div>
-          </div>
-          <div class="review-stars">
-            ${'★'.repeat(review.rating || 0)}${'☆'.repeat(5 - (review.rating || 0))}
+            <p class="review-date">${review.date || ''}</p>
           </div>
           <p class="review-text">${review.comment || ''}</p>
         </div>
@@ -5817,22 +6058,73 @@ function loadChatMessages(chatId) {
     console.log('loadChatMessages: chatId', chatId);
     console.log('loadChatMessages: window.chatData', window.chatData);
     
+    // Нормализация времени и сравнения для единообразия (БД хранит в UTC, клиент видит локальное)
+    const parseTimestamp = (value) => {
+        if (value == null) return 0;
+        if (typeof value === 'number') {
+            // Если секунды (<= 10^10), переведём в миллисекунды
+            return value < 1e12 ? Math.floor(value * 1000) : value;
+        }
+        if (typeof value === 'string') {
+            // Если строка без TZ, считаем UTC и добавляем 'Z'
+            const hasTZ = /Z|[+\-]\d{2}:?\d{2}$/.test(value);
+            const iso = hasTZ ? value : (value.endsWith('Z') ? value : value + 'Z');
+            const t = Date.parse(iso);
+            return isNaN(t) ? 0 : t;
+        }
+        const t = Date.parse(value);
+        return isNaN(t) ? 0 : t;
+    };
+    const formatLocalTime = (t) => new Date(t).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    const normalizeText = (s) => (s || '').toString().trim().replace(/\s+/g, ' ').toLowerCase();
+    const senderKey = (m) => (m && (m.userId || (m.isAdmin ? 'admin' : 'user')));
+    
     // Получаем сообщения из БД для этого чата
     const dbMessages = window.chatData && window.chatData[chatId] ? window.chatData[chatId] : [];
+
+    // Готовим оптимистичные сообщения с клиента (могут быть, если еще не пришли из БД)
+    if (!window.pendingChatMessages) window.pendingChatMessages = {};
+    const pending = window.pendingChatMessages[chatId] || [];
     
     console.log('loadChatMessages: dbMessages', dbMessages);
     
-    if (dbMessages.length === 0) {
-        chatMessages.innerHTML = '<div class="no-messages">Сообщений пока нет</div>';
-        return;
-    }
+    // Объединяем БД-сообщения с оптимистичными без дублей
+    // Правило: если есть clientNonce в БД, удаляем из pending такое же
+    const dbByNonce = new Set(dbMessages.map(m => m && m.clientNonce).filter(Boolean));
+    const filteredPending = pending.filter(m => !(m && m.clientNonce && dbByNonce.has(m.clientNonce)));
+
+    // Фолбэк: если в БД нет clientNonce, исключаем явные дубли по (отправитель+текст+узкое временное окно)
+    const dedupPending = filteredPending.filter(pm => {
+        const pt = parseTimestamp(pm && pm.timestamp);
+        const ptxt = normalizeText(pm && pm.text);
+        const psender = senderKey(pm);
+        
+
+        
+        return !dbMessages.some(dm => {
+            if (!dm) return false;
+            const dt = parseTimestamp(dm && dm.timestamp);
+            // 10 минут: достаточно для сетевых лагов, не сольёт разные сообщения
+            const timeClose = Math.abs(dt - pt) <= 10 * 60 * 1000;
+            const dtxt = normalizeText(dm && dm.text);
+            const dsender = senderKey(dm);
+            return dtxt === ptxt && psender === dsender && timeClose;
+        });
+    });
+
+    const merged = [...dbMessages, ...dedupPending];
     
-    const messagesHtml = dbMessages.map((dbMsg, index) => {
+    // Сортируем сообщения по возрастанию времени (старые сверху, новые снизу)
+    const sortedMessages = merged.sort((a, b) => parseTimestamp(a && a.timestamp) - parseTimestamp(b && b.timestamp));
+
+    const messagesHtml = sortedMessages.map((m) => {
+        const isPending = m && m.optimistic;
+        const t = parseTimestamp(m && m.timestamp);
         return `
-            <div class="message ${dbMsg.isAdmin ? 'message-admin' : 'message-user'}">
+            <div class="message ${m.isAdmin ? 'message-admin' : 'message-user'} ${isPending ? 'pending' : ''}">
                 <div class="message-content">
-                    <div class="message-text">${dbMsg.text}</div>
-                    <div class="message-time">${new Date(dbMsg.timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</div>
+                    <div class="message-text">${m.text}</div>
+                    <div class="message-time">${formatLocalTime(t)}</div>
                 </div>
             </div>
         `;
@@ -5852,32 +6144,35 @@ function sendMessage() {
     
     if (!message) return;
     
-    // Отправляем сообщение в бекенд
+    // Генерируем clientNonce для дедупликации и мгновенного показа
+    const clientNonce = 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+
+    // Помещаем оптимистичное сообщение в локальный буфер и сразу отображаем
+    if (!window.pendingChatMessages) window.pendingChatMessages = {};
+    if (!window.pendingChatMessages[currentChat]) window.pendingChatMessages[currentChat] = [];
+    const optimisticMsg = {
+        text: message,
+        timestamp: new Date().toISOString(),
+        isAdmin: false,
+        clientNonce,
+        optimistic: true
+    };
+    window.pendingChatMessages[currentChat].push(optimisticMsg);
+    loadChatMessages(currentChat);
+
+    // Отправляем сообщение в бекенд с clientNonce
     trackImportantEvent('chat_message', {
         orderId: currentChat,
         message: message,
-        timestamp: new Date().toISOString()
+        timestamp: optimisticMsg.timestamp,
+        clientNonce
     });
     
     // Clear input
     messageInput.value = '';
     
-    // Обновляем отображение сообщений из кэша
-    loadChatMessages(currentChat);
-    
-    // Simulate admin response after 2 seconds
-    setTimeout(() => {
-        // Отправляем ответ администратора в БД
-        trackImportantEvent('chat_message', {
-            orderId: currentChat,
-            message: 'Получил ваше сообщение! Отвечу в ближайшее время.',
-            timestamp: new Date().toISOString(),
-            isAdmin: true
-        });
-        
-        // Обновляем отображение
-        loadChatMessages(currentChat);
-    }, 2000);
+    // Отображение уже обновлено оптимистично
+    // Автоматический ответ админа теперь создается в БД
 }
 
 function updateChatInputArea(chatId) {
@@ -6298,7 +6593,7 @@ function initReviewsPageStars() {
         
         // Удаляем старые обработчики
         stars.forEach(star => {
-            star.classList.remove('active');
+            star.classList.remove('active', 'rating-1', 'rating-2', 'rating-3', 'rating-4', 'rating-5');
             star.replaceWith(star.cloneNode(true));
         });
         
@@ -6310,10 +6605,27 @@ function initReviewsPageStars() {
             star.addEventListener('click', () => {
                 selectedRating = index + 1;
                 
-                // Подсвечиваем выбранные звезды
+                // Убираем все классы рейтинга
+                newStars.forEach(s => {
+                    s.classList.remove('active', 'rating-1', 'rating-2', 'rating-3', 'rating-4', 'rating-5');
+                });
+                
+                // Подсвечиваем выбранные звезды с соответствующими классами
                 newStars.forEach((s, i) => {
                     if (i < selectedRating) {
                         s.classList.add('active');
+                        // Добавляем класс в зависимости от общего рейтинга
+                        if (selectedRating === 1) {
+                            s.classList.add('rating-1');
+                        } else if (selectedRating === 2) {
+                            s.classList.add('rating-2');
+                        } else if (selectedRating === 3) {
+                            s.classList.add('rating-3');
+                        } else if (selectedRating === 4) {
+                            s.classList.add('rating-4');
+                        } else if (selectedRating === 5) {
+                            s.classList.add('rating-5');
+                        }
                     } else {
                         s.classList.remove('active');
                     }
@@ -6365,7 +6677,7 @@ function initReviewsPageStars() {
             selectedRating = 0;
             
             // Сбрасываем звезды
-            newStars.forEach(star => star.classList.remove('active'));
+            newStars.forEach(star => star.classList.remove('active', 'rating-1', 'rating-2', 'rating-3', 'rating-4', 'rating-5'));
             
             // Показываем уведомление
             showNotification('Спасибо за отзыв!', 'success');
@@ -6380,18 +6692,54 @@ function updateAverageRatingDisplay() {
     try {
         const averageRatingElement = document.getElementById('averageRating');
         const avgStarsElement = document.getElementById('avgStars');
+        const avgRatingDisplay = document.getElementById('avgRatingDisplay');
         
-        if (!averageRatingElement || !avgStarsElement) return;
+        console.log('🔍 updateAverageRatingDisplay: проверяем элементы...');
+        console.log('🔍 averageRatingElement:', averageRatingElement);
+        console.log('🔍 avgStarsElement:', avgStarsElement);
+        console.log('🔍 avgRatingDisplay:', avgRatingDisplay);
+        
+        if (!averageRatingElement || !avgStarsElement) {
+            console.log('❌ Не найдены необходимые элементы для обновления рейтинга');
+            return;
+        }
         
         const ratingData = window.dataCache?.averageRating?.data;
-        if (!ratingData) return;
+        console.log('🔍 ratingData из кэша:', ratingData);
+        
+        if (!ratingData) {
+            console.log('❌ Нет данных рейтинга в кэше');
+            return;
+        }
+        
+        // Проверяем структуру данных
+        console.log('🔍 Структура ratingData:', Object.keys(ratingData));
+        console.log('🔍 ratingData.average_rating:', ratingData.average_rating);
+        console.log('🔍 ratingData.rating:', ratingData.rating);
+        
+        // Пробуем разные варианты получения рейтинга
+        let ratingValue = ratingData.average_rating || ratingData.rating || '0.0';
+        console.log('🔍 Итоговое значение рейтинга:', ratingValue);
         
         // Обновляем числовую оценку
-        averageRatingElement.textContent = ratingData.average_rating || '0.0';
+        averageRatingElement.textContent = ratingValue;
+        
+        // Обновляем отображение в разделе "Почему выбирают меня"
+        if (avgRatingDisplay) {
+            // Добавляем небольшую анимацию обновления
+            avgRatingDisplay.style.transform = 'scale(1.1)';
+            avgRatingDisplay.style.transition = 'transform 0.2s ease';
+            
+            setTimeout(() => {
+                avgRatingDisplay.textContent = ratingValue;
+                avgRatingDisplay.style.transform = 'scale(1)';
+                console.log('✅ avgRatingDisplay обновлен значением:', ratingValue);
+            }, 100);
+        }
         
         // Обновляем звезды
         const stars = avgStarsElement.querySelectorAll('i');
-        const rating = parseFloat(ratingData.average_rating) || 0;
+        const rating = parseFloat(ratingValue) || 0;
         
         stars.forEach((star, index) => {
             if (index < Math.floor(rating)) {
@@ -6403,7 +6751,7 @@ function updateAverageRatingDisplay() {
             }
         });
         
-        console.log('📊 Средняя оценка обновлена:', ratingData.average_rating);
+        console.log('📊 Средняя оценка обновлена:', ratingValue);
     } catch (error) {
         console.error('❌ Ошибка обновления средней оценки:', error);
     }
