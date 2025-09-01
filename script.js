@@ -82,22 +82,22 @@ window.dataCache = {
     reviews: {
         data: [],
         lastUpdate: 0,
-        updateInterval: 30 * 60 * 1000 // 30 минут
+        updateInterval: 5 * 60 * 1000 // 5 минут
     },
     requests: {
         data: [],
         lastUpdate: 0,
-        updateInterval: 30 * 1000 // 30 секунд для заказов
+        updateInterval: 5 * 60 * 1000 // 5 минут для заказов
     },
     chat_orders: {
         data: {},
         lastUpdate: 0,
-        updateInterval: 30 * 1000 // 30 секунд для заказов чата
+        updateInterval: 5 * 60 * 1000 // 5 минут для заказов чата
     },
     chat_messages: {
         data: {},
         lastUpdate: 0,
-        updateInterval: 10 * 1000 // 10 секунд для чата
+        updateInterval: 5 * 60 * 1000 // 5 минут для чата
     },
     stats: {
         data: {},
@@ -107,7 +107,7 @@ window.dataCache = {
     averageRating: {
         data: null,
         lastUpdate: 0,
-        updateInterval: 30 * 60 * 1000 // 30 минут
+        updateInterval: 5 * 60 * 1000 // 5 минут
     }
 };
 
@@ -5351,7 +5351,7 @@ function startPeriodicUpdates() {
     if (reviewsUpdateInterval) clearInterval(reviewsUpdateInterval);
     if (chatUpdateInterval) clearInterval(chatUpdateInterval);
     
-    // Обновление отзывов каждые 30 минут
+    // Обновление отзывов каждые 5 минут
     reviewsUpdateInterval = setInterval(() => {
         console.log('🔄 Периодическое обновление отзывов...');
         loadReviewsFromDB(true);
@@ -5359,9 +5359,9 @@ function startPeriodicUpdates() {
         loadDataWithFallback('averageRating', true).then(() => {
             updateAverageRatingDisplay();
         });
-    }, 30 * 60 * 1000); // 30 минут
+    }, 5 * 60 * 1000); // 5 минут
     
-    // Обновление чата каждые 10 секунд
+    // Обновление чата каждые 5 минут
     chatUpdateInterval = setInterval(() => {
         console.log('🔄 Периодическое обновление чата...');
         loadChatMessagesFromDB(true);
@@ -5371,9 +5371,9 @@ function startPeriodicUpdates() {
         if (document.getElementById('chat-page') && document.getElementById('chat-page').classList.contains('active')) {
             updateChatDisplay();
         }
-    }, 10 * 1000); // 10 секунд
+    }, 5 * 60 * 1000); // 5 минут
     
-    // Обновление заказов каждые 30 секунд
+    // Обновление заказов каждые 5 минут
     ordersUpdateInterval = setInterval(() => {
         console.log('🔄 Периодическое обновление заказов...');
         loadDataWithFallback('requests', true);
@@ -5382,7 +5382,7 @@ function startPeriodicUpdates() {
         if (document.getElementById('orders-page') && document.getElementById('orders-page').classList.contains('active')) {
             updateOrdersDisplay();
         }
-    }, 30 * 1000); // 30 секунд
+    }, 5 * 60 * 1000); // 5 минут
     
     console.log('⏰ Периодическое обновление запущено');
 }
