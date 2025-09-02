@@ -82,32 +82,32 @@ window.dataCache = {
     reviews: {
         data: [],
         lastUpdate: 0,
-        updateInterval: 25 * 1000 // 25 секунд для отзывов
+        updateInterval: 30 * 60 * 1000 // 30 минут
     },
     requests: {
         data: [],
         lastUpdate: 0,
-        updateInterval: 15 * 1000 // 15 секунд для заказов
+        updateInterval: 30 * 1000 // 30 секунд для заказов
     },
     chat_orders: {
         data: {},
         lastUpdate: 0,
-        updateInterval: 7 * 1000 // 7 секунд для заказов чата
+        updateInterval: 30 * 1000 // 30 секунд для заказов чата
     },
     chat_messages: {
         data: {},
         lastUpdate: 0,
-        updateInterval: 7 * 1000 // 7 секунд для чата
+        updateInterval: 10 * 1000 // 10 секунд для чата
     },
     stats: {
         data: {},
         lastUpdate: 0,
-        updateInterval: 5 * 60 * 1000 // 5 минут для статистики
+        updateInterval: 5 * 60 * 1000 // 5 минут
     },
     averageRating: {
         data: null,
         lastUpdate: 0,
-        updateInterval: 25 * 1000 // 25 секунд для рейтинга
+        updateInterval: 30 * 60 * 1000 // 30 минут
     }
 };
 
@@ -451,12 +451,12 @@ async function loadDataWithFallback(dataType, forceUpdate = false) {
     
     if (dataType === 'chatMessages') {
         cachedData = await loadChatFromIndexedDB();
-    } else {
-        // Загружаем кэшированные данные для всех типов, включая отзывы
+    } else if (dataType !== 'reviews') {
+        // Для отзывов не показываем кэшированные данные, всегда обновляем
         cachedData = loadFromCache(dataType);
     }
     
-    if (cachedData && !forceUpdate && dataType !== 'requests' && dataType !== 'chat_orders') {
+    if (cachedData && !forceUpdate && dataType !== 'reviews' && dataType !== 'requests' && dataType !== 'chat_orders') {
         console.log(`📦 Показываем кэшированные ${dataType}: ${cachedData.length} записей`);
         displayData(dataType, cachedData);
     }
@@ -499,9 +499,8 @@ async function updateDataWithFullReplace(dataType) {
         const result = await loadDataFromBackend(dataType, limit);
         
         if (result.data.length > 0) {
-            // Для заказов и заказов чата очищаем кэш перед сохранением новых данных
-            // Для отзывов НЕ очищаем кэш, чтобы они не исчезали при пустых ответах
-            if (dataType === 'requests' || dataType === 'chat_orders') {
+            // Для отзывов, заказов и заказов чата очищаем кэш перед сохранением новых данных
+            if (dataType === 'reviews' || dataType === 'requests' || dataType === 'chat_orders') {
                 // Очищаем кэш
                 localStorage.removeItem(CACHE_KEYS[dataType]);
                 if (window.dataCache && window.dataCache[dataType]) {
@@ -564,26 +563,10 @@ async function updateDataWithFullReplace(dataType) {
             }
             
             console.log(`✅ ${dataType} обновлены: ${result.data.length} записей`);
-        } else {
-            // Специальная обработка для отзывов: если пришел пустой массив, сохраняем существующие отзывы
-            if (dataType === 'reviews' && globalReviews && globalReviews.length > 0) {
-                console.log(`⚠️ Бэкенд вернул пустой массив отзывов, сохраняем существующие: ${globalReviews.length} отзывов`);
-                // Не очищаем отзывы, оставляем как есть
-                return;
-            } else if (dataType === 'reviews') {
-                console.log('📭 Отзывов в бэкенде нет, очищаем отображение');
-                globalReviews = [];
-                updateReviewsDisplay();
-            }
         }
         
     } catch (error) {
         console.error(`❌ Ошибка обновления ${dataType}:`, error);
-        
-        // Для отзывов при ошибке не очищаем существующие данные
-        if (dataType === 'reviews' && globalReviews && globalReviews.length > 0) {
-            console.log(`⚠️ Ошибка загрузки отзывов, сохраняем существующие: ${globalReviews.length} отзывов`);
-        }
     }
 }
 
@@ -5038,24 +5021,14 @@ async function loadReviewsFromDB(forceUpdate = false) {
             // Обновляем отображение отзывов на всех страницах
             updateReviewsDisplay();
         } else {
-            // Если отзывов нет в БД, но есть в кэше - сохраняем их
-            if (globalReviews && globalReviews.length > 0) {
-                console.log(`📭 Отзывов в БД нет, но сохраняем существующие в кэше: ${globalReviews.length} отзывов`);
-            } else {
-                console.log('📭 Отзывов в БД пока нет');
-                globalReviews = [];
-                updateReviewsDisplay();
-            }
+            console.log('📭 Отзывов в БД пока нет');
+            globalReviews = [];
+            updateReviewsDisplay();
         }
     } catch (error) {
         console.error('❌ Ошибка загрузки отзывов из БД:', error);
-        // При ошибке не очищаем существующие отзывы
-        if (!globalReviews || globalReviews.length === 0) {
-            globalReviews = [];
-            updateReviewsDisplay();
-        } else {
-            console.log(`⚠️ Ошибка загрузки, сохраняем существующие отзывы: ${globalReviews.length} отзывов`);
-        }
+        globalReviews = [];
+        updateReviewsDisplay();
     }
 }
 
@@ -5378,7 +5351,7 @@ function startPeriodicUpdates() {
     if (reviewsUpdateInterval) clearInterval(reviewsUpdateInterval);
     if (chatUpdateInterval) clearInterval(chatUpdateInterval);
     
-    // Обновление отзывов каждые 25 секунд
+    // Обновление отзывов каждые 30 минут
     reviewsUpdateInterval = setInterval(() => {
         console.log('🔄 Периодическое обновление отзывов...');
         loadReviewsFromDB(true);
@@ -5386,9 +5359,9 @@ function startPeriodicUpdates() {
         loadDataWithFallback('averageRating', true).then(() => {
             updateAverageRatingDisplay();
         });
-    }, 25 * 1000); // 25 секунд
+    }, 30 * 60 * 1000); // 30 минут
     
-    // Обновление чата каждые 7 секунд
+    // Обновление чата каждые 10 секунд
     chatUpdateInterval = setInterval(() => {
         console.log('🔄 Периодическое обновление чата...');
         loadChatMessagesFromDB(true);
@@ -5398,9 +5371,9 @@ function startPeriodicUpdates() {
         if (document.getElementById('chat-page') && document.getElementById('chat-page').classList.contains('active')) {
             updateChatDisplay();
         }
-    }, 7 * 1000); // 7 секунд
+    }, 10 * 1000); // 10 секунд
     
-    // Обновление заказов каждые 15 секунд
+    // Обновление заказов каждые 30 секунд
     ordersUpdateInterval = setInterval(() => {
         console.log('🔄 Периодическое обновление заказов...');
         loadDataWithFallback('requests', true);
@@ -5409,7 +5382,7 @@ function startPeriodicUpdates() {
         if (document.getElementById('orders-page') && document.getElementById('orders-page').classList.contains('active')) {
             updateOrdersDisplay();
         }
-    }, 15 * 1000); // 15 секунд
+    }, 30 * 1000); // 30 секунд
     
     console.log('⏰ Периодическое обновление запущено');
 }
