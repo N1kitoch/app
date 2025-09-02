@@ -451,12 +451,12 @@ async function loadDataWithFallback(dataType, forceUpdate = false) {
     
     if (dataType === 'chatMessages') {
         cachedData = await loadChatFromIndexedDB();
-    } else if (dataType !== 'reviews') {
-        // Для отзывов не показываем кэшированные данные, всегда обновляем
+    } else {
+        // Загружаем кэшированные данные для всех типов, включая отзывы
         cachedData = loadFromCache(dataType);
     }
     
-    if (cachedData && !forceUpdate && dataType !== 'reviews' && dataType !== 'requests' && dataType !== 'chat_orders') {
+    if (cachedData && !forceUpdate && dataType !== 'requests' && dataType !== 'chat_orders') {
         console.log(`📦 Показываем кэшированные ${dataType}: ${cachedData.length} записей`);
         displayData(dataType, cachedData);
     }
@@ -499,8 +499,9 @@ async function updateDataWithFullReplace(dataType) {
         const result = await loadDataFromBackend(dataType, limit);
         
         if (result.data.length > 0) {
-            // Для отзывов, заказов и заказов чата очищаем кэш перед сохранением новых данных
-            if (dataType === 'reviews' || dataType === 'requests' || dataType === 'chat_orders') {
+            // Для заказов и заказов чата очищаем кэш перед сохранением новых данных
+            // Для отзывов НЕ очищаем кэш, чтобы они не исчезали при пустых ответах
+            if (dataType === 'requests' || dataType === 'chat_orders') {
                 // Очищаем кэш
                 localStorage.removeItem(CACHE_KEYS[dataType]);
                 if (window.dataCache && window.dataCache[dataType]) {
@@ -563,10 +564,26 @@ async function updateDataWithFullReplace(dataType) {
             }
             
             console.log(`✅ ${dataType} обновлены: ${result.data.length} записей`);
+        } else {
+            // Специальная обработка для отзывов: если пришел пустой массив, сохраняем существующие отзывы
+            if (dataType === 'reviews' && globalReviews && globalReviews.length > 0) {
+                console.log(`⚠️ Бэкенд вернул пустой массив отзывов, сохраняем существующие: ${globalReviews.length} отзывов`);
+                // Не очищаем отзывы, оставляем как есть
+                return;
+            } else if (dataType === 'reviews') {
+                console.log('📭 Отзывов в бэкенде нет, очищаем отображение');
+                globalReviews = [];
+                updateReviewsDisplay();
+            }
         }
         
     } catch (error) {
         console.error(`❌ Ошибка обновления ${dataType}:`, error);
+        
+        // Для отзывов при ошибке не очищаем существующие данные
+        if (dataType === 'reviews' && globalReviews && globalReviews.length > 0) {
+            console.log(`⚠️ Ошибка загрузки отзывов, сохраняем существующие: ${globalReviews.length} отзывов`);
+        }
     }
 }
 
@@ -5021,14 +5038,24 @@ async function loadReviewsFromDB(forceUpdate = false) {
             // Обновляем отображение отзывов на всех страницах
             updateReviewsDisplay();
         } else {
-            console.log('📭 Отзывов в БД пока нет');
-            globalReviews = [];
-            updateReviewsDisplay();
+            // Если отзывов нет в БД, но есть в кэше - сохраняем их
+            if (globalReviews && globalReviews.length > 0) {
+                console.log(`📭 Отзывов в БД нет, но сохраняем существующие в кэше: ${globalReviews.length} отзывов`);
+            } else {
+                console.log('📭 Отзывов в БД пока нет');
+                globalReviews = [];
+                updateReviewsDisplay();
+            }
         }
     } catch (error) {
         console.error('❌ Ошибка загрузки отзывов из БД:', error);
-        globalReviews = [];
-        updateReviewsDisplay();
+        // При ошибке не очищаем существующие отзывы
+        if (!globalReviews || globalReviews.length === 0) {
+            globalReviews = [];
+            updateReviewsDisplay();
+        } else {
+            console.log(`⚠️ Ошибка загрузки, сохраняем существующие отзывы: ${globalReviews.length} отзывов`);
+        }
     }
 }
 
