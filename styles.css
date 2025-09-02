@@ -1006,33 +1006,7 @@ body.page-home ::-webkit-scrollbar {
     color: var(--text-secondary);
 }
 
-.form-group {
-    margin-bottom: 1.5rem;
-}
-
-.form-group input,
-.form-group textarea {
-    width: 100%;
-    padding: 1rem;
-    border: 2px solid var(--border-color);
-    border-radius: var(--border-radius);
-    font-size: 1rem;
-    /* Mobile: убираем transition */
-    background: var(--bg-primary);
-    color: var(--text-primary);
-}
-
-.form-group input:focus,
-.form-group textarea:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-}
-
-.form-group textarea {
-    resize: vertical;
-    min-height: 120px;
-}
+/* Общие стили для форм убраны - теперь каждая форма имеет свои специфичные стили */
 
 /* Footer */
 .footer {
@@ -1327,13 +1301,20 @@ a:focus {
 @keyframes fadeInUp {
     from {
         opacity: 0;
-        transform: translateY(30px);
+        transform: translateY(20px);
     }
     to {
         opacity: 1;
         transform: translateY(0);
     }
 }
+
+/* Staggered animation for order cards */
+.order-card:nth-child(1) { animation-delay: 0.1s; }
+.order-card:nth-child(2) { animation-delay: 0.2s; }
+.order-card:nth-child(3) { animation-delay: 0.3s; }
+.order-card:nth-child(4) { animation-delay: 0.4s; }
+.order-card:nth-child(5) { animation-delay: 0.5s; }
 
 /* Hover effects for interactive elements */
 
@@ -2269,7 +2250,12 @@ a:focus {
 }
 
 .help-content {
-    padding: 1rem 0;
+    padding: 0;
+    margin-top: 1rem;
+    margin-left: 0;
+    margin-right: 0;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 /* Feedback Page Styles */
@@ -2284,32 +2270,113 @@ a:focus {
     padding: 2rem;
     box-shadow: var(--shadow-md);
     border: 1px solid var(--border-color);
+    margin-top: 1.5rem;
 }
 
 .feedback-form-section {
     max-width: 600px;
     margin: 0 auto;
+    padding: 0 1rem;
+    margin-top: 0.5rem;
 }
 
 .feedback-form-title {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    justify-content: center;
+    gap: 0.75rem;
     font-size: 1.25rem;
     font-weight: 600;
     color: var(--text-primary);
-    margin-bottom: 1.5rem;
+    margin-top: 1rem;
+    margin-bottom: 2rem;
+    text-align: center;
 }
 
 .feedback-form-title i {
     color: var(--primary-color);
-    font-size: 1.1rem;
+    font-size: 1.2rem;
 }
 
 .feedback-form {
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 0.75rem;
+}
+
+.feedback-form .form-group {
+    margin-bottom: 0.5rem;
+}
+
+.feedback-form .form-group:last-child {
+    margin-bottom: 0.25rem;
+}
+
+.feedback-form .form-group label {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    text-align: left;
+}
+
+.feedback-form .form-group input,
+.feedback-form .form-group textarea {
+    width: 100%;
+    padding: 0.75rem 1.25rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    font-size: 1rem;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+}
+
+.feedback-form .form-group input:focus,
+.feedback-form .form-group textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.feedback-form .form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+    line-height: 1.5;
+    margin-bottom: 0.25rem;
+}
+
+.feedback-form .btn.btn-primary {
+    width: 100% !important;
+    padding: 1rem 2rem !important;
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)) !important;
+    border: none !important;
+    color: white !important;
+    border-radius: var(--border-radius-lg) !important;
+    cursor: pointer !important;
+    box-shadow: var(--shadow-md) !important;
+    transition: all 0.2s ease !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.75rem !important;
+    margin-top: 0.25rem !important;
+    margin-bottom: 0 !important;
+    position: relative !important;
+    top: -20px !important;
+}
+
+.feedback-form .btn.btn-primary:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: var(--shadow-lg) !important;
+}
+
+.feedback-form .btn.btn-primary:active {
+    transform: translateY(0) !important;
 }
 
 /* Orders Page Styles */
@@ -3051,6 +3118,505 @@ a:focus {
     margin: 2rem 0;
 }
 
+/* Orders Page Styles - Service Card Design */
+.orders-page {
+    padding: calc(var(--safe-area-inset-top) + 60px) 0 80px;
+    background: var(--bg-secondary);
+    min-height: 100vh;
+}
+
+/* Feedback Page Styles - Service Card Design */
+.feedback-page {
+    padding: calc(var(--safe-area-inset-top) + 60px) 0 80px;
+    background: var(--bg-secondary);
+    min-height: 100vh;
+}
+
+/* Header Card with Title and Summary */
+.orders-header-card,
+.feedback-header-card,
+.help-header-card {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    border-radius: var(--border-radius-lg);
+    padding: 2rem;
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--border-color);
+    margin-top: 5rem;
+    margin-bottom: 1rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    text-align: center;
+    padding-bottom: 1rem;
+    color: white;
+    position: relative;
+    overflow: hidden;
+}
+
+.orders-header-card::before {
+    content: "🛒 📦 📋";
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 1.2rem;
+    color: rgba(255, 255, 255, 0.1);
+    letter-spacing: 0.5rem;
+    transform: rotate(15deg);
+}
+
+.orders-header-card::after {
+    content: "📊 📈";
+    position: absolute;
+    bottom: 15px;
+    left: 20px;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.08);
+    letter-spacing: 0.3rem;
+    transform: rotate(-10deg);
+}
+
+.feedback-header-card::before {
+    content: "💬 📱 📨";
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 1.2rem;
+    color: rgba(255, 255, 255, 0.1);
+    letter-spacing: 0.5rem;
+    transform: rotate(15deg);
+}
+
+.feedback-header-card::after {
+    content: "📞 ✉️";
+    position: absolute;
+    bottom: 15px;
+    left: 20px;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.08);
+    letter-spacing: 0.3rem;
+    transform: rotate(-10deg);
+}
+
+.help-header-card::before {
+    content: "❓ 💡 🔍";
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 1.2rem;
+    color: rgba(255, 255, 255, 0.1);
+    letter-spacing: 0.5rem;
+    transform: rotate(15deg);
+}
+
+.help-header-card::after {
+    content: "📚 🛠️";
+    position: absolute;
+    bottom: 15px;
+    left: 20px;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.08);
+    letter-spacing: 0.3rem;
+    transform: rotate(-10deg);
+}
+
+.orders-header-card .page-title,
+.feedback-header-card .page-title,
+.help-header-card .page-title {
+    text-align: center;
+    margin-bottom: 0.5rem;
+    color: white;
+    font-size: 1.5rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.orders-header-card .page-title i,
+.feedback-header-card .page-title i,
+.help-header-card .page-title i {
+    color: white;
+}
+
+/* Orders Summary */
+.orders-summary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.33rem;
+    margin-bottom: 0.5rem;
+}
+
+.orders-summary .total-orders {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: white !important;
+}
+
+/* Help Summary */
+.help-summary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.33rem;
+    margin-bottom: 0.5rem;
+}
+
+.help-summary .help-description {
+    font-size: 1.1rem;
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 500;
+}
+
+.orders-summary .orders-label {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 500;
+}
+
+/* Feedback Summary */
+.feedback-summary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.33rem;
+    margin-bottom: 0.5rem;
+}
+
+.feedback-summary .feedback-description {
+    font-size: 1.1rem;
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 500;
+}
+
+/* Orders Grid */
+.orders-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 0.625rem;
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+}
+
+/* Order Modal Styles - Enhanced Design */
+.order-modal {
+    background: var(--bg-primary);
+    border-radius: var(--border-radius-lg);
+    padding: 2rem;
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--border-color);
+    max-width: 600px;
+    width: 100%;
+    margin: 2rem auto;
+    position: relative;
+    overflow: hidden;
+    margin-top: 9rem;
+}
+
+.order-modal::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+}
+
+.order-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.order-modal-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--text-primary);
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.order-modal-title i {
+    color: var(--primary-color);
+    font-size: 1.25rem;
+}
+
+.order-modal-status {
+    padding: 0.5rem 1rem;
+    border-radius: 2rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.order-modal-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.order-info-section {
+    background: var(--bg-secondary);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    border: 1px solid var(--border-color);
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 1rem 0 1rem 0;
+    text-align: center;
+}
+
+.section-title i {
+    color: var(--primary-color);
+}
+
+.order-info-grid {
+    display: grid;
+    gap: 1rem;
+}
+
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.info-item:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    color: var(--text-secondary);
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.info-value {
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.order-message-section {
+    background: var(--bg-secondary);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    border: 1px solid var(--border-color);
+}
+
+.order-message-content {
+    color: var(--text-secondary);
+    line-height: 1.6;
+    font-size: 0.95rem;
+    font-style: italic;
+    background: var(--bg-primary);
+    padding: 1rem;
+    border-radius: calc(var(--border-radius) - 2px);
+    border: 1px solid var(--border-color);
+}
+
+.order-modal-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    padding-top: 1.5rem;
+    padding-bottom: 1rem;
+    border-top: 2px solid var(--border-color);
+}
+
+.order-modal-actions .btn {
+    flex: 1;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 1rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+/* Order Card - Service Card Style */
+.order-card {
+    background: var(--bg-primary);
+    border-radius: var(--border-radius-lg);
+    padding: 2rem;
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--border-color);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    animation: fadeInUp 0.6s ease-out;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Иконка убрана, заменена на дату в правом углу */
+
+.order-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--primary-color);
+}
+
+.order-card:active {
+    transform: scale(0.97);
+    box-shadow: var(--shadow-sm);
+}
+
+.order-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+    position: relative;
+    flex-direction: row;
+    gap: 1rem;
+    height: auto;
+    min-height: 0;
+    flex-wrap: nowrap;
+}
+
+.order-id {
+    color: var(--primary-color);
+    font-weight: 700;
+    font-size: 1rem;
+    letter-spacing: 0.02em;
+    text-align: left;
+    line-height: 1;
+    vertical-align: top;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    display: inline-block;
+}
+
+.order-date {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    opacity: 0.8;
+    font-weight: 500;
+    text-align: right;
+    min-width: fit-content;
+    line-height: 1;
+    vertical-align: top;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    display: inline-block;
+    white-space: nowrap;
+}
+
+.order-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.order-service {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    padding: 0.5rem;
+    background: linear-gradient(135deg, rgba(var(--primary-color-rgb), 0.03), rgba(var(--primary-color-rgb), 0.08));
+    border-radius: calc(var(--border-radius) - 2px);
+    border: 1px solid rgba(var(--primary-color-rgb), 0.15);
+    position: relative;
+}
+
+.order-service strong {
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    opacity: 0.9;
+}
+
+.order-service span {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+/* .order-message стили оставлены для модального окна */
+
+/* Order Status Styles */
+.order-card-pending {
+    border-left: 3px solid #f59e0b; /* Оранжевый для ожидания */
+}
+
+.order-card-active {
+    border-left: 3px solid #10b981; /* Зеленый для активных */
+}
+
+.order-card-completed {
+    border-left: 3px solid #3b82f6; /* Синий для завершенных */
+}
+
+.order-card-cancelled {
+    border-left: 3px solid #ef4444; /* Красный для отмененных */
+}
+
+.order-card-unknown {
+    border-left: 3px solid #6b7280; /* Серый для неизвестных */
+}
+
+/* Order Status Badge */
+.order-status {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border-radius: 0.75rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.status-pending {
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+}
+
+.status-active {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+}
+
+.status-completed {
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+}
+
+.status-cancelled {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+.status-unknown {
+    background: rgba(107, 114, 128, 0.1);
+    color: #6b7280;
+}
+
 .load-more-btn {
     background: var(--bg-primary);
     border: 2px solid var(--border-color);
@@ -3202,9 +3768,12 @@ a:focus {
 }
 
 .help-section {
-    padding: 0;
+    padding: 1.5rem;
     border-radius: var(--border-radius-lg);
     overflow: hidden;
+    margin-bottom: 1.5rem;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .help-title {
@@ -3224,13 +3793,13 @@ a:focus {
 
 /* FAQ Accordion */
 .faq-accordion {
-    margin-bottom: 2rem;
+    margin-bottom: 0;
 }
 
 .faq-item {
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius-lg);
-    margin-bottom: 1rem;
+    margin-bottom: 1.5rem;
     overflow: hidden;
     background: var(--bg-primary);
     box-shadow: var(--shadow-sm);
@@ -3240,7 +3809,7 @@ a:focus {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1rem;
+    padding: 1rem 1.5rem;
     cursor: pointer;
     font-weight: 500;
     color: var(--text-primary);
@@ -3272,7 +3841,7 @@ a:focus {
 }
 
 .faq-answer p {
-    padding: 1rem;
+    padding: 1rem 1.5rem;
     margin: 0;
     color: var(--text-secondary);
     line-height: 1.5;
@@ -3281,7 +3850,10 @@ a:focus {
 
 /* Error Report Section */
 .error-report-section {
-    margin-top: 2rem;
+    margin-top: 0;
+    margin-bottom: 0;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .error-report-title {
@@ -3292,7 +3864,9 @@ a:focus {
     font-weight: 600;
     color: var(--text-primary);
     margin-bottom: 1.5rem;
-    padding-left: 0.5rem;
+    padding-left: 0;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 /* Theme Card Styles */
@@ -3533,9 +4107,100 @@ input::placeholder, textarea::placeholder {
 
 /* Custom Select */
 .custom-select .select-trigger {
-    background: var(--bg-primary);
+    background: var(--bg-secondary);
     color: var(--text-primary);
     border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-lg);
+    padding: 1rem 1.25rem;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.2s ease;
+    min-height: 48px;
+    box-shadow: var(--shadow-sm);
+}
+
+.custom-select .select-trigger:hover {
+    border-color: var(--primary-color);
+}
+
+.custom-select .select-trigger:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.1);
+    outline: none;
+}
+
+.custom-select .select-value {
+    flex: 1;
+    text-align: left;
+}
+
+.custom-select .select-arrow {
+    color: var(--primary-color);
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+    margin-left: 0.5rem;
+}
+
+.custom-select.open .select-arrow {
+    transform: rotate(180deg);
+}
+
+.custom-select .select-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-top: none;
+    border-radius: 0 0 var(--border-radius-lg) var(--border-radius-lg);
+    box-shadow: var(--shadow-md);
+    z-index: 1000;
+    max-height: 200px;
+    overflow-y: auto;
+    margin-top: -1px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.custom-select .select-trigger.active + .select-dropdown,
+.custom-select .select-dropdown.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.custom-select .select-option {
+    padding: 1rem 1.25rem;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.95rem;
+    line-height: 1.4;
+    position: relative;
+}
+
+.custom-select .select-option:last-child {
+    border-bottom: none;
+}
+
+.custom-select .select-option:hover {
+    background: rgba(var(--primary-color-rgb), 0.05);
+    transform: translateX(2px);
+}
+
+.custom-select .select-option.selected {
+    background: var(--primary-color);
+    color: white;
+    font-weight: 600;
+}
+
+.custom-select .select-option.selected:hover {
+    background: var(--primary-color);
+    transform: none;
 }
 
 .custom-select .select-dropdown {
@@ -3687,18 +4352,25 @@ input::placeholder, textarea::placeholder {
     padding: 1.5rem;
     box-shadow: var(--shadow-sm);
     border: 1px solid var(--border-color);
+    width: 100%;
+    min-height: 100%;
+    box-sizing: border-box;
 }
 
 .error-report-form .form-group {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .error-report-form label {
     font-weight: 500;
     color: var(--text-primary);
     font-size: 0.9rem;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .error-report-form select,
@@ -3849,12 +4521,16 @@ input::placeholder, textarea::placeholder {
 
 .error-report-form textarea {
     resize: vertical;
-    min-height: 80px;
+    min-height: 120px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .error-report-form .btn {
-    align-self: flex-start;
-    margin-top: 0.5rem;
+    align-self: stretch;
+    margin-top: 1rem;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 /* Мобильная адаптивность для блока помощи */
@@ -3869,7 +4545,7 @@ input::placeholder, textarea::placeholder {
     }
     
     .help-section {
-        padding: 0;
+        padding: 1.25rem;
     }
     
     .help-title {
@@ -3878,19 +4554,19 @@ input::placeholder, textarea::placeholder {
     }
     
     .faq-question {
-        padding: 0.75rem;
+        padding: 0.75rem 1.25rem;
         font-size: 0.9rem;
     }
     
     .faq-answer p {
-        padding: 0.75rem;
+        padding: 0.75rem 1.25rem;
         font-size: 0.85rem;
     }
     
     .error-report-title {
         font-size: 1rem;
         margin-bottom: 0.75rem;
-        padding-left: 0.5rem;
+        padding-left: 1.25rem;
     }
     
     .error-report-form select,
@@ -3914,7 +4590,7 @@ input::placeholder, textarea::placeholder {
     }
     
     .select-trigger {
-        padding: 0.6rem;
+        padding: 0.6rem 1rem;
         font-size: 0.85rem;
         box-sizing: border-box;
         width: 100%;
@@ -3923,13 +4599,13 @@ input::placeholder, textarea::placeholder {
     }
     
     .select-option {
-        padding: 0.6rem;
+        padding: 0.6rem 1rem;
         font-size: 0.85rem;
     }
     
     .error-report-form {
-        padding: 1rem;
-    }
+    padding: 1rem 1.5rem;
+}
     
     .error-report-form textarea {
         min-height: 70px;
@@ -4383,11 +5059,11 @@ input::placeholder, textarea::placeholder {
     margin: 0 auto;
 }
 
-.form-group {
+.contact-form .form-group {
     margin-bottom: 1.5rem;
 }
 
-.form-group label {
+.contact-form .form-group label {
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -4397,13 +5073,13 @@ input::placeholder, textarea::placeholder {
     font-size: 0.875rem;
 }
 
-.form-group label i {
+.contact-form .form-group label i {
     color: var(--primary-color);
     width: 16px;
 }
 
-.form-group input,
-.form-group textarea {
+.contact-form .form-group input,
+.contact-form .form-group textarea {
     width: 100%;
     padding: 0.75rem 1rem;
     border: 2px solid var(--border-color);
@@ -4414,8 +5090,8 @@ input::placeholder, textarea::placeholder {
     color: var(--text-primary);
 }
 
-.form-group input:focus,
-.form-group textarea:focus {
+.contact-form .form-group input:focus,
+.contact-form .form-group textarea:focus {
     outline: none;
     border-color: var(--primary-color);
     box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
@@ -4807,12 +5483,13 @@ input::placeholder, textarea::placeholder {
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
+  padding-top: 3rem;
 }
 #modalContent {
   width: 100%;
   max-width: 84vw;
   margin: 0 auto;
-  padding: 120px 8vw 80px 8vw;
+  padding: 120px 8vw 120px 8vw;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -4821,12 +5498,14 @@ input::placeholder, textarea::placeholder {
   border-radius: var(--border-radius-lg);
   box-shadow: var(--shadow-lg);
   flex: 1;
+  margin-top: 3rem !important;
+  margin-bottom: 2rem !important;
 }
 @media (max-width: 600px) {
   #modalContent {
     max-width: 100vw;
     border-radius: 0;
-    padding: 100px 0 72px 0;
+    padding: 100px 0 100px 0;
   }
 }
 
@@ -6035,7 +6714,7 @@ body, .page, .modal-content {
     .orders-content,
     .chat-content,
     .reviews-content {
-        padding: 1rem;
+        padding: 0;
     }
     
     .reviews-grid {
@@ -6442,10 +7121,7 @@ body, .page, .modal-content {
     font-size: 0.85rem;
 }
 
-.order-date {
-    color: var(--text-secondary);
-    font-size: 0.75rem;
-}
+/* .order-date стили определены выше */
 
 .order-content {
     margin-bottom: 0.5rem;
@@ -6783,4 +7459,114 @@ body, .page, .modal-content {
     .debug-actions .btn {
         min-width: auto;
     }
+}
+
+/* Принудительные стили для help-section и error-form-content */
+.help-section {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 1.5rem !important;
+    margin-bottom: 1.5rem !important;
+}
+
+.help-section .error-form-content {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1rem !important;
+}
+
+.help-section .error-form-content .form-group {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    margin-bottom: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+}
+
+.help-section .error-form-content label {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    display: block !important;
+}
+
+.help-section .error-form-content select,
+.help-section .error-form-content textarea {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    border-radius: var(--border-radius-lg) !important;
+    border: 2px solid var(--border-color) !important;
+    padding: 0.75rem 1rem !important;
+    font-size: 0.95rem !important;
+    background: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+    transition: all 0.2s ease !important;
+}
+
+.help-section .error-form-content select:focus,
+.help-section .error-form-content textarea:focus {
+    outline: none !important;
+    border-color: var(--primary-color) !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
+}
+
+.help-section .error-form-content .btn {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    align-self: stretch !important;
+    margin-top: 1rem !important;
+}
+
+.help-section .error-form-content .custom-select .select-trigger {
+    border-radius: var(--border-radius-lg) !important;
+    border: 2px solid var(--border-color) !important;
+    padding: 0.75rem 1rem !important;
+    font-size: 0.95rem !important;
+    background: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+    transition: all 0.2s ease !important;
+}
+
+.help-section .error-form-content .custom-select .select-trigger:focus {
+    outline: none !important;
+    border-color: var(--primary-color) !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
+}
+
+.help-section .error-form-content .custom-select .select-dropdown {
+    border-radius: 0 0 var(--border-radius-lg) var(--border-radius-lg) !important;
+    border: 2px solid var(--primary-color) !important;
+    border-top: none !important;
+    margin-top: -2px !important;
+}
+
+.help-section .error-form-content .custom-select .select-option {
+    padding: 0.75rem 1rem !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    transition: all 0.2s ease !important;
+}
+
+.help-section .error-form-content .custom-select .select-option:last-child {
+    border-bottom: none !important;
+}
+
+.help-section .error-form-content .custom-select .select-option:hover {
+    background: rgba(99, 102, 241, 0.05) !important;
+}
+
+.help-section .error-form-content textarea {
+    min-height: 120px !important;
+    resize: vertical !important;
+    line-height: 1.5 !important;
+}
+
+.help-content {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 0 !important;
+    margin: 0 !important;
 }

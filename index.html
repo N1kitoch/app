@@ -290,20 +290,6 @@
                     </h3>
                     
                     <div class="profile-actions-grid">
-                        <button class="profile-action-btn" onclick="showProfileAction('help')">
-                            <div class="action-icon">
-                                <i class="fas fa-question-circle"></i>
-                            </div>
-                            <span class="action-text" id="profileActionHelp">Помощь</span>
-                        </button>
-                        
-                        <button class="profile-action-btn" onclick="showProfileAction('feedback')">
-                            <div class="action-icon">
-                                <i class="fas fa-comment-dots"></i>
-                            </div>
-                            <span class="action-text" id="profileActionFeedback">Обратная связь</span>
-                        </button>
-                        
                         <button class="profile-action-btn" onclick="showProfileAction('orders')">
                             <div class="action-icon">
                                 <i class="fas fa-shopping-cart"></i>
@@ -318,11 +304,25 @@
                             <span class="action-text" id="profileActionChat">Чат</span>
                         </button>
                         
+                        <button class="profile-action-btn" onclick="showProfileAction('feedback')">
+                            <div class="action-icon">
+                                <i class="fas fa-comment-dots"></i>
+                            </div>
+                            <span class="action-text" id="profileActionFeedback">Обратная связь</span>
+                        </button>
+                        
                         <button class="profile-action-btn" onclick="showProfileAction('reviews')">
                             <div class="action-icon">
                                 <i class="fas fa-star"></i>
                             </div>
                             <span class="action-text" id="profileActionReviews">Отзывы</span>
+                        </button>
+                        
+                        <button class="profile-action-btn" onclick="showProfileAction('help')">
+                            <div class="action-icon">
+                                <i class="fas fa-question-circle"></i>
+                            </div>
+                            <span class="action-text" id="profileActionHelp">Помощь</span>
                         </button>
                         
                         <!-- Кнопка отладки для администратора -->
@@ -406,16 +406,26 @@
                     <i class="fas fa-arrow-left"></i>
                 </button>
                 
-                <!-- Page Title (Centered) -->
-                <div class="page-title-center">
+                <!-- Help Header Card with Title and Summary -->
+                <div class="help-header-card" id="helpHeaderCard">
                     <h1 class="page-title">
                         <i class="fas fa-question-circle"></i>
                         <span id="helpPageTitle">Помощь</span>
                     </h1>
+                    <div class="help-summary" id="helpSummary">
+                        <span class="help-description">FAQ и поддержка</span>
+                    </div>
                 </div>
                 
                 <div class="help-content">
+                    <!-- FAQ Section -->
                     <div class="help-section">
+                        <div class="section-header">
+                            <h3 class="section-title">
+                                <i class="fas fa-lightbulb"></i>
+                                Часто задаваемые вопросы
+                            </h3>
+                        </div>
                         
                         <!-- FAQ Accordion -->
                         <div class="faq-accordion">
@@ -470,13 +480,18 @@
                             </div>
                         </div>
                         
-                        <!-- Report Error Form -->
-                        <div class="error-report-section">
-                            <h4 class="error-report-title">
+                    </div>
+                    
+                    <!-- Report Error Section -->
+                    <div class="help-section">
+                        <div class="section-header">
+                            <h3 class="section-title">
                                 <i class="fas fa-exclamation-triangle"></i>
-                                <span id="errorReportTitle">Сообщить об ошибке</span>
-                            </h4>
-                            <form class="error-report-form" id="errorReportForm">
+                                Сообщить об ошибке
+                            </h3>
+                        </div>
+                        
+                        <div class="error-form-content">
                                 <div class="form-group">
                                     <label for="errorType" id="errorTypeLabel">Тип проблемы:</label>
                                     <div class="custom-select">
@@ -500,11 +515,11 @@
                                     <textarea id="errorDescription" name="errorDescription" id="errorDescriptionPlaceholder" placeholder="Опишите, что произошло и как воспроизвести ошибку" rows="3" required></textarea>
                                 </div>
                                 
-                                <button type="submit" class="btn btn-primary">
+                                <button type="button" class="btn btn-primary" onclick="submitErrorReport()">
                                     <i class="fas fa-paper-plane"></i>
                                     <span id="errorSubmitButton">Отправить</span>
                                 </button>
-                            </form>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -521,12 +536,15 @@
                     <i class="fas fa-arrow-left"></i>
                 </button>
                 
-                <!-- Page Title (Centered) -->
-                <div class="page-title-center">
+                <!-- Feedback Header Card with Title and Summary -->
+                <div class="feedback-header-card" id="feedbackHeaderCard">
                     <h1 class="page-title">
                         <i class="fas fa-comment-dots"></i>
                         <span id="feedbackPageTitle">Обратная связь</span>
                     </h1>
+                    <div class="feedback-summary" id="feedbackSummary">
+                        <span class="feedback-description">Свяжитесь с нами</span>
+                    </div>
                 </div>
                 
                 <div class="feedback-content">
@@ -567,39 +585,34 @@
                     <i class="fas fa-arrow-left"></i>
                 </button>
                 
-                <!-- Page Title (Centered) -->
-                <div class="page-title-center">
+                <!-- Orders Header Card with Title and Summary -->
+                <div class="orders-header-card" id="ordersHeaderCard">
                     <h1 class="page-title">
                         <i class="fas fa-shopping-cart"></i>
                         <span id="ordersPageTitle">Мои заказы</span>
                     </h1>
+                    <div class="orders-summary" id="ordersSummary">
+                        <span class="total-orders">0</span>
+                        <span class="orders-label">заказов</span>
+                    </div>
                 </div>
                 
-                <div class="orders-content">
-                    <div class="orders-section">
-                        <!-- Empty State (shown when no orders) -->
-                        <div class="orders-empty-state" id="ordersEmptyState">
-                            <div class="empty-state-icon">
-                                <i class="fas fa-shopping-cart"></i>
-                            </div>
-                            <h3 id="ordersEmptyTitle">У вас пока нет заказов</h3>
-                            <p id="ordersEmptyDescription">Перейдите в раздел услуг, чтобы сделать первый заказ</p>
-                            <button class="btn btn-primary" onclick="showPage('services')">
-                                <i class="fas fa-rocket"></i>
-                                <span id="ordersEmptyButton">Перейти к услугам</span>
-                            </button>
-                        </div>
-                        
-                        <!-- Orders Container (shown when orders exist) -->
-                        <div class="orders-container" id="ordersContainer" style="display: none;">
-                            <div class="orders-header">
-                                <h3 id="ordersHeaderTitle">Мои заказы</h3>
-                            </div>
-                            <div class="orders-list scrollable" id="ordersList">
-                                <!-- Orders will be loaded here dynamically -->
-                            </div>
-                        </div>
+                <!-- Empty State (shown when no orders) -->
+                <div class="orders-empty-state" id="ordersEmptyState">
+                    <div class="empty-state-icon">
+                        <i class="fas fa-shopping-cart"></i>
                     </div>
+                    <h3 id="ordersEmptyTitle">У вас пока нет заказов</h3>
+                    <p id="ordersEmptyDescription">Перейдите в раздел услуг, чтобы сделать первый заказ</p>
+                    <button class="btn btn-primary" onclick="showPage('services')">
+                        <i class="fas fa-rocket"></i>
+                        <span id="ordersEmptyButton">Перейти к услугам</span>
+                    </button>
+                </div>
+                
+                <!-- Orders Grid (shown when orders exist) -->
+                <div class="orders-grid" id="ordersList">
+                    <!-- Orders will be loaded here dynamically -->
                 </div>
             </div>
         </div>

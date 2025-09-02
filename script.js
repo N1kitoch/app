@@ -900,12 +900,13 @@ function updateReviewsDisplay() {
 }
 
 function updateOrdersDisplay() {
-    const ordersContainer = document.getElementById('ordersContainer');
     const ordersEmptyState = document.getElementById('ordersEmptyState');
     const ordersList = document.getElementById('ordersList');
-    const ordersHeaderTitle = document.getElementById('ordersHeaderTitle');
+    const ordersPageTitle = document.getElementById('ordersPageTitle');
+    const ordersSummary = document.getElementById('ordersSummary');
+    const totalOrders = document.querySelector('.total-orders');
     
-    if (!ordersContainer || !ordersEmptyState || !ordersList || !ordersHeaderTitle) {
+    if (!ordersEmptyState || !ordersList || !ordersPageTitle || !ordersSummary || !totalOrders) {
         console.error('Не найдены элементы для отображения заказов');
         return;
     }
@@ -914,21 +915,25 @@ function updateOrdersDisplay() {
     console.log('🔍 updateOrdersDisplay:', {
         ordersLength: orders.length,
         globalOrders: globalOrders,
-        ordersContainer: !!ordersContainer,
         ordersEmptyState: !!ordersEmptyState
     });
     
     if (orders.length === 0) {
         // Показываем пустое состояние
         ordersEmptyState.style.display = 'block';
-        ordersContainer.style.display = 'none';
+        // Обновляем заголовок страницы без количества
+        ordersPageTitle.textContent = 'Мои заказы';
+        // Обновляем счетчик заказов
+        totalOrders.textContent = '0';
     } else {
         // Показываем заказы
         ordersEmptyState.style.display = 'none';
-        ordersContainer.style.display = 'block';
         
-        // Обновляем заголовок с количеством заказов
-        ordersHeaderTitle.textContent = `Мои заказы (${orders.length})`;
+        // Обновляем заголовок страницы БЕЗ количества (убрано дублирование)
+        ordersPageTitle.textContent = 'Мои заказы';
+        
+        // Обновляем счетчик заказов
+        totalOrders.textContent = orders.length;
         
         // Обновляем список заказов
         ordersList.innerHTML = renderOrders();
@@ -2166,6 +2171,9 @@ function initReviewStars() {
                 date: new Date().toLocaleDateString('ru-RU').split('/').reverse().join('.')
             };
             
+            // Добавляем отзыв в общую базу
+            globalReviews.unshift(reviewData);
+            
             // Отправляем отзыв в бэкенд
             trackImportantEvent('review_submit', {
                 rating: selectedRating,
@@ -2173,9 +2181,6 @@ function initReviewStars() {
                 user: reviewData.user,
                 date: reviewData.date
             });
-            
-            // Добавляем отзыв в общую базу
-            globalReviews.unshift(reviewData);
             
             // Обновляем отображение отзывов
             const reviewsContainer = document.querySelector('.service-reviews');
@@ -5209,6 +5214,9 @@ function updateChatOrderTags() {
         return;
     }
     
+    // Очищаем старые теги перед обновлением
+    orderTags.innerHTML = '';
+    
     const chatOrders = window.chatOrders || {};
     const orderIds = Object.keys(chatOrders);
     
@@ -5382,6 +5390,9 @@ function startPeriodicUpdates() {
         if (document.getElementById('orders-page') && document.getElementById('orders-page').classList.contains('active')) {
             updateOrdersDisplay();
         }
+        
+        // Обновляем отображение заказов в реальном времени
+        updateOrdersDisplay();
     }, 30 * 1000); // 30 секунд
     
     console.log('⏰ Периодическое обновление запущено');
@@ -5692,10 +5703,7 @@ function renderOrders(){
           </div>
           <div class="order-content">
             <div class="order-service">
-              <strong>Услуга:</strong> ${order.service || 'Не указана'}
-            </div>
-            <div class="order-message">
-              <strong>Сообщение:</strong> ${order.message || 'Нет сообщения'}
+              <strong>Услуга:</strong> <span>${order.service || 'Не указана'}</span>
             </div>
           </div>
         </div>
@@ -5729,44 +5737,57 @@ function openOrderDetails(orderId) {
     
     // Заполняем содержимое модального окна
     orderModalContent.innerHTML = `
-      <div class="service-modal">
-        <h2 class="service-title">
-          <i class="fas fa-shopping-cart"></i>
-          Заказ #${order.id}
-        </h2>
+      <div class="order-modal">
+        <div class="order-modal-header">
+          <h2 class="order-modal-title">
+            <i class="fas fa-shopping-cart"></i>
+            Заказ #${order.id}
+          </h2>
+          <div class="order-modal-status ${order.statusClass}">
+            <span class="status-text">${order.status}</span>
+          </div>
+        </div>
         
-        <div class="service-details">
-          <div class="detail-item">
-            <h4>Информация о заказе:</h4>
-            <div class="order-info">
-              <div class="info-row">
-                <span class="info-label">Номер заказа:</span>
+        <div class="order-modal-content">
+          <div class="order-info-section">
+            <h4 class="section-title">
+              <i class="fas fa-info-circle"></i>
+              Информация о заказе
+            </h4>
+            <div class="order-info-grid">
+              <div class="info-item">
+                <span class="info-label">Номер заказа</span>
                 <span class="info-value">#${order.id}</span>
               </div>
-              <div class="info-row">
-                <span class="info-label">Услуга:</span>
+              <div class="info-item">
+                <span class="info-label">Услуга</span>
                 <span class="info-value">${order.service || 'Не указана'}</span>
               </div>
-              <div class="info-row">
-                <span class="info-label">Дата заказа:</span>
+              <div class="info-item">
+                <span class="info-label">Дата заказа</span>
                 <span class="info-value">${order.date}</span>
               </div>
-              <div class="info-row">
-                <span class="info-label">Статус:</span>
-                <span class="order-status ${order.statusClass}">${order.status}</span>
+              <div class="info-item">
+                <span class="info-label">Статус</span>
+                <span class="info-value">${order.status}</span>
               </div>
             </div>
           </div>
           
-          <div class="detail-item">
-            <h4>Ваше сообщение:</h4>
-            <div class="order-message">
-              ${order.message || 'Нет сообщения'}
+          ${order.message ? `
+          <div class="order-message-section">
+            <h4 class="section-title">
+              <i class="fas fa-comment"></i>
+              Ваше сообщение
+            </h4>
+            <div class="order-message-content">
+              ${order.message}
             </div>
           </div>
+          ` : ''}
         </div>
         
-        <div class="modal-actions">
+        <div class="order-modal-actions">
           <button class="btn btn-secondary" onclick="openChatForOrder(${order.id})">
             <i class="fas fa-comments"></i>
             <span>Открыть чат</span>
@@ -6655,6 +6676,9 @@ function initReviewsPageStars() {
             
             console.log('📝 Данные отзыва:', reviewData);
             
+            // Добавляем отзыв в общую базу
+            globalReviews.unshift(reviewData);
+            
             // Отправляем отзыв в бэкенд
             trackImportantEvent('review_submit', {
                 rating: selectedRating,
@@ -6662,9 +6686,6 @@ function initReviewsPageStars() {
                 user: reviewData.user,
                 date: reviewData.date
             });
-            
-            // Добавляем отзыв в общую базу
-            globalReviews.unshift(reviewData);
             
             // Обновляем отображение отзывов
             updateReviewsPage();
