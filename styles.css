@@ -174,7 +174,7 @@ body.page-home ::-webkit-scrollbar {
 
 .hero-title {
     font-family: 'Press Start 2P', cursive;
-    font-size: 1.8rem;
+    font-size: 2.2rem;
     font-weight: 400;
     background: linear-gradient(135deg, 
         #667eea 0%, 
@@ -191,7 +191,7 @@ body.page-home ::-webkit-scrollbar {
     margin-bottom: 1rem;
     animation: oilSpill 15s ease-in-out infinite;
     position: relative;
-    line-height: 1.4;
+    line-height: 1.3;
     letter-spacing: 0.05em;
 }
 
@@ -1093,7 +1093,7 @@ button, a, .clickable {
 
     
     .hero-title {
-        font-size: 1.75rem;
+        font-size: 2.1rem;
     }
     
     .hero-subtitle {
@@ -1133,8 +1133,8 @@ button, a, .clickable {
 @media (max-width: 480px) {
     
     .hero-title {
-        font-size: 1.2rem;
-        line-height: 1.5;
+        font-size: 1.5rem;
+        line-height: 1.4;
     }
     
     .hero-subtitle {
@@ -1227,8 +1227,8 @@ body {
     }
     
     .hero-title {
-        font-size: 1rem;
-        line-height: 1.6;
+        font-size: 1.3rem;
+        line-height: 1.5;
     }
     
     .hero-subtitle {
@@ -5685,6 +5685,9 @@ input::placeholder, textarea::placeholder {
 .icon-btn{background:transparent;border:none;cursor:pointer;padding:.5rem;border-radius:50%;transition:background .2s;display:flex;align-items:center;justify-content:center;}
 .icon-btn i{font-size:1rem;color:var(--primary-color);} 
 .feature-list li::before{content:'\f058';font-family:'Font Awesome 6 Free';font-weight:900;color:var(--primary-color);margin-right:.5rem;}
+
+.results-list li{display:flex;align-items:center;gap:.5rem;}
+.results-list li i{color:var(--secondary-color);font-size:.9rem;}
 .modal-actions{display:flex;align-items:center;gap:.5rem;justify-content:center;margin-top:1rem;}
 .icon-btn.small{padding:.5rem .6rem;border:1px solid var(--primary-color);} 
 .review-tile{background:var(--bg-primary);border:1px solid var(--border-color);border-radius:var(--border-radius-lg);padding:1rem;box-shadow:var(--shadow-sm);width:100%;margin:0 auto 2rem auto;} 
@@ -6285,6 +6288,20 @@ body, .page, .modal-content {
         transform: translateY(-5px);
         box-shadow: var(--shadow-lg);
         border-color: var(--primary-color);
+    }
+    
+    /* Увеличиваем шрифт hero-title на больших экранах */
+    .hero-title {
+        font-size: 2.5rem;
+        line-height: 1.2;
+    }
+}
+
+/* Увеличиваем шрифт hero-title на очень больших экранах */
+@media (min-width: 1200px) {
+    .hero-title {
+        font-size: 3rem;
+        line-height: 1.1;
     }
 }
 
