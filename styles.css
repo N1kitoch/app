@@ -34,6 +34,9 @@ html, body {
     transition: all 0.3s ease;
     opacity: 0;
     pointer-events: none;
+    max-width: calc(100vw - 40px); /* Ограничиваем ширину */
+    white-space: nowrap;
+    overflow: hidden;
 }
 
 .pull-indicator .pull-icon {

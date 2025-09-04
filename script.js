@@ -262,12 +262,16 @@ function handleDataUpdate(dataType, data) {
             updateReviewsDisplay();
             break;
         case 'requests':
+            // Принудительно очищаем отмененные заказы перед обновлением отображения
+            clearCancelledOrders();
             updateOrdersDisplay();
             break;
         case 'chat_messages':
             updateChatDisplay();
             break;
         case 'chat_orders':
+            // Принудительно очищаем отмененные заказы перед обновлением отображения
+            clearCancelledOrders();
             updateChatOrderTags();
             break;
         case 'average_rating':
@@ -461,10 +465,10 @@ async function loadDataWithFallback(dataType, forceUpdate = false) {
         displayData(dataType, cachedData);
     }
     
-    // Для заказов и заказов чата загружаем из кэша, если есть данные
+    // Для заказов и заказов чата НЕ показываем кэшированные данные, чтобы избежать отображения отмененных заказов
     if ((dataType === 'requests' || dataType === 'chat_orders') && cachedData && !forceUpdate) {
-        console.log(`📦 Показываем кэшированные ${dataType}: ${cachedData.length} записей`);
-        displayData(dataType, cachedData);
+        console.log(`📦 Кэшированные ${dataType} найдены, но НЕ показываем (${cachedData.length} записей)`);
+        console.log(`📦 Дожидаемся загрузки свежих данных для фильтрации отмененных заказов`);
     }
     
     // 2. Пытаемся обновить данные
@@ -687,10 +691,15 @@ function displayData(dataType, data) {
             
             console.log(`🔍 Фильтрация заказов чата: найдено ${userChatOrders.length} заказов (всего: ${data.length})`);
             
-            // Создаем объект с заказами для чата
+            // Фильтруем заказы для чата, исключая отмененные, на самом раннем этапе
+            const activeUserChatOrders = userChatOrders.filter(order => order.status !== 'cancelled');
+            
+            console.log(`🔍 Фильтрация заказов чата: ${userChatOrders.length} всего, ${activeUserChatOrders.length} активных (исключены отмененные)`);
+            
+            // Создаем объект с активными заказами для чата
             const chatOrders = {};
             
-            userChatOrders.forEach(order => {
+            activeUserChatOrders.forEach(order => {
                 chatOrders[order.id] = {
                     id: order.id,
                     service: order.service_name,
@@ -699,6 +708,15 @@ function displayData(dataType, data) {
                     message: order.message
                 };
             });
+            
+            // Очищаем существующие отмененные заказы из window.chatOrders
+            if (window.chatOrders) {
+                Object.keys(window.chatOrders).forEach(orderId => {
+                    if (window.chatOrders[orderId].status === 'cancelled') {
+                        delete window.chatOrders[orderId];
+                    }
+                });
+            }
             
             // Обновляем глобальные данные заказов для чата
             window.chatOrders = chatOrders;
@@ -794,8 +812,16 @@ function displayData(dataType, data) {
             
 
             
-            // Обрабатываем каждый заказ
-            userOrders.forEach(order => {
+            // Фильтруем заказы, исключая отмененные, на самом раннем этапе
+            const activeUserOrders = userOrders.filter(order => order.status !== 'cancelled');
+            
+            console.log(`🔍 Фильтрация заказов: ${userOrders.length} всего, ${activeUserOrders.length} активных (исключены отмененные)`);
+            
+            // Очищаем существующие отмененные заказы из globalOrders
+            globalOrders = globalOrders.filter(order => order.status !== 'Отменен');
+            
+            // Обрабатываем каждый активный заказ
+            activeUserOrders.forEach(order => {
                 // Формируем имя пользователя
                 let userName;
                 if (order.username) {
@@ -874,6 +900,9 @@ function displayData(dataType, data) {
             // Сохраняем заказы в localStorage для персистентности
             saveToCache('requests', globalOrders);
             
+            // Принудительно очищаем отмененные заказы
+            clearCancelledOrders();
+            
             updateOrdersDisplay();
             break;
 
@@ -912,13 +941,18 @@ function updateOrdersDisplay() {
     }
     
     const orders = globalOrders || [];
+    
+    // Фильтруем заказы, исключая отмененные
+    const activeOrders = orders.filter(order => order.status !== 'Отменен' && order.status !== 'cancelled');
+    
     console.log('🔍 updateOrdersDisplay:', {
         ordersLength: orders.length,
+        activeOrdersLength: activeOrders.length,
         globalOrders: globalOrders,
         ordersEmptyState: !!ordersEmptyState
     });
     
-    if (orders.length === 0) {
+    if (activeOrders.length === 0) {
         // Показываем пустое состояние
         ordersEmptyState.style.display = 'block';
         // Обновляем заголовок страницы без количества
@@ -932,8 +966,8 @@ function updateOrdersDisplay() {
         // Обновляем заголовок страницы БЕЗ количества (убрано дублирование)
         ordersPageTitle.textContent = 'Мои заказы';
         
-        // Обновляем счетчик заказов
-        totalOrders.textContent = orders.length;
+        // Обновляем счетчик заказов (только активные)
+        totalOrders.textContent = activeOrders.length;
         
         // Обновляем список заказов
         ordersList.innerHTML = renderOrders();
@@ -1163,6 +1197,9 @@ async function loadAllDataWithCache() {
     
     console.log('✅ Загрузка данных завершена');
     
+    // Принудительно очищаем отмененные заказы после загрузки всех данных
+    clearCancelledOrders();
+    
     // Обновляем отображение рейтинга
     updateAverageRatingDisplay();
     
@@ -1310,6 +1347,13 @@ function showPage(pageId) {
             setTimeout(() => {
                 updateReviewsPage();
             }, 100);
+        }
+        
+        // При переходе на страницы заказов и чата принудительно очищаем отмененные заказы
+        if (pageId === 'orders-page' || pageId === 'chat-page') {
+            setTimeout(() => {
+                clearCancelledOrders();
+            }, 500); // Даем время на инициализацию страницы
         }
         
         // При переходе на страницу заказов обновляем отображение
@@ -3283,7 +3327,8 @@ function showPullIndicator(distance) {
     
     // Update indicator position and opacity
     const progress = Math.min(distance / pullThreshold, 1);
-    indicator.style.transform = `translateY(${distance}px)`;
+    // Используем translate3d для лучшей производительности и правильного позиционирования
+    indicator.style.transform = `translate3d(-50%, ${distance}px, 0)`;
     indicator.style.opacity = progress;
     
     // Change icon when threshold is reached
@@ -3300,7 +3345,7 @@ function showPullIndicator(distance) {
 function hidePullIndicator() {
     const indicator = document.getElementById('pullIndicator');
     if (indicator) {
-        indicator.style.transform = 'translateY(0)';
+        indicator.style.transform = 'translate3d(-50%, 0, 0)';
         indicator.style.opacity = '0';
         setTimeout(() => {
             if (indicator.parentNode) {
@@ -5395,10 +5440,15 @@ async function loadChatOrdersFromDB(forceUpdate = false) {
         console.log(`🔍 loadChatOrdersFromDB: получено ${chatOrdersData.length} заказов`);
         
         if (chatOrdersData.length > 0) {
-            // Создаем объект с заказами для чата
+            // Фильтруем заказы для чата, исключая отмененные, на самом раннем этапе
+            const activeChatOrdersData = chatOrdersData.filter(order => order.status !== 'cancelled');
+            
+            console.log(`🔍 Фильтрация заказов чата из БД: ${chatOrdersData.length} всего, ${activeChatOrdersData.length} активных (исключены отмененные)`);
+            
+            // Создаем объект с активными заказами для чата
             const chatOrders = {};
             
-            chatOrdersData.forEach(order => {
+            activeChatOrdersData.forEach(order => {
                 chatOrders[order.id] = {
                     id: order.id,
                     service: order.service_name,
@@ -5407,6 +5457,15 @@ async function loadChatOrdersFromDB(forceUpdate = false) {
                     message: order.message
                 };
             });
+            
+            // Очищаем существующие отмененные заказы из window.chatOrders
+            if (window.chatOrders) {
+                Object.keys(window.chatOrders).forEach(orderId => {
+                    if (window.chatOrders[orderId].status === 'cancelled') {
+                        delete window.chatOrders[orderId];
+                    }
+                });
+            }
             
             // Обновляем глобальные данные заказов для чата
             window.chatOrders = chatOrders;
@@ -5419,6 +5478,9 @@ async function loadChatOrdersFromDB(forceUpdate = false) {
             
             console.log(`✅ Загружено ${chatOrdersData.length} заказов для чата из БД`);
             
+            // Принудительно очищаем отмененные заказы
+            clearCancelledOrders();
+            
             // Обновляем отображение тегов заказов если чат открыт
             if (document.getElementById('chat-page') && document.getElementById('chat-page').classList.contains('active')) {
                 updateChatOrderTags();
@@ -5428,7 +5490,17 @@ async function loadChatOrdersFromDB(forceUpdate = false) {
             // Используем данные из кэша если они есть
             if (window.dataCache.chatOrders && Object.keys(window.dataCache.chatOrders.data).length > 0) {
                 console.log('📦 Используем кэшированные заказы для чата');
-                window.chatOrders = window.dataCache.chatOrders.data;
+                // Фильтруем отмененные заказы из кэша
+                const cachedOrders = window.dataCache.chatOrders.data;
+                const filteredCachedOrders = {};
+                
+                Object.keys(cachedOrders).forEach(orderId => {
+                    if (cachedOrders[orderId].status !== 'cancelled') {
+                        filteredCachedOrders[orderId] = cachedOrders[orderId];
+                    }
+                });
+                
+                window.chatOrders = filteredCachedOrders;
                 if (document.getElementById('chat-page') && document.getElementById('chat-page').classList.contains('active')) {
                     updateChatOrderTags();
                 }
@@ -5441,7 +5513,17 @@ async function loadChatOrdersFromDB(forceUpdate = false) {
         // При ошибке используем кэш если он есть
         if (window.dataCache.chatOrders && Object.keys(window.dataCache.chatOrders.data).length > 0) {
             console.log('📦 Используем кэшированные заказы для чата при ошибке');
-            window.chatOrders = window.dataCache.chatOrders.data;
+            // Фильтруем отмененные заказы из кэша
+            const cachedOrders = window.dataCache.chatOrders.data;
+            const filteredCachedOrders = {};
+            
+            Object.keys(cachedOrders).forEach(orderId => {
+                if (cachedOrders[orderId].status !== 'cancelled') {
+                    filteredCachedOrders[orderId] = cachedOrders[orderId];
+                }
+            });
+            
+            window.chatOrders = filteredCachedOrders;
             if (document.getElementById('chat-page') && document.getElementById('chat-page').classList.contains('active')) {
                 updateChatOrderTags();
             }
@@ -5492,17 +5574,28 @@ function updateChatOrderTags() {
         return;
     }
     
+    // Фильтруем заказы, исключая отмененные
+    const filteredOrderIds = orderIds.filter(orderId => {
+        const order = chatOrders[orderId];
+        return order.status !== 'cancelled';
+    });
+    
+    if (filteredOrderIds.length === 0) {
+        console.log('❌ updateChatOrderTags: нет активных заказов для отображения');
+        orderTags.innerHTML = '<div class="no-orders">Активных заказов пока нет</div>';
+        return;
+    }
+    
     // Сортируем заказы: активные сначала, затем завершенные
-    const sortedOrders = orderIds.sort((a, b) => {
+    const sortedOrders = filteredOrderIds.sort((a, b) => {
         const orderA = chatOrders[a];
         const orderB = chatOrders[b];
         
-        // Приоритет: активные > завершенные > отмененные
+        // Приоритет: активные > завершенные
         const statusPriority = {
             'active': 3,
             'pending': 2,
-            'completed': 1,
-            'cancelled': 0
+            'completed': 1
         };
         
         const priorityA = statusPriority[orderA.status] || 0;
@@ -5636,6 +5729,11 @@ function startPeriodicUpdates() {
         loadChatMessagesFromDB(true);
         loadChatOrdersFromDB(true);
         
+        // Принудительно очищаем отмененные заказы
+        setTimeout(() => {
+            clearCancelledOrders();
+        }, 1000); // Даем время на загрузку данных
+        
         // Обновляем отображение если страница чата активна
         if (document.getElementById('chat-page') && document.getElementById('chat-page').classList.contains('active')) {
             updateChatDisplay();
@@ -5646,6 +5744,11 @@ function startPeriodicUpdates() {
     ordersUpdateInterval = setInterval(() => {
         console.log('🔄 Периодическое обновление заказов...');
         loadDataWithFallback('requests', true);
+        
+        // Принудительно очищаем отмененные заказы
+        setTimeout(() => {
+            clearCancelledOrders();
+        }, 1000); // Даем время на загрузку данных
         
         // Обновляем отображение если страница заказов активна
         if (document.getElementById('orders-page') && document.getElementById('orders-page').classList.contains('active')) {
@@ -5686,6 +5789,11 @@ async function forceUpdateAllData() {
         loadChatMessagesFromDB(true),
         loadChatOrdersFromDB(true)
     ]);
+    
+    // Принудительно очищаем отмененные заказы после обновления
+    setTimeout(() => {
+        clearCancelledOrders();
+    }, 1000); // Даем время на загрузку данных
     
     console.log('✅ Принудительное обновление завершено');
 }
@@ -5955,7 +6063,14 @@ function renderOrders(){
       return '';
     }
     
-    const listHtml = orders.map(order => {
+    // Фильтруем заказы, исключая отмененные
+    const activeOrders = orders.filter(order => order.status !== 'Отменен' && order.status !== 'cancelled');
+    
+    if (activeOrders.length === 0) {
+      return '<div class="orders-tile"><p class="no-orders">Активных заказов пока нет</p></div>';
+    }
+    
+    const listHtml = activeOrders.map(order => {
       return `
         <div class="order-card order-card-${order.statusClass.replace('status-', '')}" onclick="openOrderDetails(${order.id})">
           <div class="order-header">
@@ -7070,14 +7185,67 @@ function autoHideLoadingScreen() {
     }, 1000);
 }
 
-// Инициализация экрана загрузки при загрузке страницы
-document.addEventListener('DOMContentLoaded', function() {
-    // Показываем экран загрузки
-    showLoadingScreen();
+    // Инициализация экрана загрузки при загрузке страницы
+    document.addEventListener('DOMContentLoaded', function() {
+        // Показываем экран загрузки
+        showLoadingScreen();
+        
+        // Автоматически скрываем через 1 секунду
+        autoHideLoadingScreen();
+        
+        // Принудительно очищаем отмененные заказы при загрузке
+        setTimeout(() => {
+            clearCancelledOrders();
+        }, 1500); // После скрытия экрана загрузки
+    });
+
+// Функция очистки отмененных заказов из всех источников
+function clearCancelledOrders() {
+    console.log('🧹 Очистка отмененных заказов...');
     
-    // Автоматически скрываем через 1 секунду
-    autoHideLoadingScreen();
-});
+    // Очищаем из globalOrders
+    if (globalOrders && globalOrders.length > 0) {
+        const beforeCount = globalOrders.length;
+        globalOrders = globalOrders.filter(order => order.status !== 'Отменен');
+        const afterCount = globalOrders.length;
+        console.log(`🧹 globalOrders: ${beforeCount} → ${afterCount} (удалено ${beforeCount - afterCount} отмененных)`);
+    }
+    
+    // Очищаем из window.chatOrders
+    if (window.chatOrders) {
+        const beforeCount = Object.keys(window.chatOrders).length;
+        Object.keys(window.chatOrders).forEach(orderId => {
+            if (window.chatOrders[orderId].status === 'cancelled') {
+                delete window.chatOrders[orderId];
+            }
+        });
+        const afterCount = Object.keys(window.chatOrders).length;
+        console.log(`🧹 window.chatOrders: ${beforeCount} → ${afterCount} (удалено ${beforeCount - afterCount} отмененных)`);
+    }
+    
+    // Очищаем из кэша
+    if (window.dataCache) {
+        if (window.dataCache.requests && window.dataCache.requests.data) {
+            const beforeCount = window.dataCache.requests.data.length;
+            window.dataCache.requests.data = window.dataCache.requests.data.filter(order => order.status !== 'Отменен');
+            const afterCount = window.dataCache.requests.data.length;
+            console.log(`🧹 dataCache.requests: ${beforeCount} → ${afterCount} (удалено ${beforeCount - afterCount} отмененных)`);
+        }
+        
+        if (window.dataCache.chatOrders && window.dataCache.chatOrders.data) {
+            const beforeCount = Object.keys(window.dataCache.chatOrders.data).length;
+            Object.keys(window.dataCache.chatOrders.data).forEach(orderId => {
+                if (window.dataCache.chatOrders.data[orderId].status === 'cancelled') {
+                    delete window.dataCache.chatOrders.data[orderId];
+                }
+            });
+            const afterCount = Object.keys(window.dataCache.chatOrders.data).length;
+            console.log(`🧹 dataCache.chatOrders: ${beforeCount} → ${afterCount} (удалено ${beforeCount - afterCount} отмененных)`);
+        }
+    }
+    
+    console.log('✅ Очистка отмененных заказов завершена');
+}
 
 // Экспортируем функции для использования в других модулях
 window.loadingScreen = {
@@ -7085,5 +7253,8 @@ window.loadingScreen = {
     hide: hideLoadingScreen,
     autoHide: autoHideLoadingScreen
 };
+
+// Экспортируем функцию очистки
+window.clearCancelledOrders = clearCancelledOrders;
 
 
