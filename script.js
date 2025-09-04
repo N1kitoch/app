@@ -3267,141 +3267,19 @@ function initializeSwipeNavigation() {
         page.addEventListener('touchend', handleTouchEnd, { passive: false });
     });
     
-    // Add pull-to-refresh events to the document
-    document.addEventListener('touchstart', handlePullStart, { passive: false });
-    document.addEventListener('touchmove', handlePullMove, { passive: false });
-    document.addEventListener('touchend', handlePullEnd, { passive: false });
-    
     // Show swipe zone indicator in debug mode
     if (DEBUG_MODE) {
         showSwipeZoneIndicator();
     }
     
-    console.log('Swipe navigation and pull-to-refresh initialized');
+    console.log('Swipe navigation initialized');
 }
 
 // Pull-to-refresh functions
-function handlePullStart(e) {
-    // Only enable pull-to-refresh when at the top of the page
-    if (window.scrollY === 0) {
-        pullStartY = e.touches[0].clientY;
-        isPulling = true;
-    }
-}
 
-function handlePullMove(e) {
-    if (!isPulling || window.scrollY > 0) return;
-    
-    const currentY = e.touches[0].clientY;
-    pullDistance = Math.max(0, currentY - pullStartY);
-    
-    if (pullDistance > 0) {
-        e.preventDefault();
-        
-        // Limit pull distance
-        pullDistance = Math.min(pullDistance, maxPullDistance);
-        
-        // Show pull indicator
-        showPullIndicator(pullDistance);
-    }
-}
 
-function handlePullEnd(e) {
-    if (!isPulling) return;
-    
-    if (pullDistance >= pullThreshold) {
-        // Trigger refresh
-        triggerRefresh();
-    }
-    
-    // Hide pull indicator
-    hidePullIndicator();
-    
-    // Reset pull state
-    pullStartY = 0;
-    pullDistance = 0;
-    isPulling = false;
-}
 
-function showPullIndicator(distance) {
-    let indicator = document.getElementById('pullIndicator');
-    
-    if (!indicator) {
-        indicator = document.createElement('div');
-        indicator.id = 'pullIndicator';
-        indicator.className = 'pull-indicator';
-        indicator.innerHTML = `
-            <div class="pull-icon">
-                <i class="fas fa-arrow-down"></i>
-            </div>
-            <div class="pull-text">Потяните для обновления</div>
-        `;
-        document.body.appendChild(indicator);
-    }
-    
-    // Update indicator position and opacity
-    const progress = Math.min(distance / pullThreshold, 1);
-    // Используем translate3d для лучшей производительности и правильного позиционирования
-    indicator.style.transform = `translate3d(-50%, ${distance}px, 0)`;
-    indicator.style.opacity = progress;
-    
-    // Change icon when threshold is reached
-    const icon = indicator.querySelector('.pull-icon i');
-    if (distance >= pullThreshold) {
-        icon.className = 'fas fa-check';
-        indicator.querySelector('.pull-text').textContent = 'Отпустите для обновления';
-    } else {
-        icon.className = 'fas fa-arrow-down';
-        indicator.querySelector('.pull-text').textContent = 'Потяните для обновления';
-    }
-}
 
-function hidePullIndicator() {
-    const indicator = document.getElementById('pullIndicator');
-    if (indicator) {
-        indicator.style.transform = 'translate3d(-50%, 0, 0)';
-        indicator.style.opacity = '0';
-        setTimeout(() => {
-            if (indicator.parentNode) {
-                indicator.parentNode.removeChild(indicator);
-            }
-        }, 300);
-    }
-}
-
-function triggerRefresh() {
-    const currentPage = getCurrentActivePage();
-    
-    // Show loading state
-    showNotification('Обновление данных...', 'info');
-    
-    // Refresh data based on current page
-    switch (currentPage) {
-        case 'home':
-            // Refresh home page data
-            loadHomePageData();
-            break;
-        case 'services':
-            // Refresh services data
-            loadServicesData();
-            break;
-        case 'about':
-            // Refresh profile data
-            loadProfileData();
-            break;
-        default:
-            // Generic refresh
-            location.reload();
-    }
-}
-
-// Placeholder functions for data refresh
-function loadHomePageData() {
-    // TODO: Implement home page data refresh
-    setTimeout(() => {
-        showNotification('Главная страница обновлена!', 'success');
-    }, 1000);
-}
 
 // Swipe zone indicator for debug mode
 function showSwipeZoneIndicator() {
@@ -3430,19 +3308,9 @@ function updateSwipeZonePosition() {
     }
 }
 
-function loadServicesData() {
-    // TODO: Implement services data refresh
-    setTimeout(() => {
-        showNotification('Услуги обновлены!', 'success');
-    }, 1000);
-}
 
-function loadProfileData() {
-    // TODO: Implement profile data refresh
-    setTimeout(() => {
-        showNotification('Профиль обновлен!', 'success');
-    }, 1000);
-}
+
+
 
 // Intersection Observer for animations
 const observerOptions = {
@@ -3491,12 +3359,7 @@ const swipeThreshold = 50; // Minimum distance for swipe
 const swipeAngleThreshold = 30; // Maximum angle for horizontal swipe
 const swipeZoneRatio = 0.25; // 1/4 экрана сверху для свайпов
 
-// Pull-to-refresh system
-let pullStartY = 0;
-let pullDistance = 0;
-let isPulling = false;
-const pullThreshold = 80; // Distance to trigger refresh
-const maxPullDistance = 120; // Maximum pull distance
+
 let DEBUG_MODE = false;
 const ADMIN_ID = 585028258; // TODO: optionally sync from bot; for now hardcoded
 const BOT_TOKEN = "8117473255:AAHT3Nm6nq7Jz4HRN_8i3rT1eQVWZ5tsdLE"; // Bot token for direct API calls

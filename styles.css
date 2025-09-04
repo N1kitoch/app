@@ -17,48 +17,7 @@ html, body {
     -webkit-tap-highlight-color: transparent;
 }
 
-/* Pull-to-refresh indicator */
-.pull-indicator {
-    position: fixed;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--bg-primary);
-    border-radius: 0 0 16px 16px;
-    padding: 16px 24px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    z-index: 4000;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    transition: all 0.3s ease;
-    opacity: 0;
-    pointer-events: none;
-    max-width: calc(100vw - 40px); /* Ограничиваем ширину */
-    white-space: nowrap;
-    overflow: hidden;
-}
 
-.pull-indicator .pull-icon {
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--primary-color);
-    transition: transform 0.3s ease;
-}
-
-.pull-indicator .pull-text {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text-primary);
-    white-space: nowrap;
-}
-
-.pull-indicator .pull-icon i {
-    font-size: 18px;
-}
 
 /* Swipe zone indicator (debug mode) */
 .swipe-zone-indicator {
