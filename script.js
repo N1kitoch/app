@@ -3192,8 +3192,17 @@ document.head.appendChild(notificationStyles);
 
 // Swipe navigation functions
 function handleTouchStart(e) {
+    const touchY = e.touches[0].clientY;
+    const screenHeight = window.innerHeight;
+    const swipeZoneHeight = screenHeight * swipeZoneRatio; // Настраиваемая зона свайпа
+    
+    // Проверяем, что касание в верхней части экрана
+    if (touchY > swipeZoneHeight) {
+        return; // Игнорируем касания ниже зоны свайпа
+    }
+    
     touchStartX = e.touches[0].clientX;
-    touchStartY = e.touches[0].clientY;
+    touchStartY = touchY;
     isSwiping = false;
 }
 
@@ -3262,6 +3271,11 @@ function initializeSwipeNavigation() {
     document.addEventListener('touchstart', handlePullStart, { passive: false });
     document.addEventListener('touchmove', handlePullMove, { passive: false });
     document.addEventListener('touchend', handlePullEnd, { passive: false });
+    
+    // Show swipe zone indicator in debug mode
+    if (DEBUG_MODE) {
+        showSwipeZoneIndicator();
+    }
     
     console.log('Swipe navigation and pull-to-refresh initialized');
 }
@@ -3389,6 +3403,33 @@ function loadHomePageData() {
     }, 1000);
 }
 
+// Swipe zone indicator for debug mode
+function showSwipeZoneIndicator() {
+    const indicator = document.createElement('div');
+    indicator.id = 'swipeZoneIndicator';
+    indicator.className = 'swipe-zone-indicator';
+    indicator.innerHTML = `
+        <div class="swipe-zone-text">
+            <i class="fas fa-arrows-alt-h"></i>
+            Зона свайпа (${Math.round(swipeZoneRatio * 100)}% экрана)
+        </div>
+    `;
+    document.body.appendChild(indicator);
+    
+    // Update position on resize
+    window.addEventListener('resize', updateSwipeZonePosition);
+    updateSwipeZonePosition();
+}
+
+function updateSwipeZonePosition() {
+    const indicator = document.getElementById('swipeZoneIndicator');
+    if (indicator) {
+        const screenHeight = window.innerHeight;
+        const swipeZoneHeight = screenHeight * swipeZoneRatio;
+        indicator.style.height = `${swipeZoneHeight}px`;
+    }
+}
+
 function loadServicesData() {
     // TODO: Implement services data refresh
     setTimeout(() => {
@@ -3448,6 +3489,7 @@ let currentPageIndex = 0;
 
 const swipeThreshold = 50; // Minimum distance for swipe
 const swipeAngleThreshold = 30; // Maximum angle for horizontal swipe
+const swipeZoneRatio = 0.25; // 1/4 экрана сверху для свайпов
 
 // Pull-to-refresh system
 let pullStartY = 0;

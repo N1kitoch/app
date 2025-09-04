@@ -60,6 +60,38 @@ html, body {
     font-size: 18px;
 }
 
+/* Swipe zone indicator (debug mode) */
+.swipe-zone-indicator {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(99, 102, 241, 0.05) 100%);
+    border-bottom: 2px dashed var(--primary-color);
+    z-index: 5000;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.7;
+}
+
+.swipe-zone-indicator .swipe-zone-text {
+    color: var(--primary-color);
+    font-size: 12px;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 4px 8px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.swipe-zone-indicator .swipe-zone-text i {
+    font-size: 10px;
+}
+
 :root {
     --primary-color: #6366f1;
     --primary-dark: #4f46e5;
@@ -2940,7 +2972,7 @@ a:focus {
 .reviews-summary .avg {
     font-size: 1.5rem;
     font-weight: 700;
-    color: white !important;
+    color: var(--text-primary);
 }
 
 .reviews-summary .avg-stars {
@@ -2954,7 +2986,7 @@ a:focus {
 }
 
 .reviews-summary .count {
-    color: rgba(255, 255, 255, 0.9);
+    color: var(--text-secondary);
     font-size: 0.95rem;
     font-weight: 500;
 }
@@ -6333,7 +6365,11 @@ body, .page, .modal-content {
 }
 
 [data-theme="dark"] .reviews-summary .avg {
-    color: #4c63d2;
+    color: white;
+}
+
+[data-theme="dark"] .reviews-summary .count {
+    color: rgba(255, 255, 255, 0.9);
 }
 
 /* Более тёмные элементы навыков в тёмной теме */
