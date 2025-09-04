@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, minimum-scale=1.0">
     <title>Сухоруков Никита - Управление продуктами и AI-решения для бизнеса</title>
     <meta name="description" content="Создание AI-менеджеров, системы ведения каналов, управление продуктами. Профессиональные решения для вашего бизнеса.">
     <link rel="stylesheet" href="styles.css">
@@ -14,6 +14,18 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
+    <!-- Loading Screen -->
+    <div id="loadingScreen" class="loading-screen">
+        <div class="loading-content">
+            <div class="loading-rings">
+                <div class="loading-ring"></div>
+                <div class="loading-ring"></div>
+                <div class="loading-ring"></div>
+            </div>
+            <div class="loading-text">Загрузка...</div>
+        </div>
+    </div>
+
     <!-- Home Page -->
     <section class="page active" id="home">
         <!-- Hero Section -->
@@ -1163,5 +1175,4 @@
     <script src="script.js"></script>
 
 </body>
-</html> 
 </html> 

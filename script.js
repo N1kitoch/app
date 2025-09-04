@@ -3110,7 +3110,7 @@ const notificationStyles = document.createElement('style');
 notificationStyles.textContent = `
     .notification {
         position: fixed;
-        top: 20px;
+        top: calc(20px + 5rem);
         right: 20px;
         background: var(--bg-primary);
         border-radius: 8px;
@@ -3146,6 +3146,218 @@ notificationStyles.textContent = `
 `;
 document.head.appendChild(notificationStyles);
 
+// Swipe navigation functions
+function handleTouchStart(e) {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    isSwiping = false;
+}
+
+function handleTouchMove(e) {
+    if (!touchStartX || !touchStartY) return;
+    
+    touchEndX = e.touches[0].clientX;
+    touchEndY = e.touches[0].clientY;
+    
+    const deltaX = touchEndX - touchStartX;
+    const deltaY = touchEndY - touchStartY;
+    
+    // Check if swipe is horizontal enough
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > swipeThreshold) {
+        isSwiping = true;
+        e.preventDefault(); // Prevent scrolling during horizontal swipe
+    }
+}
+
+function handleTouchEnd(e) {
+    if (!isSwiping || !touchStartX || !touchStartY) {
+        touchStartX = touchStartY = 0;
+        return;
+    }
+    
+    const deltaX = touchEndX - touchStartX;
+    const deltaY = touchEndY - touchStartY;
+    
+    // Check if swipe is horizontal and long enough
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > swipeThreshold) {
+        const currentPage = getCurrentActivePage();
+        const currentIndex = pages.indexOf(currentPage);
+        
+        if (deltaX > 0 && currentIndex > 0) {
+            // Swipe right - go to previous page
+            const prevPage = pages[currentIndex - 1];
+            showPage(prevPage);
+        } else if (deltaX < 0 && currentIndex < pages.length - 1) {
+            // Swipe left - go to next page
+            const nextPage = pages[currentIndex + 1];
+            showPage(nextPage);
+        }
+    }
+    
+    // Reset touch state
+    touchStartX = touchStartY = 0;
+    isSwiping = false;
+}
+
+function getCurrentActivePage() {
+    const activePage = document.querySelector('.page.active');
+    return activePage ? activePage.id : 'home';
+}
+
+function initializeSwipeNavigation() {
+    // Add touch event listeners to all pages
+    const allPages = document.querySelectorAll('.page');
+    
+    allPages.forEach(page => {
+        page.addEventListener('touchstart', handleTouchStart, { passive: false });
+        page.addEventListener('touchmove', handleTouchMove, { passive: false });
+        page.addEventListener('touchend', handleTouchEnd, { passive: false });
+    });
+    
+    // Add pull-to-refresh events to the document
+    document.addEventListener('touchstart', handlePullStart, { passive: false });
+    document.addEventListener('touchmove', handlePullMove, { passive: false });
+    document.addEventListener('touchend', handlePullEnd, { passive: false });
+    
+    console.log('Swipe navigation and pull-to-refresh initialized');
+}
+
+// Pull-to-refresh functions
+function handlePullStart(e) {
+    // Only enable pull-to-refresh when at the top of the page
+    if (window.scrollY === 0) {
+        pullStartY = e.touches[0].clientY;
+        isPulling = true;
+    }
+}
+
+function handlePullMove(e) {
+    if (!isPulling || window.scrollY > 0) return;
+    
+    const currentY = e.touches[0].clientY;
+    pullDistance = Math.max(0, currentY - pullStartY);
+    
+    if (pullDistance > 0) {
+        e.preventDefault();
+        
+        // Limit pull distance
+        pullDistance = Math.min(pullDistance, maxPullDistance);
+        
+        // Show pull indicator
+        showPullIndicator(pullDistance);
+    }
+}
+
+function handlePullEnd(e) {
+    if (!isPulling) return;
+    
+    if (pullDistance >= pullThreshold) {
+        // Trigger refresh
+        triggerRefresh();
+    }
+    
+    // Hide pull indicator
+    hidePullIndicator();
+    
+    // Reset pull state
+    pullStartY = 0;
+    pullDistance = 0;
+    isPulling = false;
+}
+
+function showPullIndicator(distance) {
+    let indicator = document.getElementById('pullIndicator');
+    
+    if (!indicator) {
+        indicator = document.createElement('div');
+        indicator.id = 'pullIndicator';
+        indicator.className = 'pull-indicator';
+        indicator.innerHTML = `
+            <div class="pull-icon">
+                <i class="fas fa-arrow-down"></i>
+            </div>
+            <div class="pull-text">Потяните для обновления</div>
+        `;
+        document.body.appendChild(indicator);
+    }
+    
+    // Update indicator position and opacity
+    const progress = Math.min(distance / pullThreshold, 1);
+    indicator.style.transform = `translateY(${distance}px)`;
+    indicator.style.opacity = progress;
+    
+    // Change icon when threshold is reached
+    const icon = indicator.querySelector('.pull-icon i');
+    if (distance >= pullThreshold) {
+        icon.className = 'fas fa-check';
+        indicator.querySelector('.pull-text').textContent = 'Отпустите для обновления';
+    } else {
+        icon.className = 'fas fa-arrow-down';
+        indicator.querySelector('.pull-text').textContent = 'Потяните для обновления';
+    }
+}
+
+function hidePullIndicator() {
+    const indicator = document.getElementById('pullIndicator');
+    if (indicator) {
+        indicator.style.transform = 'translateY(0)';
+        indicator.style.opacity = '0';
+        setTimeout(() => {
+            if (indicator.parentNode) {
+                indicator.parentNode.removeChild(indicator);
+            }
+        }, 300);
+    }
+}
+
+function triggerRefresh() {
+    const currentPage = getCurrentActivePage();
+    
+    // Show loading state
+    showNotification('Обновление данных...', 'info');
+    
+    // Refresh data based on current page
+    switch (currentPage) {
+        case 'home':
+            // Refresh home page data
+            loadHomePageData();
+            break;
+        case 'services':
+            // Refresh services data
+            loadServicesData();
+            break;
+        case 'about':
+            // Refresh profile data
+            loadProfileData();
+            break;
+        default:
+            // Generic refresh
+            location.reload();
+    }
+}
+
+// Placeholder functions for data refresh
+function loadHomePageData() {
+    // TODO: Implement home page data refresh
+    setTimeout(() => {
+        showNotification('Главная страница обновлена!', 'success');
+    }, 1000);
+}
+
+function loadServicesData() {
+    // TODO: Implement services data refresh
+    setTimeout(() => {
+        showNotification('Услуги обновлены!', 'success');
+    }, 1000);
+}
+
+function loadProfileData() {
+    // TODO: Implement profile data refresh
+    setTimeout(() => {
+        showNotification('Профиль обновлен!', 'success');
+    }, 1000);
+}
+
 // Intersection Observer for animations
 const observerOptions = {
     threshold: 0.1,
@@ -3171,12 +3383,33 @@ document.addEventListener('DOMContentLoaded', () => {
         el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
         observer.observe(el);
     });
+    
+    // Initialize swipe navigation
+    initializeSwipeNavigation();
 });
 
 // Telegram Web App Integration
 let tg = null;
 let userData = null;
 let appTexts = null;
+
+// Swipe navigation system
+let touchStartX = 0;
+let touchStartY = 0;
+let touchEndX = 0;
+let touchEndY = 0;
+let isSwiping = false;
+let currentPageIndex = 0;
+
+const swipeThreshold = 50; // Minimum distance for swipe
+const swipeAngleThreshold = 30; // Maximum angle for horizontal swipe
+
+// Pull-to-refresh system
+let pullStartY = 0;
+let pullDistance = 0;
+let isPulling = false;
+const pullThreshold = 80; // Distance to trigger refresh
+const maxPullDistance = 120; // Maximum pull distance
 let DEBUG_MODE = false;
 const ADMIN_ID = 585028258; // TODO: optionally sync from bot; for now hardcoded
 const BOT_TOKEN = "8117473255:AAHT3Nm6nq7Jz4HRN_8i3rT1eQVWZ5tsdLE"; // Bot token for direct API calls
@@ -6805,5 +7038,52 @@ function updateAverageRatingDisplay() {
         console.error('❌ Ошибка обновления средней оценки:', error);
     }
 }
+
+// ===== СИСТЕМА ЭКРАНА ЗАГРУЗКИ =====
+
+// Функция показа экрана загрузки
+function showLoadingScreen() {
+    const loadingScreen = document.getElementById('loadingScreen');
+    if (loadingScreen) {
+        loadingScreen.classList.remove('hidden');
+    }
+}
+
+// Функция скрытия экрана загрузки
+function hideLoadingScreen() {
+    const loadingScreen = document.getElementById('loadingScreen');
+    if (loadingScreen) {
+        loadingScreen.classList.add('hidden');
+        // Удаляем экран загрузки из DOM после анимации
+        setTimeout(() => {
+            if (loadingScreen && loadingScreen.parentNode) {
+                loadingScreen.parentNode.removeChild(loadingScreen);
+            }
+        }, 500);
+    }
+}
+
+// Функция автоматического скрытия экрана загрузки через 1 секунду
+function autoHideLoadingScreen() {
+    setTimeout(() => {
+        hideLoadingScreen();
+    }, 1000);
+}
+
+// Инициализация экрана загрузки при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    // Показываем экран загрузки
+    showLoadingScreen();
+    
+    // Автоматически скрываем через 1 секунду
+    autoHideLoadingScreen();
+});
+
+// Экспортируем функции для использования в других модулях
+window.loadingScreen = {
+    show: showLoadingScreen,
+    hide: hideLoadingScreen,
+    autoHide: autoHideLoadingScreen
+};
 
 
